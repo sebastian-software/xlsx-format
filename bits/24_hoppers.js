@@ -21,7 +21,8 @@ function recordhopper(data, cb/*:RecordHopperCB*/, opts/*:?any*/) {
 /* control buffer usage for fixed-length buffers */
 function buf_array()/*:BufArray*/ {
 	var bufs/*:Array<Block>*/ = [], blksz = has_buf ? 16384 : 2048;
-	var has_buf_copy = has_buf && (typeof new_buf(blksz).copy == "function");
+	var has_buf_subarray = has_buf && (typeof new_buf(blksz).subarray == "function");
+
 	var newblk = function ba_newblk(sz/*:number*/)/*:Block*/ {
 		var o/*:Block*/ = (new_buf(sz)/*:any*/);
 		prep_blob(o, 0);
@@ -55,7 +56,10 @@ function buf_array()/*:BufArray*/ {
 	};
 
 	var push = function ba_push(buf) {
-		endbuf(); curbuf = buf; if(curbuf.l == null) curbuf.l = curbuf.length; next(blksz);
+		if(curbuf.l > 0) bufs.push(curbuf.slice(0, curbuf.l));
+		bufs.push(buf);
+		curbuf = has_buf_subarray ? curbuf.subarray(curbuf.l || 0) : curbuf.slice(curbuf.l || 0);
+		prep_blob(curbuf, 0);
 	};
 
 	return ({ next:next, push:push, end:end, _bufs:bufs, end2:end2 }/*:any*/);

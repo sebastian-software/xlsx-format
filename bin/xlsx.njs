@@ -2,6 +2,7 @@
 /* xlsx.js (C) 2013-present  SheetJS -- http://sheetjs.com */
 /* eslint-env node */
 /* vim: set ts=2 ft=javascript: */
+
 var n = "xlsx";
 var X = require('../');
 try { X = require('../xlsx.flow'); } catch(e) {}
@@ -17,7 +18,7 @@ try { program = require('commander'); } catch(e) {
 		"For older versions of node, explicitly install `xlsx-cli` globally:",
 		"    $ npm i -g xlsx-cli",
 		"    $ xlsx-cli --help"
-	].forEach(function(m) { console.error(m); });
+	].forEach(function (m) { console.error(m); });
 	process.exit(1);
 }
 program
@@ -65,9 +66,10 @@ program
 	.option('-F, --field-sep <sep>', 'CSV field separator', ",")
 	.option('-R, --row-sep <sep>', 'CSV row separator', "\n")
 	.option('-n, --sheet-rows <num>', 'Number of rows to process (0=all rows)')
+	.option('--date-format <string>', 'output date format, for example yyyy-mm-dd')
 	.option('--codepage <cp>', 'default to specified codepage when ambiguous')
-	.option('--req <module>', 'require module before processing')
 	.option('--sst', 'generate shared string table for XLS* formats')
+	.option('-d, --no-dim', 'recalculate worksheet range')
 	.option('--compress', 'use compression when writing XLSX/M/B and ODS')
 	.option('--read', 'read but do not generate output')
 	.option('--book', 'for single-sheet formats, emit a file per worksheet')
@@ -102,18 +104,18 @@ var wb_formats_2 = [
 program.parse(process.argv);
 
 var filename = '', sheetname = '';
-if(program.args[0]) {
+if (program.args[0]) {
 	filename = program.args[0];
-	if(program.args[1]) sheetname = program.args[1];
+	if (program.args[1]) sheetname = program.args[1];
 }
-if(program.sheet) sheetname = program.sheet;
-if(program.file) filename = program.file;
+if (program.sheet) sheetname = program.sheet;
+if (program.file) filename = program.file;
 
-if(!filename) {
+if (!filename) {
 	console.error(n + ": must specify a filename");
 	process.exit(1);
 }
-if(!fs.existsSync(filename)) {
+if (!fs.existsSync(filename)) {
 	console.error(n + ": " + filename + ": No such file or directory");
 	process.exit(2);
 }
@@ -209,15 +211,15 @@ wb_formats_2.forEach(function(m) { if(program[m[0]] || isfmt(m[0])) {
 } });
 
 var target_sheet = sheetname || '';
-if(target_sheet === '') {
-	if(+program.sheetIndex < (wb.SheetNames||[]).length) target_sheet = wb.SheetNames[+program.sheetIndex];
-	else target_sheet = (wb.SheetNames||[""])[0];
+if (target_sheet === '') {
+	if (+program.sheetIndex < (wb.SheetNames || []).length) target_sheet = wb.SheetNames[+program.sheetIndex];
+	else target_sheet = (wb.SheetNames || [""])[0];
 }
 
 var ws;
 try {
 	ws = wb.Sheets[target_sheet];
-	if(!ws) {
+	if (!ws) {
 		console.error("Sheet " + target_sheet + " cannot be found");
 		process.exit(3);
 	}
@@ -226,7 +228,7 @@ try {
 	process.exit(4);
 }
 
-if(!program.quiet && !program.book) console.error(target_sheet);
+if (!program.quiet && !program.book) console.error(target_sheet);
 
 /* single worksheet file formats */
 [
@@ -254,21 +256,21 @@ if(!program.quiet && !program.book) console.error(target_sheet);
 	process.exit(0);
 } });
 
-function outit(o, fn) { if(fn) fs.writeFileSync(fn, o); else console.log(o); }
+function outit(o, fn) { if (fn) fs.writeFileSync(fn, o); else console.log(o); }
 
 function doit(cb) {
-	/*:: if(!wb) throw new Error("unreachable"); */
-	if(program.book) wb.SheetNames.forEach(function(n, i) {
-		/*:: if(!wb) throw new Error("unreachable"); */
+	/*:: if (!wb) throw new Error("unreachable"); */
+	if (program.book) wb.SheetNames.forEach(function (n, i) {
+		/*:: if (!wb) throw new Error("unreachable"); */
 		outit(cb(wb.Sheets[n]), (program.output || sheetname || filename) + "." + i);
 	});
 	else outit(cb(ws), program.output);
 }
 
 var jso = {};
-switch(true) {
+switch (true) {
 	case program.formulae:
-		doit(function(ws) { return X.utils.sheet_to_formulae(ws).join("\n"); });
+		doit(function (ws) { return X.utils.sheet_to_formulae(ws).join("\n"); });
 		break;
 
 	case program.arrays: jso.header = 1;
@@ -276,33 +278,33 @@ switch(true) {
 	case program.rawJs: jso.raw = true;
 	/* falls through */
 	case program.json:
-		doit(function(ws) { return JSON.stringify(X.utils.sheet_to_json(ws,jso)); });
+		doit(function (ws) { return JSON.stringify(X.utils.sheet_to_json(ws, jso)); });
 		break;
 
 	default:
-		if(!program.book) {
-			var stream = X.stream.to_csv(ws, {FS:program.fieldSep||",", RS:program.rowSep||"\n"});
-			if(program.output) stream.pipe(fs.createWriteStream(program.output));
+		if (!program.book) {
+			var stream = X.stream.to_csv(ws, { FS: program.fieldSep || ",", RS: program.rowSep || "\n" });
+			if (program.output) stream.pipe(fs.createWriteStream(program.output));
 			else stream.pipe(process.stdout);
-		} else doit(function(ws) { return X.utils.sheet_to_csv(ws,{FS:program.fieldSep, RS:program.rowSep}); });
+		} else doit(function (ws) { return X.utils.sheet_to_csv(ws, { FS: program.fieldSep, RS: program.rowSep }); });
 		break;
 }
 
 function dump_props(wb/*:Workbook*/) {
 	var propaoa = [];
-	if(Object.assign && Object.entries) propaoa = Object.entries(Object.assign({}, wb.Props, wb.Custprops));
+	if (Object.assign && Object.entries) propaoa = Object.entries(Object.assign({}, wb.Props, wb.Custprops));
 	else {
 		var Keys/*:: :Array<string> = []*/, pi;
-		if(wb.Props) {
+		if (wb.Props) {
 			Keys = Object.keys(wb.Props);
-			for(pi = 0; pi < Keys.length; ++pi) {
-				if(Object.prototype.hasOwnProperty.call(Keys, Keys[pi])) propaoa.push([Keys[pi], Keys[/*::+*/Keys[pi]]]);
+			for (pi = 0; pi < Keys.length; ++pi) {
+				if (Object.prototype.hasOwnProperty.call(Keys, Keys[pi])) propaoa.push([Keys[pi], Keys[/*::+*/Keys[pi]]]);
 			}
 		}
-		if(wb.Custprops) {
+		if (wb.Custprops) {
 			Keys = Object.keys(wb.Custprops);
-			for(pi = 0; pi < Keys.length; ++pi) {
-				if(Object.prototype.hasOwnProperty.call(Keys, Keys[pi])) propaoa.push([Keys[pi], Keys[/*::+*/Keys[pi]]]);
+			for (pi = 0; pi < Keys.length; ++pi) {
+				if (Object.prototype.hasOwnProperty.call(Keys, Keys[pi])) propaoa.push([Keys[pi], Keys[/*::+*/Keys[pi]]]);
 			}
 		}
 	}
