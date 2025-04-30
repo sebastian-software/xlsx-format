@@ -73,14 +73,36 @@ function parse_xlmeta_bin(data: RawData, name: string, _opts?: ParseXLMetaOption
 			// case 0x014D: /* BrtEndMetadata */
 			// case 0x014E: /* BrtBeginEsmdtinfo */
 			// case 0x0150: /* BrtEndEsmdtinfo */
+			// case 0x0151: /* BrtBeginEsmdb */
+			// case 0x0152: /* BrtEndEsmdb */
 			// case 0x0153: /* BrtBeginEsfmd */
 			// case 0x0154: /* BrtEndEsfmd */
+			// case 0x0174: /* BrtBeginEsmdx */
+			// case 0x0175: /* BrtEndEsmdx */
+			// case 0x0176: /* BrtBeginMdxSet */
+			// case 0x0177: /* BrtEndMdxSet */
+			// case 0x0178: /* BrtBeginMdxMbrProp */
+			// case 0x0179: /* BrtEndMdxMbrProp */
+			// case 0x017A: /* BrtBeginMdxKPI */
+			// case 0x017B: /* BrtEndMdxKPI */
+			// case 0x017C: /* BrtBeginEsstr */
+			// case 0x017D: /* BrtEndEsstr */
 			// case 0x0034: /* BrtBeginFmd */
 			// case 0x0035: /* BrtEndFmd */
+			// case 0x0036: /* BrtBeginMdx */
+			// case 0x0037: /* BrtEndMdx */
+			// case 0x0038: /* BrtBeginMdxTuple */
+			// case 0x0039: /* BrtEndMdxTuple */
 			// case 0x1000: /* BrtBeginDynamicArrayPr */
 			// case 0x1001: /* BrtEndDynamicArrayPr */
 			// case 0x138A: /* BrtBeginRichValueBlock */
 			// case 0x138B: /* BrtEndRichValueBlock */
+
+			case 0x003A: /* BrtMdxMbrIstr */
+				break;
+
+			case 0x003B: /* BrtStr */
+				break;
 
 			case 0x014F: /* BrtMdtinfo */
 				out.Types.push({name: (val as BrtMdtinfo).name}); break;

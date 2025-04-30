@@ -52,6 +52,10 @@ function parse_xlmeta_bin(data, name, _opts) {
   var metatype = 2;
   recordhopper(data, function(val, R, RT) {
     switch (RT) {
+      case 58:
+        break;
+      case 59:
+        break;
       case 335:
         out.Types.push({ name: val.name });
         break;

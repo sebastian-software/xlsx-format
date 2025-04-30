@@ -505,7 +505,7 @@ function parse_BrtDVal(/*data, length, opts*/) {
 }
 function parse_BrtDVal14(/*data, length, opts*/) {
 }
-/* [MS-XLSB] 2.1.7.61 Worksheet */
+/* [MS-XLSB] 2.1.7.62 Worksheet */
 function parse_ws_bin(data, _opts, idx, rels, wb/*:WBWBProps*/, themes, styles)/*:Worksheet*/ {
 	if(!data) return data;
 	var opts = _opts || {};

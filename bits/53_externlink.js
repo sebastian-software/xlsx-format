@@ -35,6 +35,7 @@ function parse_xlink_bin(data, rel, name/*:string*/, _opts) {
 			case 0x0249: /* 'BrtSupNameFmla' */
 			case 0x024A: /* 'BrtSupNameBits' */
 			case 0x024B: /* 'BrtSupNameEnd' */
+			case 0x13F4: /* 'BrtExternalLinksAlternateUrls' */
 				break;
 
 			case 0x0023: /* 'BrtFRTBegin' */
