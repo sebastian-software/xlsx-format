@@ -9,10 +9,10 @@ declare type EmptyFunc = (() => void) | null;
 declare var afterEach:(test:EmptyFunc)=>void;
 declare var cptable: any;
 */
-import * as assert_ from 'https://deno.land/std/testing/asserts.ts';
-import * as base64_ from 'https://deno.land/std/encoding/base64.ts';
+import * as assert_ from 'https://deno.land/std@0.169.0/testing/asserts.ts';
+import * as base64_ from 'https://deno.land/std@0.169.0/encoding/base64.ts';
 const assert: any = {...assert_};
-assert.throws = function(f: () => void) { assert.assertThrows(function() { try { f(); } catch(e) { throw e instanceof Error ? e : new Error(e); }})};
+assert.throws = function(f: () => void) { assert.assertThrows(function() { try { f(); } catch(e) { throw e instanceof Error ? e : new Error(e as string); }})};
 assert.doesNotThrow = function(f: ()=>void) { f(); };
 assert.equal = assert.assertEquals;
 assert.notEqual = assert.assertNotEquals;
@@ -36,7 +36,7 @@ function readFileSync2(x: string, e?: ShEncoding): Uint8Array | string {
 	if(!e) return u8;
 	switch(e) {
 		case 'utf-8': return new TextDecoder().decode(u8);
-		case 'base64': return base64_.encode(u8);
+		case 'base64': return base64_.encode(u8 as any);
 		case 'buffer': return u8;
 		case 'binary': return Array.from({length: u8.length}, (_,i) => String.fromCharCode(u8[i])).join("");
 	}
@@ -2724,7 +2724,7 @@ Deno.test('dense mode', async function(t) {
 			wb = X.read(fs.readFileSync(p), {type: TYPE, WTF: true, dense: true});
 			ws = wb.Sheets[wb.SheetNames[0]];
 			assert.assert(!ws["A1"]);
-			assert.equal(ws["!data"]?.[0][0].v, "Link to Sheet2");
+			assert.equal(ws["!data"]?.[0]![0]!.v, "Link to Sheet2");
 		});
 		if(!browser) artifax.forEach(function(p) {
 			var wb = X.read(fs.readFileSync(p), {type: TYPE, WTF: true});
@@ -2736,7 +2736,7 @@ Deno.test('dense mode', async function(t) {
 			ws = wb.Sheets[wb.SheetNames[0]];
 			assert.assert(!ws["A1"]);
 			assert.assert(!!ws["!data"]);
-			assert.assert(ws["!data"]?.[0][0]);
+			assert.assert(ws["!data"]?.[0]![0]);
 		});
 	});
 	await t.step('aoa_to_sheet', async function(t) {
@@ -2744,28 +2744,28 @@ Deno.test('dense mode', async function(t) {
 		var sp = X.utils.aoa_to_sheet(aoa); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
 		sp = X.utils.aoa_to_sheet(aoa, {}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
 		sp = X.utils.aoa_to_sheet(aoa, {dense: false}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
-		var ds = X.utils.aoa_to_sheet(aoa, {dense: true}); assert.equal(ds["!data"]?.[1][0].v, 5433795); assert.assert(!ds["A2"]);
+		var ds = X.utils.aoa_to_sheet(aoa, {dense: true}); assert.equal(ds["!data"]?.[1]![0]!.v, 5433795); assert.assert(!ds["A2"]);
 	});
 	await t.step('json_to_sheet', async function(t) {
 		var json = [{"SheetJS": 5433795}];
 		var sp = X.utils.json_to_sheet(json); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
 		sp = X.utils.json_to_sheet(json, {}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
 		sp = X.utils.json_to_sheet(json, {dense: false}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
-		var ds = X.utils.json_to_sheet(json, {dense: true}); assert.equal(ds["!data"]?.[1][0].v, 5433795); assert.assert(!ds["A2"]);
+		var ds = X.utils.json_to_sheet(json, {dense: true}); assert.equal(ds["!data"]?.[1]![0]!.v, 5433795); assert.assert(!ds["A2"]);
 	});
 	await t.step('sheet_add_aoa', async function(t) {
 		var aoa = [["SheetJS"]];
 		var sp = X.utils.aoa_to_sheet(aoa); X.utils.sheet_add_aoa(sp, [[5433795]], {origin:-1}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
 		sp = X.utils.aoa_to_sheet(aoa); X.utils.sheet_add_aoa(sp, [[5433795]], {origin:-1, dense: true}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
-		var ds:X.WorkSheet = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_aoa(ds, [[5433795]], {origin:-1}); assert.equal(ds["!data"]?.[1][0].v, 5433795); assert.assert(!ds["A2"]);
-		ds = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_aoa(ds, [[5433795]], {origin:-1, dense: true}); assert.equal(ds["!data"]?.[1][0].v, 5433795); assert.assert(!ds["A2"]);
+		var ds:X.WorkSheet = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_aoa(ds, [[5433795]], {origin:-1}); assert.equal(ds["!data"]?.[1]![0]!.v, 5433795); assert.assert(!ds["A2"]);
+		ds = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_aoa(ds, [[5433795]], {origin:-1, dense: true}); assert.equal(ds["!data"]?.[1]![0]!.v, 5433795); assert.assert(!ds["A2"]);
 	});
 	await t.step('sheet_add_json', async function(t) {
 		var aoa = [["SheetJS"]];
 		var sp = X.utils.aoa_to_sheet(aoa); X.utils.sheet_add_json(sp, [{X:5433795}], {origin:-1, skipHeader:true}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
 		sp = X.utils.aoa_to_sheet(aoa); X.utils.sheet_add_json(sp, [{X:5433795}], {origin:-1, skipHeader: true, dense: true}); assert.equal(sp["A2"].v, 5433795); assert.assert(!sp["!data"]);
-		var ds:X.WorkSheet = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_json(ds, [{X:5433795}], {origin:-1, skipHeader: true}); assert.equal(ds["!data"]?.[1][0].v, 5433795); assert.assert(!ds["A2"]);
-		ds = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_json(ds, [{X:5433795}], {origin:-1, skipHeader: true, dense: true}); assert.equal(ds["!data"]?.[1][0].v, 5433795); assert.assert(!ds["A2"]);
+		var ds:X.WorkSheet = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_json(ds, [{X:5433795}], {origin:-1, skipHeader: true}); assert.equal(ds["!data"]?.[1]![0]!.v, 5433795); assert.assert(!ds["A2"]);
+		ds = X.utils.aoa_to_sheet(aoa, {dense: true}); X.utils.sheet_add_json(ds, [{X:5433795}], {origin:-1, skipHeader: true, dense: true}); assert.equal(ds["!data"]?.[1]![0]!.v, 5433795); assert.assert(!ds["A2"]);
 	});
 	for(var ofmti = 0; ofmti < ofmt.length; ++ofmti) { var f = ofmt[ofmti];
 	await t.step('write ' + f, async function(t) {
@@ -3022,6 +3022,11 @@ Deno.test('corner cases', async function(t) {
 			}
 		});
 	});
+	if(fs.existsSync(dir + 'shared_formula.xlsx')) await t.step('should properly handle defined names in shared formulae', async function(t) {
+		var wb = X.read(fs.readFileSync(dir + 'shared_formula.xlsx'), {type:TYPE});
+		var formulae = X.utils.sheet_to_formulae(wb.Sheets[wb.SheetNames[0]]);
+		assert.equal(formulae[4], 'A5=nvRTX6090');
+	});
 });
 
 Deno.test('encryption', async function(t) {
@@ -3033,14 +3038,14 @@ Deno.test('encryption', async function(t) {
 					X.read(fs.readFileSync(dir + x), {type:TYPE,password:'Password',WTF:opts.WTF});
 					throw new Error("incorrect password was accepted");
 				} catch(e) {
-					if(e.message != "Password is incorrect") throw e;
+					if((e as any).message != "Password is incorrect") throw e;
 				}
 			});
 			await t.step('should recognize correct password', async function(t) {
 				try {
 					X.read(fs.readFileSync(dir + x), {type:TYPE,password:'password',WTF:opts.WTF});
 				} catch(e) {
-					if(e.message == "Password is incorrect") throw e;
+					if((e as any).message == "Password is incorrect") throw e;
 				}
 			});
 			if(false) await t.step('should decrypt file', async function(t) {

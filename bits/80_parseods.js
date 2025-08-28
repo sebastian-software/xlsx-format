@@ -205,7 +205,7 @@ function parse_ods_styles(d/*:string*/, _opts, _nfm) {
 			// TODO: handle more complex maps
 			y = parsexmltag(Rn[0], false);
 			if(unescapexml(y["condition"]) == "value()>=0") NF = number_format_map[y["apply-style-name"]] + ";" + NF;
-			else console.error("ODS number format may be incorrect: " + y["condition"]);
+			else if(_opts && _opts.WTF) console.error("ODS number format may be incorrect: " + y["condition"]);
 			break;
 
 		case 'number': // <number:number> 16.29.3

@@ -3103,6 +3103,11 @@ describe('corner cases', function() {
 			}
 		});
 	});
+	(fs.existsSync(dir + 'shared_formula.xlsx') ? it : it.skip)('should properly handle defined names in shared formulae', function() {
+		var wb = X.read(fs.readFileSync(dir + 'shared_formula.xlsx'), {type:TYPE});
+		var formulae = X.utils.sheet_to_formulae(wb.Sheets[wb.SheetNames[0]]);
+		assert.equal(formulae[4], 'A5=nvRTX6090');
+	});
 });
 
 describe('encryption', function() {
