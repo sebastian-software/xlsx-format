@@ -417,7 +417,7 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 						} else if(/*::cref != null && cref[0] != null && */cref[0].indexOf('t="shared"') > -1) {
 							// TODO: parse formula
 							ftag = parsexmltag(cref[0]);
-							var ___f = unescapexml(utf8read(cref[1]));
+							var ___f = unescapexml(utf8read(cref[1]), true);
 							if(!opts.xlfn) ___f = _xlfn(___f);
 							sharedf[parseInt(ftag.si, 10)] = [ftag, ___f, tag.r];
 						}
