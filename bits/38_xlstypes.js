@@ -485,7 +485,7 @@ function parse_XLUnicodeStringNoCch(blob, cch, opts) {
 /* 2.5.294 XLUnicodeString */
 function parse_XLUnicodeString(blob, length, opts) {
 	var cch = blob.read_shift(opts && opts.biff == 2 ? 1 : 2);
-	if(cch === 0) { blob.l++; return ""; }
+	if(cch === 0) { if(opts.biff <= 8) blob.l++; return ""; }
 	return parse_XLUnicodeStringNoCch(blob, cch, opts);
 }
 /* BIFF5 override */
