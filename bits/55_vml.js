@@ -1,7 +1,8 @@
 /* L.5.5.2 SpreadsheetML Comments + VML Schema */
 function parse_vml(data/*:string*/, sheet, comments) {
 	var cidx = 0;
-	(str_match_xml_ns_g(data, "shape")||[]).forEach(function(m) {
+	/* see CT_Group for other possible elements */
+	(str_match_xml_ns_g(data, "(?:shape|rect)")||[]).forEach(function(m) {
 		var type = "";
 		var hidden = true;
 		var aidx = -1;
