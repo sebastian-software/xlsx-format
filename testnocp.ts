@@ -1479,6 +1479,21 @@ Deno.test('write features', async function(t) {
 			var str = X.write(wb, {bookType:"html", type:"binary"});
 			assert.assert(str.indexOf("<b>abc</b>") > 0);
 		});
+		await t.step('should remove javascript: URLs when sanitizeLinks is true', async function(t) {
+			var sheet = X.utils.aoa_to_sheet([["Click me"]]);
+			get_cell(sheet, "A1").l = { Target: "javascript:alert('xss')" };
+
+			assert.assert(X.utils.sheet_to_html(sheet).indexOf("javascript:alert") > -1, "javascript: should not be stripped by default");
+
+			assert.assert(X.utils.sheet_to_html(sheet, { sanitizeLinks: true }).indexOf("javascript:alert") === -1, "javascript: should be stripped with sanitizeLinks");
+		});
+		await t.step('should preserve non-javascript URLs with sanitizeLinks', async function(t) {
+			var sheet = X.utils.aoa_to_sheet([["Link"]]);
+			get_cell(sheet, "A1").l = { Target: "https://example.com" };
+
+			var str = X.utils.sheet_to_html(sheet, { sanitizeLinks: true });
+			assert.assert(str.indexOf('href="https://example.com"') > -1);
+		});
 	});
 	await t.step('sheet range limits', async function(t) { var b = ([
 		["biff2", "IV16384"],

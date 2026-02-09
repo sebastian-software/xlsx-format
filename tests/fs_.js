@@ -1,5 +1,5 @@
-var assert = function(bool) { if(!bool) { throw new Error("failed assert"); } };
-assert.ok = function(bool) { if(!bool) { throw new Error("failed assert"); } };
+var assert = function(bool, msg) { if(!bool) { throw new Error(msg || "failed assert"); } };
+assert.ok = function(bool, msg) { if(!bool) { throw new Error(msg || "failed assert"); } };
 assert.deepEqualArray = function(x,y) {
 	if(x.length != y.length) throw new Error("Length mismatch: " + x.length + " != " + y.length);
 	for(var i = 0; i < x.length; ++i) assert.deepEqual(x[i], y[i]);
@@ -13,8 +13,8 @@ assert.deepEqual = function(x,y) {
 };
 assert.notEqual = function(x,y) { if(x == y) throw new Error(x + " == " + y); };
 assert.equal = function(x,y) { if(x != y) throw new Error(x + " !== " + y); };
-assert.throws = function(cb) { var pass = true; try { cb(); pass = false; } catch(e) { } if(!pass) throw new Error("Function did not throw"); };
-assert.doesNotThrow = function(cb) { var pass = true; try { cb(); } catch(e) { pass = false; } if(!pass) throw new Error("Function did throw"); };
+assert.throws = function(cb, msg) { var pass = true; try { cb(); pass = false; } catch(e) { } if(!pass) throw new Error(msg || "Function did not throw"); };
+assert.doesNotThrow = function(cb, msg) { var pass = true; try { cb(); } catch(e) { pass = false; } if(!pass) throw new Error(msg || "Function did throw"); };
 
 function require(s) {
 	switch(s) {

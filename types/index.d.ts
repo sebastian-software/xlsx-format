@@ -800,6 +800,9 @@ export interface Sheet2HTMLOpts {
 
     /** Footer HTML */
     footer?: string;
+
+    /** If true, remove javascript: URLs from hyperlinks */
+    sanitizeLinks?: boolean;
 }
 
 export interface Sheet2JSONOpts extends DateNFOption {
