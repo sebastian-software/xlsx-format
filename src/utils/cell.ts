@@ -1,4 +1,4 @@
-import type { CellAddress, Range } from "../types.js";
+import type { CellAddress, CellObject, Range, WorkSheet } from "../types.js";
 
 export function decodeRow(rowstr: string): number {
 	return parseInt(removeRowAbsolute(rowstr), 10) - 1;
@@ -133,6 +133,15 @@ export function safeDecodeRange(range: string): Range {
 	}
 	result.e.r = --idx;
 	return result;
+}
+
+/** Retrieve a cell from a worksheet, handling both dense (array) and sparse (object) storage */
+export function getCell(sheet: WorkSheet, row: number, col: number): CellObject | undefined {
+	const data = (sheet as any)["!data"];
+	if (data != null) {
+		return (data[row] || [])[col];
+	}
+	return (sheet as any)[encodeCol(col) + encodeRow(row)];
 }
 
 export function quoteSheetName(sname: string): string {

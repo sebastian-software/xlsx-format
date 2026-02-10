@@ -1,5 +1,5 @@
 import type { WorkSheet, Sheet2JSONOpts, JSON2SheetOpts, CellObject, Range } from "../types.js";
-import { decodeCell, encodeCol, encodeRow, encodeRange, safeDecodeRange } from "../utils/cell.js";
+import { decodeCell, encodeCol, encodeRow, encodeRange, safeDecodeRange, getCell } from "../utils/cell.js";
 import { dateToSerialNumber, serialNumberToDate, utcToLocal, localToUtc } from "../utils/date.js";
 import { isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
@@ -9,16 +9,13 @@ function buildJsonRow(
 	sheet: WorkSheet,
 	range: Range,
 	rowIndex: number,
-	cols: string[],
 	header: number,
 	headers: any[],
 	options: any,
 ): { row: any; isempty: boolean } {
-	const encodedRow = encodeRow(rowIndex);
 	const defval = options.defval;
 	const raw = options.raw || !Object.hasOwn(options, "raw");
 	let isempty = true;
-	const dense = (sheet as any)["!data"] != null;
 	const row: any = header === 1 ? [] : {};
 
 	if (header !== 1) {
@@ -29,69 +26,65 @@ function buildJsonRow(
 		}
 	}
 
-	if (!dense || (sheet as any)["!data"][rowIndex]) {
-		for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
-			const val: CellObject | undefined = dense
-				? ((sheet as any)["!data"][rowIndex] || [])[colIdx]
-				: (sheet as any)[cols[colIdx] + encodedRow];
-			if (val == null || val.t === undefined) {
-				if (defval === undefined) {
-					continue;
-				}
-				if (headers[colIdx] != null) {
-					row[headers[colIdx]] = defval;
-				}
+	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
+		const val = getCell(sheet, rowIndex, colIdx);
+		if (val == null || val.t === undefined) {
+			if (defval === undefined) {
 				continue;
 			}
-			let cellValue: any = val.v;
-			switch (val.t) {
-				case "z":
-					if (cellValue == null) {
-						break;
-					}
-					continue;
-				case "e":
-					cellValue = cellValue === 0 ? null : undefined;
-					break;
-				case "s":
-				case "b":
-					break;
-				case "n":
-					if (!val.z || !isDateFormat(String(val.z))) {
-						break;
-					}
-					cellValue = serialNumberToDate(cellValue as number);
-					if (typeof cellValue === "number") {
-						break;
-					}
-				/* falls through */
-				case "d":
-					if (!(options && (options.UTC || options.raw === false))) {
-						cellValue = utcToLocal(new Date(cellValue));
-					}
-					break;
-				default:
-					throw new Error("unrecognized type " + val.t);
-			}
 			if (headers[colIdx] != null) {
+				row[headers[colIdx]] = defval;
+			}
+			continue;
+		}
+		let cellValue: any = val.v;
+		switch (val.t) {
+			case "z":
 				if (cellValue == null) {
-					if (val.t === "e" && cellValue === null) {
-						row[headers[colIdx]] = null;
-					} else if (defval !== undefined) {
-						row[headers[colIdx]] = defval;
-					} else if (raw && cellValue === null) {
-						row[headers[colIdx]] = null;
-					} else {
-						continue;
-					}
+					break;
+				}
+				continue;
+			case "e":
+				cellValue = cellValue === 0 ? null : undefined;
+				break;
+			case "s":
+			case "b":
+				break;
+			case "n":
+				if (!val.z || !isDateFormat(String(val.z))) {
+					break;
+				}
+				cellValue = serialNumberToDate(cellValue as number);
+				if (typeof cellValue === "number") {
+					break;
+				}
+			/* falls through */
+			case "d":
+				if (!(options && (options.UTC || options.raw === false))) {
+					cellValue = utcToLocal(new Date(cellValue));
+				}
+				break;
+			default:
+				throw new Error("unrecognized type " + val.t);
+		}
+		if (headers[colIdx] != null) {
+			if (cellValue == null) {
+				if (val.t === "e" && cellValue === null) {
+					row[headers[colIdx]] = null;
+				} else if (defval !== undefined) {
+					row[headers[colIdx]] = defval;
+				} else if (raw && cellValue === null) {
+					row[headers[colIdx]] = null;
 				} else {
-					row[headers[colIdx]] = (val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw)
-						? cellValue
-						: formatCell(val, cellValue, options);
+					continue;
 				}
-				if (cellValue != null) {
-					isempty = false;
-				}
+			} else {
+				row[headers[colIdx]] = (val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw)
+					? cellValue
+					: formatCell(val, cellValue, options);
+			}
+			if (cellValue != null) {
+				isempty = false;
 			}
 		}
 	}
@@ -135,16 +128,10 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		offset = 0;
 	}
 
-	const encodedRow = encodeRow(decodedRange.s.r);
-	const cols: string[] = [];
 	const out: any[] = [];
 	let outputIndex = 0;
-	const dense = (sheet as any)["!data"] != null;
 	let rowIdx = decodedRange.s.r;
 	const header_cnt: Record<string, number> = {};
-	if (dense && !(sheet as any)["!data"][rowIdx]) {
-		(sheet as any)["!data"][rowIdx] = [];
-	}
 	const colinfo: any[] = (options.skipHidden && sheet["!cols"]) || [];
 	const rowinfo: any[] = (options.skipHidden && sheet["!rows"]) || [];
 
@@ -152,15 +139,14 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		if ((colinfo[colIdx] || {}).hidden) {
 			continue;
 		}
-		cols[colIdx] = encodeCol(colIdx);
-		const val: CellObject | undefined = dense ? (sheet as any)["!data"][rowIdx][colIdx] : (sheet as any)[cols[colIdx] + encodedRow];
+		const val = getCell(sheet, rowIdx, colIdx);
 		let cellValue: any, headerLabel: any;
 		switch (header) {
 			case 1:
 				headers[colIdx] = colIdx - decodedRange.s.c;
 				break;
 			case 2:
-				headers[colIdx] = cols[colIdx];
+				headers[colIdx] = encodeCol(colIdx);
 				break;
 			case 3:
 				headers[colIdx] = (options.header as string[])[colIdx - decodedRange.s.c];
@@ -187,7 +173,7 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		if ((rowinfo[rowIdx] || {}).hidden) {
 			continue;
 		}
-		const row = buildJsonRow(sheet, decodedRange, rowIdx, cols, header, headers, options);
+		const row = buildJsonRow(sheet, decodedRange, rowIdx, header, headers, options);
 		if (!row.isempty || (header === 1 ? options.blankrows !== false : !!options.blankrows)) {
 			out[outputIndex++] = row.row;
 		}

@@ -1,6 +1,6 @@
 import type { WorkSheet, Sheet2HTMLOpts, Range } from "../types.js";
 import { BErr } from "../types.js";
-import { encodeCol, encodeRow, decodeRange } from "../utils/cell.js";
+import { encodeCol, encodeRow, decodeRange, getCell } from "../utils/cell.js";
 import { escapeHtml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { formatCell } from "./format.js";
@@ -11,7 +11,6 @@ const HTML_END = "</body></html>";
 function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sheet2HTMLOpts): string {
 	const merges = ws["!merges"] || [];
 	const cells: string[] = [];
-	const dense = (ws as any)["!data"] != null;
 
 	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
 		let rowSpan = 0,
@@ -36,7 +35,7 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 		}
 
 		const coord = encodeCol(colIdx) + encodeRow(rowIndex);
-		let cell: any = dense ? ((ws as any)["!data"][rowIndex] || [])[colIdx] : (ws as any)[coord];
+		let cell: any = getCell(ws, rowIndex, colIdx);
 
 		if (cell && cell.t === "n" && cell.v != null && !isFinite(cell.v)) {
 			if (isNaN(cell.v)) {
@@ -84,10 +83,6 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 	return "<tr>" + cells.join("") + "</tr>";
 }
 
-function make_html_preamble(_sheet: WorkSheet, _range: Range, options: Sheet2HTMLOpts): string {
-	return "<table" + (options && options.id ? ' id="' + options.id + '"' : "") + ">";
-}
-
 /** Convert a worksheet to an HTML table string */
 export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
 	const options: Sheet2HTMLOpts = opts || {};
@@ -95,7 +90,7 @@ export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
 	const footer = options.footer != null ? options.footer : HTML_END;
 	const out: string[] = [header];
 	const range = decodeRange(ws["!ref"] || "A1");
-	out.push(make_html_preamble(ws, range, options));
+	out.push("<table" + (options.id ? ' id="' + options.id + '"' : "") + ">");
 	if (ws["!ref"]) {
 		for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
 			out.push(buildHtmlRow(ws, range, rowIdx, options));

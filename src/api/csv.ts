@@ -1,5 +1,5 @@
 import type { WorkSheet, Sheet2CSVOpts, Range } from "../types.js";
-import { encodeCol, encodeRow, safeDecodeRange } from "../utils/cell.js";
+import { encodeCol, safeDecodeRange, getCell } from "../utils/cell.js";
 import { formatCell } from "./format.js";
 
 const qreg = /"/g;
@@ -17,15 +17,12 @@ function buildCsvRow(
 ): string | null {
 	let isempty = true;
 	const row: string[] = [];
-	const encodedRow = encodeRow(rowIndex);
-	const dense = (sheet as any)["!data"] != null;
-	const datarow = dense ? (sheet as any)["!data"][rowIndex] || [] : [];
 
 	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
 		if (!cols[colIdx]) {
 			continue;
 		}
-		const val = dense ? datarow[colIdx] : (sheet as any)[cols[colIdx] + encodedRow];
+		const val = getCell(sheet, rowIndex, colIdx);
 		let txt = "";
 		if (val == null) {
 			txt = "";
