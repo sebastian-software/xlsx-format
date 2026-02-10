@@ -4,42 +4,11 @@
 import { dateToSerialNumber } from "../utils/date.js";
 import { formatTable, DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS } from "./table.js";
 
-function reverseString(x: string): string {
-	let result = "";
-	let i = x.length - 1;
-	while (i >= 0) {
-		result += x.charAt(i--);
-	}
-	return result;
-}
-function padWithZeros(value: any, width: number): string {
-	const str = "" + value;
-	return str.length >= width ? str : "0".repeat(width - str.length) + str;
-}
-function padWithSpaces(value: any, width: number): string {
-	const str = "" + value;
-	return str.length >= width ? str : " ".repeat(width - str.length) + str;
-}
-function rightPadWithSpaces(value: any, width: number): string {
-	const str = "" + value;
-	return str.length >= width ? str : str + " ".repeat(width - str.length);
-}
-function padRoundedZeros1(v: any, d: number): string {
-	const t = "" + Math.round(v);
-	return t.length >= d ? t : "0".repeat(d - t.length) + t;
-}
-function padRoundedZeros2(v: any, d: number): string {
-	const t = "" + v;
-	return t.length >= d ? t : "0".repeat(d - t.length) + t;
-}
-const p2_32 = Math.pow(2, 32);
-function padRoundedZeros(v: any, d: number): string {
-	if (v > p2_32 || v < -p2_32) {
-		return padRoundedZeros1(v, d);
-	}
-	const i = Math.round(v);
-	return padRoundedZeros2(i, d);
-}
+const reverseString = (x: string): string => x.split("").reverse().join("");
+const padWithZeros = (value: any, width: number): string => ("" + value).padStart(width, "0");
+const padWithSpaces = (value: any, width: number): string => ("" + value).padStart(width, " ");
+const rightPadWithSpaces = (value: any, width: number): string => ("" + value).padEnd(width, " ");
+const padRoundedZeros = (value: any, width: number): string => ("" + Math.round(value)).padStart(width, "0");
 
 function isGeneralFormat(s: string, i?: number): boolean {
 	i = i || 0;
@@ -55,29 +24,19 @@ function isGeneralFormat(s: string, i?: number): boolean {
 	);
 }
 
-const days: string[][] = [
-	["Sun", "Sunday"],
-	["Mon", "Monday"],
-	["Tue", "Tuesday"],
-	["Wed", "Wednesday"],
-	["Thu", "Thursday"],
-	["Fri", "Friday"],
-	["Sat", "Saturday"],
-];
-const months: string[][] = [
-	["J", "Jan", "January"],
-	["F", "Feb", "February"],
-	["M", "Mar", "March"],
-	["A", "Apr", "April"],
-	["M", "May", "May"],
-	["J", "Jun", "June"],
-	["J", "Jul", "July"],
-	["A", "Aug", "August"],
-	["S", "Sep", "September"],
-	["O", "Oct", "October"],
-	["N", "Nov", "November"],
-	["D", "Dec", "December"],
-];
+const days: string[][] = Array.from({ length: 7 }, (_, i) => {
+	const d = new Date(2017, 0, i + 1); // 2017-01-01 is a Sunday
+	return [
+		new Intl.DateTimeFormat("en-US", { weekday: "short" }).format(d),
+		new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(d),
+	];
+});
+const months: string[][] = Array.from({ length: 12 }, (_, i) => {
+	const d = new Date(2000, i, 1);
+	const short = new Intl.DateTimeFormat("en-US", { month: "short" }).format(d);
+	const long = new Intl.DateTimeFormat("en-US", { month: "long" }).format(d);
+	return [short[0], short, long];
+});
 
 interface SSFDateVal {
 	daySerial: number;
@@ -391,16 +350,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 }
 
 function commaify(str: string): string {
-	const groupSize = 3;
-	if (str.length <= groupSize) {
-		return str;
-	}
-	const remainder = str.length % groupSize;
-	let result = str.substring(0, remainder);
-	for (let i = remainder; i !== str.length; i += groupSize) {
-		result += (result.length > 0 ? "," : "") + str.substring(i, groupSize);
-	}
-	return result;
+	return str.replace(/\B(?=(\d{3})+$)/g, ",");
 }
 
 const pct1 = /%/g;
