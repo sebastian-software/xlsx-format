@@ -4,7 +4,6 @@ import { writeZipXlsx } from "./xlsx/write-zip.js";
 import { validateWorkbook } from "./xlsx/workbook.js";
 import { base64encode } from "./utils/base64.js";
 import { resetFormatTable } from "./ssf/table.js";
-import { shallowClone } from "./utils/helpers.js";
 import * as fs from "node:fs";
 
 /**
@@ -19,7 +18,7 @@ export function write(wb: WorkBook, opts?: WriteOptions): any {
 	if (!opts || !(opts as any).unsafe) {
 		validateWorkbook(wb);
 	}
-	const o: any = shallowClone(opts || {});
+	const o: any = { ...(opts || {}) };
 	if (o.cellStyles) {
 		o.cellNF = true;
 		o.sheetStubs = true;
@@ -55,7 +54,7 @@ function base64encode_u8(data: Uint8Array): string {
  * @param opts - Write options
  */
 export function writeFile(wb: WorkBook, filename: string, opts?: WriteOptions): void {
-	const o: any = opts ? shallowClone(opts) : {};
+	const o: any = opts ? { ...opts } : {};
 	o.type = "buffer";
 	const data = write(wb, o);
 	fs.writeFileSync(filename, data instanceof Uint8Array ? Buffer.from(data) : data);

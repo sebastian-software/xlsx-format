@@ -3,7 +3,6 @@ import { decodeCell, encodeCol, encodeRow, encodeRange, safeDecodeRange } from "
 import { dateToSerialNumber, serialNumberToDate, utcToLocal, localToUtc } from "../utils/date.js";
 import { isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
-import { objectKeys } from "../utils/helpers.js";
 import { formatCell } from "./format.js";
 
 function buildJsonRow(
@@ -17,7 +16,7 @@ function buildJsonRow(
 ): { row: any; isempty: boolean } {
 	const encodedRow = encodeRow(R);
 	const defval = o.defval;
-	const raw = o.raw || !Object.prototype.hasOwnProperty.call(o, "raw");
+	const raw = o.raw || !Object.hasOwn(o, "raw");
 	let isempty = true;
 	const dense = (sheet as any)["!data"] != null;
 	const row: any = header === 1 ? [] : {};
@@ -242,7 +241,7 @@ export function addJsonToSheet(_ws: WorkSheet | null, js: any[], opts?: JSON2She
 			ws["!data"][_R + R + offset] = [];
 		}
 		const ROW = dense ? ws["!data"][_R + R + offset] : null;
-		objectKeys(JS).forEach((k: string) => {
+		Object.keys(JS).forEach((k: string) => {
 			if ((C = headers.indexOf(k)) === -1) {
 				headers[(C = headers.length)] = k;
 			}

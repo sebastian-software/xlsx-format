@@ -16,13 +16,12 @@ import { writeCommentsXml, writeTcmntXml, writePeopleXml } from "./comments.js";
 import { writeVml } from "./vml.js";
 import { writeMetadataXml } from "./metadata.js";
 import { resetFormatTable, formatTable, loadFormatTable } from "../ssf/table.js";
-import { shallowClone, objectKeys } from "../utils/helpers.js";
 import { RELS as RELTYPE } from "../xml/namespaces.js";
 
 /** Write a WorkBook to a ZIP archive (XLSX format) */
 export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 	if (wb && !(wb as any).SSF) {
-		(wb as any).SSF = shallowClone(formatTable);
+		(wb as any).SSF = { ...formatTable };
 	}
 	if (wb && (wb as any).SSF) {
 		resetFormatTable();
@@ -73,7 +72,7 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 	addRelationship(opts.rels, 3, f, RELTYPE.EXT_PROPS);
 
 	// Custom properties
-	if (wb.Custprops !== wb.Props && objectKeys(wb.Custprops || {}).length > 0) {
+	if (wb.Custprops !== wb.Props && Object.keys(wb.Custprops || {}).length > 0) {
 		f = "docProps/custom.xml";
 		zipAddString(zip, f, writeCustomProperties(wb.Custprops));
 		ct.custprops.push(f);

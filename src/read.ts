@@ -3,7 +3,6 @@ import { zipRead } from "./zip/index.js";
 import { parseZip } from "./xlsx/parse-zip.js";
 import { base64decode } from "./utils/base64.js";
 import { resetFormatTable } from "./ssf/table.js";
-import { shallowClone } from "./utils/helpers.js";
 import * as fs from "node:fs";
 
 function to_uint8array(data: any, opts: ReadOptions): Uint8Array {
@@ -55,7 +54,7 @@ function detect_type(data: any): ReadOptions["type"] {
  */
 export function read(data: any, opts?: ReadOptions): WorkBook {
 	resetFormatTable();
-	const o: any = opts ? shallowClone(opts) : {};
+	const o: any = opts ? { ...opts } : {};
 	if (!o.type) {
 		o.type = detect_type(data);
 	}

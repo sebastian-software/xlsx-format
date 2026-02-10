@@ -2,7 +2,6 @@
 /* Ported to TypeScript for xlsx-format. 1:1 faithful port. */
 
 import { dateToSerialNumber } from "../utils/date.js";
-import { repeatChar } from "../utils/helpers.js";
 import { formatTable, DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS } from "./table.js";
 
 function reverseString(x: string): string {
@@ -15,23 +14,23 @@ function reverseString(x: string): string {
 }
 function padWithZeros(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : repeatChar("0", d - t.length) + t;
+	return t.length >= d ? t : "0".repeat(d - t.length) + t;
 }
 function padWithSpaces(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : repeatChar(" ", d - t.length) + t;
+	return t.length >= d ? t : " ".repeat(d - t.length) + t;
 }
 function rightPadWithSpaces(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : t + repeatChar(" ", d - t.length);
+	return t.length >= d ? t : t + " ".repeat(d - t.length);
 }
 function padRoundedZeros1(v: any, d: number): string {
 	const t = "" + Math.round(v);
-	return t.length >= d ? t : repeatChar("0", d - t.length) + t;
+	return t.length >= d ? t : "0".repeat(d - t.length) + t;
 }
 function padRoundedZeros2(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : repeatChar("0", d - t.length) + t;
+	return t.length >= d ? t : "0".repeat(d - t.length) + t;
 }
 const p2_32 = Math.pow(2, 32);
 function padRoundedZeros(v: any, d: number): string {
@@ -100,11 +99,11 @@ function normalizeExcelNumber(v: number): number {
 		const ml =
 			m.indexOf(".") > -1
 				? m.slice(0, m.slice(0, 2) === "0." ? 17 : 16)
-				: m.slice(0, 15) + repeatChar("0", m.length - 15);
+				: m.slice(0, 15) + "0".repeat(m.length - 15);
 		return +ml + +("1" + s.slice(s.indexOf("e"))) - 1 || +s;
 	}
 	const n =
-		s.indexOf(".") > -1 ? s.slice(0, s.slice(0, 2) === "0." ? 17 : 16) : s.slice(0, 15) + repeatChar("0", s.length - 15);
+		s.indexOf(".") > -1 ? s.slice(0, s.slice(0, 2) === "0." ? 17 : 16) : s.slice(0, 15) + "0".repeat(s.length - 15);
 	return Number(n);
 }
 
@@ -408,7 +407,7 @@ const pct1 = /%/g;
 function write_num_pct(type: string, fmt: string, val: number): string {
 	const sfmt = fmt.replace(pct1, "");
 	const mul = fmt.length - sfmt.length;
-	return write_num(type, sfmt, val * Math.pow(10, 2 * mul)) + repeatChar("%", mul);
+	return write_num(type, sfmt, val * Math.pow(10, 2 * mul)) + "%".repeat(mul);
 }
 function write_num_cm(type: string, fmt: string, val: number): string {
 	let idx = fmt.length - 1;
@@ -513,12 +512,12 @@ function write_num_f1(r: string[], aval: number, sign: string): string {
 		(base === 0 ? "" : "" + base) +
 		" " +
 		(myn === 0
-			? repeatChar(" ", r[1].length + 1 + r[4].length)
+			? " ".repeat(r[1].length + 1 + r[4].length)
 			: padWithSpaces(myn, r[1].length) + r[2] + "/" + r[3] + padWithZeros(myd, r[4].length))
 	);
 }
 function write_num_f2(r: string[], aval: number, sign: string): string {
-	return sign + (aval === 0 ? "" : "" + aval) + repeatChar(" ", r[1].length + 2 + r[4].length);
+	return sign + (aval === 0 ? "" : "" + aval) + " ".repeat(r[1].length + 2 + r[4].length);
 }
 
 const dec1 = /^#*0*\.([0#]+)/;
@@ -617,7 +616,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 		o = rnd(val, r[1].length)
 			.replace(/^([^.]+)$/, "$1." + hashq(r[1]))
 			.replace(/\.$/, "." + hashq(r[1]))
-			.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + repeatChar("0", hashq(r![1]).length - $1.length));
+			.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + "0".repeat(hashq(r![1]).length - $1.length));
 		return fmt.indexOf("0.") !== -1 ? o : o.replace(/^0\./, ".");
 	}
 	fmt = fmt.replace(/^#+([0.])/, "$1");
@@ -682,7 +681,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 			" " +
 			(ff[1]
 				? padWithSpaces(ff[1], ri) + r[2] + "/" + r[3] + rightPadWithSpaces(ff[2], ri)
-				: repeatChar(" ", 2 * ri + 1 + r[2].length + r[3].length))
+				: " ".repeat(2 * ri + 1 + r[2].length + r[3].length))
 		);
 	}
 	if ((r = fmt.match(/^[#0?]+$/))) {
@@ -770,7 +769,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 	}
 	if ((r = fmt.match(dec1))) {
 		o = ("" + val).replace(/^([^.]+)$/, "$1." + hashq(r[1])).replace(/\.$/, "." + hashq(r[1]));
-		o = o.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + repeatChar("0", hashq(r![1]).length - $1.length));
+		o = o.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + "0".repeat(hashq(r![1]).length - $1.length));
 		return fmt.indexOf("0.") !== -1 ? o : o.replace(/^0\./, ".");
 	}
 	fmt = fmt.replace(/^#+([0.])/, "$1");
@@ -787,7 +786,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 		return sign + commaify("" + aval);
 	}
 	if ((r = fmt.match(/^#,##0\.([#0]*0)$/))) {
-		return val < 0 ? "-" + write_num_int(type, fmt, -val) : commaify("" + val) + "." + repeatChar("0", r[1].length);
+		return val < 0 ? "-" + write_num_int(type, fmt, -val) : commaify("" + val) + "." + "0".repeat(r[1].length);
 	}
 	if ((r = fmt.match(/^#,#*,#0/))) {
 		return write_num_int(type, fmt.replace(/^#,#*,/, ""), val);
@@ -831,7 +830,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 			" " +
 			(ff[1]
 				? padWithSpaces(ff[1], ri) + r[2] + "/" + r[3] + rightPadWithSpaces(ff[2], ri)
-				: repeatChar(" ", 2 * ri + 1 + r[2].length + r[3].length))
+				: " ".repeat(2 * ri + 1 + r[2].length + r[3].length))
 		);
 	}
 	if ((r = fmt.match(/^[#0?]+$/))) {

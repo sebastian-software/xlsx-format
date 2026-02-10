@@ -22,7 +22,6 @@ import { parseVml } from "./vml.js";
 import { parseMetadataXml } from "./metadata.js";
 import { parseCalcChainXml } from "./calc-chain.js";
 import { resetFormatTable, formatTable } from "../ssf/table.js";
-import { objectKeys } from "../utils/helpers.js";
 import { utf8read } from "../utils/buffer.js";
 import { RELS as RELTYPE } from "../xml/namespaces.js";
 
@@ -130,7 +129,7 @@ function safe_parse_sheet(
 		const comments: any[] = [];
 		let tcomments: any[] = [];
 		if (sheetRels[sheetName]) {
-			for (const n of objectKeys(sheetRels[sheetName])) {
+			for (const n of Object.keys(sheetRels[sheetName])) {
 				if (n === "!id" || n === "!idx") {
 					continue;
 				}

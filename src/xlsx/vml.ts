@@ -1,7 +1,7 @@
 import { parseXmlTag, XML_TAG_REGEX, stripNamespace } from "../xml/parser.js";
 import { writeXmlTag, writeXmlElement } from "../xml/writer.js";
 import { decodeCell, encodeCell } from "../utils/cell.js";
-import { matchXmlTagGlobal, objectKeys } from "../utils/helpers.js";
+import { matchXmlTagGlobal } from "../utils/helpers.js";
 import type { WorkSheet } from "../types.js";
 
 const XLMLNS: Record<string, string> = {
@@ -73,7 +73,7 @@ export function parseVml(data: string, sheet: WorkSheet, comments: any[]): void 
 }
 
 function formatXmlAttributes(h: Record<string, string>): string {
-	return objectKeys(h)
+	return Object.keys(h)
 		.map((k) => " " + k + '="' + h[k] + '"')
 		.join("");
 }

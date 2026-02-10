@@ -1,5 +1,4 @@
 import { escapeXml } from "./escape.js";
-import { objectKeys } from "../utils/helpers.js";
 
 const wtregex = /(^\s|\s$|\n)/;
 
@@ -9,7 +8,7 @@ export function writeXmlTag(f: string, g: string): string {
 }
 
 function formatXmlAttributes(h: Record<string, string>): string {
-	return objectKeys(h)
+	return Object.keys(h)
 		.map((k) => " " + k + '="' + h[k] + '"')
 		.join("");
 }
