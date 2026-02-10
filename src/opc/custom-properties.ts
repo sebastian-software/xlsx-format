@@ -1,26 +1,26 @@
-import { XML_HEADER, parsexmltag } from "../xml/parser.js";
-import { unescapexml, escapexml } from "../xml/escape.js";
-import { parsexmlbool, strip_ns } from "../xml/parser.js";
-import { writextag, write_vt } from "../xml/writer.js";
+import { XML_HEADER, parseXmlTag } from "../xml/parser.js";
+import { unescapeXml, escapeXml } from "../xml/escape.js";
+import { parseXmlBoolean, stripNamespace } from "../xml/parser.js";
+import { writeXmlElement, writeVariantType } from "../xml/writer.js";
 import { XMLNS } from "../xml/namespaces.js";
 
 const custregex = /<[^<>]+>[^<]*/g;
 
-export function parse_cust_props(data: string, opts?: { WTF?: boolean }): Record<string, any> {
+export function parseCustomProperties(data: string, opts?: { WTF?: boolean }): Record<string, any> {
 	const p: Record<string, any> = {};
 	let name = "";
 	const m = data.match(custregex);
 	if (m) {
 		for (let i = 0; i < m.length; ++i) {
 			const x = m[i];
-			const y = parsexmltag(x);
-			switch (strip_ns(y[0])) {
+			const y = parseXmlTag(x);
+			switch (stripNamespace(y[0])) {
 				case "<?xml":
 					break;
 				case "<Properties":
 					break;
 				case "<property":
-					name = unescapexml(y.name);
+					name = unescapeXml(y.name);
 					break;
 				case "</property>":
 					name = "";
@@ -34,10 +34,10 @@ export function parse_cust_props(data: string, opts?: { WTF?: boolean }): Record
 							case "lpstr":
 							case "bstr":
 							case "lpwstr":
-								p[name] = unescapexml(text);
+								p[name] = unescapeXml(text);
 								break;
 							case "bool":
-								p[name] = parsexmlbool(text);
+								p[name] = parseXmlBoolean(text);
 								break;
 							case "i1":
 							case "i2":
@@ -58,7 +58,7 @@ export function parse_cust_props(data: string, opts?: { WTF?: boolean }): Record
 								break;
 							case "cy":
 							case "error":
-								p[name] = unescapexml(text);
+								p[name] = unescapeXml(text);
 								break;
 							default:
 								if (type.slice(-1) === "/") {
@@ -75,10 +75,10 @@ export function parse_cust_props(data: string, opts?: { WTF?: boolean }): Record
 	return p;
 }
 
-export function write_cust_props(cp: Record<string, any> | undefined): string {
+export function writeCustomProperties(cp: Record<string, any> | undefined): string {
 	const o: string[] = [
 		XML_HEADER,
-		writextag("Properties", null, {
+		writeXmlElement("Properties", null, {
 			xmlns: XMLNS.CUST_PROPS,
 			"xmlns:vt": XMLNS.vt,
 		}),
@@ -90,10 +90,10 @@ export function write_cust_props(cp: Record<string, any> | undefined): string {
 	for (const k of Object.keys(cp)) {
 		++pid;
 		o.push(
-			writextag("property", write_vt(cp[k], true), {
+			writeXmlElement("property", writeVariantType(cp[k], true), {
 				fmtid: "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}",
 				pid: String(pid),
-				name: escapexml(k),
+				name: escapeXml(k),
 			}),
 		);
 	}

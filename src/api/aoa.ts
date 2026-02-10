@@ -1,11 +1,11 @@
 import type { WorkSheet, AOA2SheetOpts, Range } from "../types.js";
-import { decode_cell, encode_col, encode_range, safe_decode_range } from "../utils/cell.js";
-import { datenum, local_to_utc } from "../utils/date.js";
-import { SSF_format } from "../ssf/format.js";
-import { table_fmt } from "../ssf/table.js";
+import { decodeCell, encodeCol, encodeRange, safeDecodeRange } from "../utils/cell.js";
+import { dateToSerialNumber, localToUtc } from "../utils/date.js";
+import { formatNumber } from "../ssf/format.js";
+import { formatTable } from "../ssf/table.js";
 
 /** Add an array of arrays to an existing (or new) worksheet */
-export function sheet_add_aoa(_ws: WorkSheet | null, data: any[][], opts?: AOA2SheetOpts): WorkSheet {
+export function addArrayToSheet(_ws: WorkSheet | null, data: any[][], opts?: AOA2SheetOpts): WorkSheet {
 	const o = opts || ({} as any);
 	const dense = _ws ? (_ws as any)["!data"] != null : !!o.dense;
 	const ws: any = _ws || (dense ? { "!data": [] } : {});
@@ -19,7 +19,7 @@ export function sheet_add_aoa(_ws: WorkSheet | null, data: any[][], opts?: AOA2S
 		if (typeof o.origin === "number") {
 			_R = o.origin;
 		} else {
-			const _origin = typeof o.origin === "string" ? decode_cell(o.origin) : o.origin;
+			const _origin = typeof o.origin === "string" ? decodeCell(o.origin) : o.origin;
 			_R = _origin.r;
 			_C = _origin.c;
 		}
@@ -27,7 +27,7 @@ export function sheet_add_aoa(_ws: WorkSheet | null, data: any[][], opts?: AOA2S
 
 	const range: Range = { s: { c: 10000000, r: 10000000 }, e: { c: 0, r: 0 } };
 	if (ws["!ref"]) {
-		const _range = safe_decode_range(ws["!ref"]);
+		const _range = safeDecodeRange(ws["!ref"]);
 		range.s.c = _range.s.c;
 		range.s.r = _range.s.r;
 		range.e.c = Math.max(range.e.c, _range.e.c);
@@ -46,7 +46,7 @@ export function sheet_add_aoa(_ws: WorkSheet | null, data: any[][], opts?: AOA2S
 			continue;
 		}
 		if (!Array.isArray(data[R])) {
-			throw new Error("aoa_to_sheet expects an array of arrays");
+			throw new Error("arrayToSheet expects an array of arrays");
 		}
 		const __R = _R + R;
 		if (dense) {
@@ -112,17 +112,17 @@ export function sheet_add_aoa(_ws: WorkSheet | null, data: any[][], opts?: AOA2S
 				} else if (typeof cell.v === "boolean") {
 					cell.t = "b";
 				} else if (cell.v instanceof Date) {
-					cell.z = o.dateNF || table_fmt[14];
+					cell.z = o.dateNF || formatTable[14];
 					if (!o.UTC) {
-						cell.v = local_to_utc(cell.v);
+						cell.v = localToUtc(cell.v);
 					}
 					if (o.cellDates) {
 						cell.t = "d";
-						cell.w = SSF_format(cell.z, datenum(cell.v, o.date1904));
+						cell.w = formatNumber(cell.z, dateToSerialNumber(cell.v, o.date1904));
 					} else {
 						cell.t = "n";
-						cell.v = datenum(cell.v, o.date1904);
-						cell.w = SSF_format(cell.z, cell.v);
+						cell.v = dateToSerialNumber(cell.v, o.date1904);
+						cell.w = formatNumber(cell.z, cell.v);
 					}
 				} else {
 					cell.t = "s";
@@ -135,7 +135,7 @@ export function sheet_add_aoa(_ws: WorkSheet | null, data: any[][], opts?: AOA2S
 				}
 				row[__C] = cell;
 			} else {
-				const cell_ref = encode_col(__C) + (__R + 1);
+				const cell_ref = encodeCol(__C) + (__R + 1);
 				if (ws[cell_ref] && ws[cell_ref].z) {
 					cell.z = ws[cell_ref].z;
 				}
@@ -144,12 +144,12 @@ export function sheet_add_aoa(_ws: WorkSheet | null, data: any[][], opts?: AOA2S
 		}
 	}
 	if (seen && range.s.c < 10400000) {
-		ws["!ref"] = encode_range(range);
+		ws["!ref"] = encodeRange(range);
 	}
 	return ws as WorkSheet;
 }
 
 /** Create a new worksheet from an array of arrays */
-export function aoa_to_sheet(data: any[][], opts?: AOA2SheetOpts): WorkSheet {
-	return sheet_add_aoa(null, data, opts);
+export function arrayToSheet(data: any[][], opts?: AOA2SheetOpts): WorkSheet {
+	return addArrayToSheet(null, data, opts);
 }

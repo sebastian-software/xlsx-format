@@ -1,10 +1,10 @@
 import type { WorkBook, WriteOptions } from "./types.js";
-import { zip_write } from "./zip/index.js";
-import { write_zip_xlsx } from "./xlsx/write-zip.js";
-import { check_wb } from "./xlsx/workbook.js";
+import { zipWrite } from "./zip/index.js";
+import { writeZipXlsx } from "./xlsx/write-zip.js";
+import { validateWorkbook } from "./xlsx/workbook.js";
 import { base64encode } from "./utils/base64.js";
-import { make_ssf } from "./ssf/table.js";
-import { dup } from "./utils/helpers.js";
+import { resetFormatTable } from "./ssf/table.js";
+import { shallowClone } from "./utils/helpers.js";
 import * as fs from "node:fs";
 
 /**
@@ -15,18 +15,18 @@ import * as fs from "node:fs";
  * @returns File contents as Uint8Array, base64 string, or Buffer depending on opts.type
  */
 export function write(wb: WorkBook, opts?: WriteOptions): any {
-	make_ssf();
+	resetFormatTable();
 	if (!opts || !(opts as any).unsafe) {
-		check_wb(wb);
+		validateWorkbook(wb);
 	}
-	const o: any = dup(opts || {});
+	const o: any = shallowClone(opts || {});
 	if (o.cellStyles) {
 		o.cellNF = true;
 		o.sheetStubs = true;
 	}
 
-	const zip = write_zip_xlsx(wb, o);
-	const compressed = zip_write(zip, !!o.compression);
+	const zip = writeZipXlsx(wb, o);
+	const compressed = zipWrite(zip, !!o.compression);
 
 	switch (o.type) {
 		case "base64":
@@ -55,7 +55,7 @@ function base64encode_u8(data: Uint8Array): string {
  * @param opts - Write options
  */
 export function writeFile(wb: WorkBook, filename: string, opts?: WriteOptions): void {
-	const o: any = opts ? dup(opts) : {};
+	const o: any = opts ? shallowClone(opts) : {};
 	o.type = "buffer";
 	const data = write(wb, o);
 	fs.writeFileSync(filename, data instanceof Uint8Array ? Buffer.from(data) : data);

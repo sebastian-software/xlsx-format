@@ -1,5 +1,5 @@
 /** Built-in Excel number format table */
-export function SSF_init_table(t?: Record<number, string>): Record<number, string> {
+export function initFormatTable(t?: Record<number, string>): Record<number, string> {
 	if (!t) {
 		t = {};
 	}
@@ -36,10 +36,10 @@ export function SSF_init_table(t?: Record<number, string>): Record<number, strin
 }
 
 /** Default number format table */
-export let table_fmt: Record<number, string> = SSF_init_table();
+export let formatTable: Record<number, string> = initFormatTable();
 
 /** Defaults determined by systematically testing in Excel 2019 */
-export const SSF_default_map: Record<number, number> = {
+export const DEFAULT_FORMAT_MAP: Record<number, number> = {
 	5: 37,
 	6: 38,
 	7: 39,
@@ -85,7 +85,7 @@ export const SSF_default_map: Record<number, number> = {
 };
 
 /** Accounting formats with no equivalent in the base table */
-export const SSF_default_str: Record<number, string> = {
+export const DEFAULT_FORMAT_STRINGS: Record<number, string> = {
 	5: '"$"#,##0_);\\("$"#,##0\\)',
 	63: '"$"#,##0_);\\("$"#,##0\\)',
 	6: '"$"#,##0_);[Red]\\("$"#,##0\\)',
@@ -100,17 +100,17 @@ export const SSF_default_str: Record<number, string> = {
 	44: '_("$"* #,##0.00_);_("$"* \\(#,##0.00\\);_("$"* "-"??_);_(@_)',
 };
 
-export function SSF_load(fmt: string, idx?: number): number {
+export function loadFormat(fmt: string, idx?: number): number {
 	if (typeof idx !== "number") {
 		idx = Number(idx) || -1;
 		for (let i = 0; i < 0x0188; ++i) {
-			if (table_fmt[i] === undefined) {
+			if (formatTable[i] === undefined) {
 				if (idx < 0) {
 					idx = i;
 				}
 				continue;
 			}
-			if (table_fmt[i] === fmt) {
+			if (formatTable[i] === fmt) {
 				idx = i;
 				break;
 			}
@@ -119,18 +119,18 @@ export function SSF_load(fmt: string, idx?: number): number {
 			idx = 0x187;
 		}
 	}
-	table_fmt[idx] = fmt;
+	formatTable[idx] = fmt;
 	return idx;
 }
 
-export function SSF_load_table(tbl: Record<number, string>): void {
+export function loadFormatTable(tbl: Record<number, string>): void {
 	for (let i = 0; i < 0x0188; ++i) {
 		if (tbl[i] !== undefined) {
-			SSF_load(tbl[i], i);
+			loadFormat(tbl[i], i);
 		}
 	}
 }
 
-export function make_ssf(): void {
-	table_fmt = SSF_init_table();
+export function resetFormatTable(): void {
+	formatTable = initFormatTable();
 }

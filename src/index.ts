@@ -42,40 +42,40 @@ export { write, writeFile } from "./write.js";
 
 // Utilities - workbook/sheet manipulation
 export {
-	book_new,
-	book_append_sheet,
-	book_set_sheet_visibility,
-	sheet_new,
-	wb_sheet_idx,
-	cell_set_number_format,
-	cell_set_hyperlink,
-	cell_set_internal_link,
-	cell_add_comment,
-	sheet_set_array_formula,
-	sheet_to_formulae,
+	createWorkbook,
+	appendSheet,
+	setSheetVisibility,
+	createSheet,
+	getSheetIndex,
+	setCellNumberFormat,
+	setCellHyperlink,
+	setCellInternalLink,
+	addCellComment,
+	setArrayFormula,
+	sheetToFormulae,
 } from "./api/book.js";
 
 // Utilities - format conversions
-export { aoa_to_sheet, sheet_add_aoa } from "./api/aoa.js";
-export { json_to_sheet, sheet_to_json, sheet_add_json } from "./api/json.js";
-export { sheet_to_csv, sheet_to_txt } from "./api/csv.js";
-export { sheet_to_html } from "./api/html.js";
-export { format_cell } from "./api/format.js";
+export { arrayToSheet, addArrayToSheet } from "./api/aoa.js";
+export { jsonToSheet, sheetToJson, addJsonToSheet } from "./api/json.js";
+export { sheetToCsv, sheetToTxt } from "./api/csv.js";
+export { sheetToHtml } from "./api/html.js";
+export { formatCell } from "./api/format.js";
 
 // Cell utilities
 export {
-	decode_cell,
-	encode_cell,
-	decode_range,
-	encode_range,
-	decode_col,
-	encode_col,
-	decode_row,
-	encode_row,
+	decodeCell,
+	encodeCell,
+	decodeRange,
+	encodeRange,
+	decodeCol,
+	encodeCol,
+	decodeRow,
+	encodeRow,
 } from "./utils/cell.js";
 
 // SSF (Number Formatting)
-export { SSF_format } from "./ssf/format.js";
+export { formatNumber } from "./ssf/format.js";
 
 // Version
 export const version = "1.0.0-alpha.0";

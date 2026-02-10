@@ -4,12 +4,12 @@ const tagregex2 = /<[^<>]*>/g;
 
 export const XML_HEADER = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\r\n';
 
-export const tagregex: RegExp = XML_HEADER.match(tagregex1) ? tagregex1 : tagregex2;
+export const XML_TAG_REGEX: RegExp = XML_HEADER.match(tagregex1) ? tagregex1 : tagregex2;
 
 const nsregex2 = /<(\/?)\w+:/;
 
 /** Parse XML attributes from a tag string */
-export function parsexmltag(tag: string, skip_root?: boolean, skip_LC?: boolean): Record<string, any> {
+export function parseXmlTag(tag: string, skip_root?: boolean, skip_LC?: boolean): Record<string, any> {
 	const z: Record<string, any> = {};
 	let eq = 0;
 	let c = 0;
@@ -70,12 +70,12 @@ export function parsexmltag(tag: string, skip_root?: boolean, skip_LC?: boolean)
 }
 
 /** Strip namespace prefixes from XML */
-export function strip_ns(x: string): string {
+export function stripNamespace(x: string): string {
 	return x.replace(nsregex2, "<$1");
 }
 
 /** Parse xsd:boolean values */
-export function parsexmlbool(value: any): boolean {
+export function parseXmlBoolean(value: any): boolean {
 	switch (value) {
 		case 1:
 		case true:

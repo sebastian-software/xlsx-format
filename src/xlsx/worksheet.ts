@@ -1,14 +1,14 @@
 import type { WorkSheet, CellObject, Range, ColInfo, RowInfo, MarginInfo } from "../types.js";
 import { BErr } from "../types.js";
-import { parsexmltag, tagregex, XML_HEADER, parsexmlbool } from "../xml/parser.js";
-import { unescapexml, escapexml } from "../xml/escape.js";
-import { writextag } from "../xml/writer.js";
+import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, parseXmlBoolean } from "../xml/parser.js";
+import { unescapeXml, escapeXml } from "../xml/escape.js";
+import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main } from "../xml/namespaces.js";
-import { safe_decode_range, encode_range, encode_cell, encode_col } from "../utils/cell.js";
+import { safeDecodeRange, encodeRange, encodeCell, encodeCol } from "../utils/cell.js";
 import { utf8read } from "../utils/buffer.js";
-import { SSF_format, fmt_is_date } from "../ssf/format.js";
-import { table_fmt } from "../ssf/table.js";
-import { datenum, numdate } from "../utils/date.js";
+import { formatNumber, isDateFormat } from "../ssf/format.js";
+import { formatTable } from "../ssf/table.js";
+import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
 import type { SST } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
@@ -20,14 +20,14 @@ const colregex = /<(?:\w+:)?col\b[^<>]*[/]?>/g;
 const afregex = /<(?:\w:)?autoFilter[^>]*([/]|>([\s\S]*)<\/(?:\w:)?autoFilter)>/g;
 const marginregex = /<(?:\w+:)?pageMargins[^<>]*\/>/g;
 
-function parse_ws_xml_dim(ws: WorkSheet, s: string): void {
-	const d = safe_decode_range(s);
+function parseWorksheetXml_dim(ws: WorkSheet, s: string): void {
+	const d = safeDecodeRange(s);
 	if (d.s.r <= d.e.r && d.s.c <= d.e.c && d.s.r >= 0 && d.s.c >= 0) {
-		ws["!ref"] = encode_range(d);
+		ws["!ref"] = encodeRange(d);
 	}
 }
 
-function parse_ws_xml_margins(tag: Record<string, any>): MarginInfo {
+function parseWorksheetXml_margins(tag: Record<string, any>): MarginInfo {
 	return {
 		left: parseFloat(tag.left) || 0.7,
 		right: parseFloat(tag.right) || 0.7,
@@ -38,14 +38,14 @@ function parse_ws_xml_margins(tag: Record<string, any>): MarginInfo {
 	};
 }
 
-function parse_ws_xml_autofilter(data: string): { ref: string } {
-	const tag = parsexmltag(data.match(/<[^>]*>/)?.[0] || "");
+function parseWorksheetXml_autofilter(data: string): { ref: string } {
+	const tag = parseXmlTag(data.match(/<[^>]*>/)?.[0] || "");
 	return { ref: tag.ref || "" };
 }
 
-function parse_ws_xml_cols(columns: ColInfo[], cols: string[]): void {
+function parseWorksheetXml_cols(columns: ColInfo[], cols: string[]): void {
 	for (let i = 0; i < cols.length; ++i) {
-		const tag = parsexmltag(cols[i]);
+		const tag = parseXmlTag(cols[i]);
 		if (!tag.min || !tag.max) {
 			continue;
 		}
@@ -67,16 +67,16 @@ function parse_ws_xml_cols(columns: ColInfo[], cols: string[]): void {
 	}
 }
 
-function parse_ws_xml_hlinks(s: WorkSheet, hlinks: string[], rels: Relationships): void {
+function parseWorksheetXml_hlinks(s: WorkSheet, hlinks: string[], rels: Relationships): void {
 	for (let i = 0; i < hlinks.length; ++i) {
-		const tag = parsexmltag(hlinks[i]);
+		const tag = parseXmlTag(hlinks[i]);
 		if (!tag.ref) {
 			continue;
 		}
-		const rng = safe_decode_range(tag.ref);
+		const rng = safeDecodeRange(tag.ref);
 		for (let R = rng.s.r; R <= rng.e.r; ++R) {
 			for (let C = rng.s.c; C <= rng.e.c; ++C) {
-				const addr = encode_cell({ r: R, c: C });
+				const addr = encodeCell({ r: R, c: C });
 				const dense = s["!data"] != null;
 				let cell: CellObject | undefined;
 				if (dense) {
@@ -119,7 +119,7 @@ const rowregex = /<(?:\w+:)?row\b[^>]*>/g;
 const cellregex = /<(?:\w+:)?c\b[^>]*(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g;
 
 /** Parse sheetData XML into worksheet */
-function parse_ws_xml_data(
+function parseSheetData(
 	sdata: string,
 	s: WorkSheet,
 	opts: any,
@@ -147,7 +147,7 @@ function parse_ws_xml_data(
 		if (!rowTagMatch) {
 			continue;
 		}
-		const rowTag = parsexmltag(rowTagMatch[0]);
+		const rowTag = parseXmlTag(rowTagMatch[0]);
 		const R = parseInt(rowTag.r, 10) - 1;
 		if (isNaN(R)) {
 			continue;
@@ -177,7 +177,7 @@ function parse_ws_xml_data(
 		cellregex.lastIndex = 0;
 		let cellMatch;
 		while ((cellMatch = cellregex.exec(rowStr))) {
-			const cellTag = parsexmltag(cellMatch[0].match(/<(?:\w+:)?c\b[^>]*/)?.[0] + ">" || "");
+			const cellTag = parseXmlTag(cellMatch[0].match(/<(?:\w+:)?c\b[^>]*/)?.[0] + ">" || "");
 			const ref = cellTag.r;
 			if (!ref) {
 				continue;
@@ -234,12 +234,12 @@ function parse_ws_xml_data(
 					}
 					break;
 				case "str": // formula string
-					cell = { t: "s", v: v ? unescapexml(v) : "" } as CellObject;
+					cell = { t: "s", v: v ? unescapeXml(v) : "" } as CellObject;
 					break;
 				case "inlineStr":
 					if (isMatch) {
 						const tMatch = isMatch[1].match(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/);
-						cell = { t: "s", v: tMatch ? unescapexml(tMatch[1]) : "" } as CellObject;
+						cell = { t: "s", v: tMatch ? unescapeXml(tMatch[1]) : "" } as CellObject;
 					} else {
 						cell = { t: "s", v: "" } as CellObject;
 					}
@@ -276,7 +276,7 @@ function parse_ws_xml_data(
 				if (xf) {
 					cell.XF = { numFmtId: xf.numFmtId };
 					if (opts.cellNF) {
-						const nf = styles.NumberFmt[xf.numFmtId] || table_fmt[xf.numFmtId];
+						const nf = styles.NumberFmt[xf.numFmtId] || formatTable[xf.numFmtId];
 						if (nf) {
 							cell.z = nf;
 						}
@@ -286,8 +286,8 @@ function parse_ws_xml_data(
 
 			// Formula
 			if (fMatch && opts.cellFormula !== false) {
-				cell.f = unescapexml(fMatch[1]);
-				const fTag = parsexmltag(cellValue.match(/<(?:\w+:)?f[^>]*/)?.[0] + ">" || "");
+				cell.f = unescapeXml(fMatch[1]);
+				const fTag = parseXmlTag(cellValue.match(/<(?:\w+:)?f[^>]*/)?.[0] + ">" || "");
 				if (fTag.t === "shared" && fTag.si != null) {
 					// Shared formula
 				}
@@ -303,18 +303,18 @@ function parse_ws_xml_data(
 					const nfmt =
 						cell.z ||
 						(cell.XF && cell.XF.numFmtId != null && styles?.NumberFmt[cell.XF.numFmtId]) ||
-						table_fmt[(cell.XF && cell.XF.numFmtId) || 0];
+						formatTable[(cell.XF && cell.XF.numFmtId) || 0];
 					if (nfmt) {
 						try {
-							cell.w = SSF_format(nfmt, cell.v as number, { date1904 });
+							cell.w = formatNumber(nfmt, cell.v as number, { date1904 });
 						} catch {}
 					}
 					// Handle dates
 					if (opts.cellDates && cell.XF) {
-						const fmtStr = nfmt || table_fmt[cell.XF.numFmtId || 0] || "";
-						if (typeof fmtStr === "string" && fmt_is_date(fmtStr) && typeof cell.v === "number") {
+						const fmtStr = nfmt || formatTable[cell.XF.numFmtId || 0] || "";
+						if (typeof fmtStr === "string" && isDateFormat(fmtStr) && typeof cell.v === "number") {
 							cell.t = "d";
-							cell.v = numdate(cell.v, date1904);
+							cell.v = serialNumberToDate(cell.v, date1904);
 						}
 					}
 				}
@@ -333,7 +333,7 @@ function parse_ws_xml_data(
 }
 
 /** Resolve SST references in a worksheet */
-export function resolve_sst(s: WorkSheet, sst: SST, opts: any): void {
+export function resolveSharedStrings(s: WorkSheet, sst: SST, opts: any): void {
 	const dense = s["!data"] != null;
 	if (dense) {
 		const data = s["!data"]!;
@@ -384,7 +384,7 @@ export function resolve_sst(s: WorkSheet, sst: SST, opts: any): void {
 }
 
 /** Parse a worksheet XML */
-export function parse_ws_xml(
+export function parseWorksheetXml(
 	data: string,
 	opts?: any,
 	_idx?: number,
@@ -422,7 +422,7 @@ export function parse_ws_xml(
 	if (ridx > 0) {
 		const ref = data1.slice(ridx, ridx + 50).match(dimregex);
 		if (ref && !opts.nodim) {
-			parse_ws_xml_dim(s, ref[1]);
+			parseWorksheetXml_dim(s, ref[1]);
 		}
 	}
 
@@ -431,19 +431,19 @@ export function parse_ws_xml(
 	if (opts.cellStyles) {
 		const cols = data1.match(colregex);
 		if (cols) {
-			parse_ws_xml_cols(columns, cols);
+			parseWorksheetXml_cols(columns, cols);
 		}
 	}
 
 	// SheetData
 	if (sdMatch) {
-		parse_ws_xml_data(sdMatch[1], s, opts, refguess, _themes, styles, wb);
+		parseSheetData(sdMatch[1], s, opts, refguess, _themes, styles, wb);
 	}
 
 	// AutoFilter
 	const afilter = data2.match(afregex);
 	if (afilter) {
-		s["!autofilter"] = parse_ws_xml_autofilter(afilter[0]);
+		s["!autofilter"] = parseWorksheetXml_autofilter(afilter[0]);
 	}
 
 	// Merges
@@ -451,20 +451,20 @@ export function parse_ws_xml(
 	const _merge = data2.match(mergecregex);
 	if (_merge) {
 		for (let i = 0; i < _merge.length; ++i) {
-			merges[i] = safe_decode_range(_merge[i].slice(_merge[i].indexOf("=") + 2));
+			merges[i] = safeDecodeRange(_merge[i].slice(_merge[i].indexOf("=") + 2));
 		}
 	}
 
 	// Hyperlinks
 	const hlink = data2.match(hlinkregex);
 	if (hlink) {
-		parse_ws_xml_hlinks(s, hlink, rels!);
+		parseWorksheetXml_hlinks(s, hlink, rels!);
 	}
 
 	// Margins
 	const margins = data2.match(marginregex);
 	if (margins) {
-		s["!margins"] = parse_ws_xml_margins(parsexmltag(margins[0]));
+		s["!margins"] = parseWorksheetXml_margins(parseXmlTag(margins[0]));
 	}
 
 	// Legacy drawing
@@ -477,10 +477,10 @@ export function parse_ws_xml(
 		refguess.s.c = refguess.s.r = 0;
 	}
 	if (!s["!ref"] && refguess.e.c >= refguess.s.c && refguess.e.r >= refguess.s.r) {
-		s["!ref"] = encode_range(refguess);
+		s["!ref"] = encodeRange(refguess);
 	}
 	if (opts.sheetRows > 0 && s["!ref"]) {
-		const tmpref = safe_decode_range(s["!ref"]);
+		const tmpref = safeDecodeRange(s["!ref"]);
 		if (opts.sheetRows <= tmpref.e.r) {
 			tmpref.e.r = opts.sheetRows - 1;
 			if (tmpref.e.r > refguess.e.r) {
@@ -496,7 +496,7 @@ export function parse_ws_xml(
 				tmpref.s.c = tmpref.e.c;
 			}
 			(s as any)["!fullref"] = s["!ref"];
-			s["!ref"] = encode_range(tmpref);
+			s["!ref"] = encodeRange(tmpref);
 		}
 	}
 	if (columns.length > 0) {
@@ -510,23 +510,23 @@ export function parse_ws_xml(
 }
 
 /** Write merges XML */
-function write_ws_xml_merges(merges: Range[]): string {
+function writeWorksheetXml_merges(merges: Range[]): string {
 	if (merges.length === 0) {
 		return "";
 	}
 	const o = ['<mergeCells count="' + merges.length + '">'];
 	for (let i = 0; i < merges.length; ++i) {
-		o.push('<mergeCell ref="' + encode_range(merges[i]) + '"/>');
+		o.push('<mergeCell ref="' + encodeRange(merges[i]) + '"/>');
 	}
 	o.push("</mergeCells>");
 	return o.join("");
 }
 
 /** Write a worksheet XML */
-export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Relationships, _wb: any): string {
+export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels: Relationships, _wb: any): string {
 	const o: string[] = [XML_HEADER];
 	o.push(
-		writextag("worksheet", null, {
+		writeXmlElement("worksheet", null, {
 			xmlns: XMLNS_main[0],
 			"xmlns:r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
 		}),
@@ -565,7 +565,7 @@ export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Rela
 				attrs.hidden = "1";
 			}
 			attrs.customWidth = "1";
-			o.push(writextag("col", null, attrs));
+			o.push(writeXmlElement("col", null, attrs));
 		}
 		o.push("</cols>");
 	}
@@ -573,7 +573,7 @@ export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Rela
 	o.push("<sheetData>");
 
 	const dense = ws["!data"] != null;
-	const range = safe_decode_range(ref);
+	const range = safeDecodeRange(ref);
 
 	for (let R = range.s.r; R <= range.e.r; ++R) {
 		const row_cells: string[] = [];
@@ -582,14 +582,14 @@ export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Rela
 			if (dense) {
 				cell = ws["!data"]?.[R]?.[C];
 			} else {
-				const addr = encode_cell({ r: R, c: C });
+				const addr = encodeCell({ r: R, c: C });
 				cell = ws[addr] as CellObject | undefined;
 			}
 			if (!cell || cell.t === "z") {
 				continue;
 			}
 
-			const addr = encode_cell({ r: R, c: C });
+			const addr = encodeCell({ r: R, c: C });
 			let v = "";
 			let t = "";
 
@@ -610,11 +610,11 @@ export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Rela
 						v = (cell.v as Date).toISOString();
 						t = "d";
 					} else {
-						v = String(datenum(cell.v as Date));
+						v = String(dateToSerialNumber(cell.v as Date));
 					}
 					break;
 				case "s":
-					v = escapexml(String(cell.v));
+					v = escapeXml(String(cell.v));
 					t = "str";
 					break;
 			}
@@ -629,7 +629,7 @@ export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Rela
 				if (cell.F) {
 					cellXml += ' ref="' + cell.F + '" t="array"';
 				}
-				cellXml += ">" + escapexml(cell.f) + "</f>";
+				cellXml += ">" + escapeXml(cell.f) + "</f>";
 			}
 			if (v !== "") {
 				cellXml += "<v>" + v + "</v>";
@@ -658,7 +658,7 @@ export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Rela
 
 	// Merges
 	if (ws["!merges"] && ws["!merges"].length > 0) {
-		o.push(write_ws_xml_merges(ws["!merges"]));
+		o.push(writeWorksheetXml_merges(ws["!merges"]));
 	}
 
 	// AutoFilter
@@ -670,7 +670,7 @@ export function write_ws_xml(ws: WorkSheet, opts: any, _idx: number, _rels: Rela
 	if (ws["!margins"]) {
 		const m = ws["!margins"];
 		o.push(
-			writextag("pageMargins", null, {
+			writeXmlElement("pageMargins", null, {
 				left: String(m.left || 0.7),
 				right: String(m.right || 0.7),
 				top: String(m.top || 0.75),

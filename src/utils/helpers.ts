@@ -1,49 +1,49 @@
 /** Fill string with repeated character */
-export function fill(c: string, l: number): string {
-	let o = "";
-	while (o.length < l) {
-		o += c;
+export function repeatChar(char: string, targetLength: number): string {
+	let result = "";
+	while (result.length < targetLength) {
+		result += char;
 	}
-	return o;
+	return result;
 }
 
 /** Object keys helper */
-export function keys(o: object): string[] {
-	return Object.keys(o);
+export function objectKeys(obj: object): string[] {
+	return Object.keys(obj);
 }
 
 /** Reverse map: values become keys */
-export function evert(obj: Record<string, string>): Record<string, string> {
-	const o: Record<string, string> = {};
-	for (const k of Object.keys(obj)) {
-		o[obj[k]] = k;
+export function invertMapping(obj: Record<string, string>): Record<string, string> {
+	const inverted: Record<string, string> = {};
+	for (const key of Object.keys(obj)) {
+		inverted[obj[key]] = key;
 	}
-	return o;
+	return inverted;
 }
 
 /** Shallow clone */
-export function dup<T>(o: T): T {
-	if (typeof o === "object" && o !== null) {
-		if (Array.isArray(o)) {
-			return o.slice() as T;
+export function shallowClone<T>(source: T): T {
+	if (typeof source === "object" && source !== null) {
+		if (Array.isArray(source)) {
+			return source.slice() as T;
 		}
-		const out = {} as any;
-		for (const k of Object.keys(o as any)) {
-			out[k] = (o as any)[k];
+		const result = {} as any;
+		for (const key of Object.keys(source as any)) {
+			result[key] = (source as any)[key];
 		}
-		return out as T;
+		return result as T;
 	}
-	return o;
+	return source;
 }
 
 /** Match XML namespace-agnostic tags globally */
-export function str_match_xml_ns_g(str: string, tag: string): string[] | null {
+export function matchXmlTagGlobal(xmlString: string, tag: string): string[] | null {
 	const re = new RegExp("<(?:\\w+:)?" + tag + "[\\s>][\\s\\S]*?<\\/(?:\\w+:)?" + tag + ">", "g");
-	return str.match(re);
+	return xmlString.match(re);
 }
 
 /** Match XML namespace-agnostic tag (first) */
-export function str_match_xml_ns(str: string, tag: string): string | null {
-	const m = str_match_xml_ns_g(str, tag);
+export function matchXmlTagFirst(xmlString: string, tag: string): string | null {
+	const m = matchXmlTagGlobal(xmlString, tag);
 	return m ? m[0] : null;
 }

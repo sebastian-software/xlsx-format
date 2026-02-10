@@ -1,7 +1,7 @@
 import type { FullProperties } from "../types.js";
 import { XML_HEADER } from "../xml/parser.js";
-import { unescapexml, escapexml } from "../xml/escape.js";
-import { writetag, writextag, write_w3cdtf } from "../xml/writer.js";
+import { unescapeXml, escapeXml } from "../xml/escape.js";
+import { writeXmlTag, writeXmlElement, writeW3cDatetime } from "../xml/writer.js";
 import { XMLNS } from "../xml/namespaces.js";
 
 const CORE_PROPS: [string, string, string?][] = [
@@ -42,13 +42,13 @@ function xml_extract(data: string, tag: string): string | null {
 	return data.slice(gt + 1, ei);
 }
 
-export function parse_core_props(data: string): Partial<FullProperties> {
+export function parseCoreProperties(data: string): Partial<FullProperties> {
 	const p: Record<string, any> = {};
 
 	for (const f of CORE_PROPS) {
 		const content = xml_extract(data, f[0]);
 		if (content != null && content.length > 0) {
-			p[f[1]] = unescapexml(content);
+			p[f[1]] = unescapeXml(content);
 		}
 		if (f[2] === "date" && p[f[1]]) {
 			p[f[1]] = new Date(p[f[1]]);
@@ -58,28 +58,28 @@ export function parse_core_props(data: string): Partial<FullProperties> {
 	return p as Partial<FullProperties>;
 }
 
-function cp_doit(
+function writePropertyField(
 	f: string,
 	g: string | null | undefined,
 	h: Record<string, string> | null,
-	o: string[],
+	lines: string[],
 	p: Record<string, any>,
 ): void {
 	if (p[f] != null || g == null || g === "") {
 		return;
 	}
 	p[f] = g;
-	g = escapexml(g);
-	o.push(h ? writextag(f, g, h) : writetag(f, g));
+	g = escapeXml(g);
+	lines.push(h ? writeXmlElement(f, g, h) : writeXmlTag(f, g));
 }
 
-export function write_core_props(
+export function writeCoreProperties(
 	cp: Partial<FullProperties> | undefined,
 	opts?: { WTF?: boolean; Props?: Record<string, any> },
 ): string {
-	const o: string[] = [
+	const lines: string[] = [
 		XML_HEADER,
-		writextag("cp:coreProperties", null, {
+		writeXmlElement("cp:coreProperties", null, {
 			"xmlns:cp": XMLNS.CORE_PROPS,
 			"xmlns:dc": XMLNS.dc,
 			"xmlns:dcterms": XMLNS.dcterms,
@@ -89,25 +89,25 @@ export function write_core_props(
 	];
 	const p: Record<string, any> = {};
 	if (!cp && !opts?.Props) {
-		return o.join("");
+		return lines.join("");
 	}
 
 	if (cp) {
 		if (cp.CreatedDate != null) {
-			cp_doit(
+			writePropertyField(
 				"dcterms:created",
-				typeof cp.CreatedDate === "string" ? cp.CreatedDate : write_w3cdtf(cp.CreatedDate, opts?.WTF),
+				typeof cp.CreatedDate === "string" ? cp.CreatedDate : writeW3cDatetime(cp.CreatedDate, opts?.WTF),
 				{ "xsi:type": "dcterms:W3CDTF" },
-				o,
+				lines,
 				p,
 			);
 		}
 		if (cp.ModifiedDate != null) {
-			cp_doit(
+			writePropertyField(
 				"dcterms:modified",
-				typeof cp.ModifiedDate === "string" ? cp.ModifiedDate : write_w3cdtf(cp.ModifiedDate, opts?.WTF),
+				typeof cp.ModifiedDate === "string" ? cp.ModifiedDate : writeW3cDatetime(cp.ModifiedDate, opts?.WTF),
 				{ "xsi:type": "dcterms:W3CDTF" },
-				o,
+				lines,
 				p,
 			);
 		}
@@ -123,12 +123,12 @@ export function write_core_props(
 			v = String(v);
 		}
 		if (v != null) {
-			cp_doit(f[0], v, null, o, p);
+			writePropertyField(f[0], v, null, lines, p);
 		}
 	}
-	if (o.length > 2) {
-		o.push("</cp:coreProperties>");
-		o[1] = o[1].replace("/>", ">");
+	if (lines.length > 2) {
+		lines.push("</cp:coreProperties>");
+		lines[1] = lines[1].replace("/>", ">");
 	}
-	return o.join("");
+	return lines.join("");
 }

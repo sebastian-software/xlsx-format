@@ -1,18 +1,18 @@
 import type { WorkBook, WorkSheet, CellObject, Hyperlink } from "../types.js";
-import { check_ws_name } from "../xlsx/workbook.js";
-import { encode_col, encode_row, encode_range, decode_range, safe_decode_range } from "../utils/cell.js";
+import { validateSheetName } from "../xlsx/workbook.js";
+import { encodeCol, encodeRow, encodeRange, decodeRange, safeDecodeRange } from "../utils/cell.js";
 
 /** Create a new blank workbook, optionally with a first sheet */
-export function book_new(ws?: WorkSheet, wsname?: string): WorkBook {
+export function createWorkbook(ws?: WorkSheet, wsname?: string): WorkBook {
 	const wb: WorkBook = { SheetNames: [], Sheets: {} };
 	if (ws) {
-		book_append_sheet(wb, ws, wsname || "Sheet1");
+		appendSheet(wb, ws, wsname || "Sheet1");
 	}
 	return wb;
 }
 
 /** Add a worksheet to the end of a workbook */
-export function book_append_sheet(wb: WorkBook, ws: WorkSheet, name?: string, roll?: boolean): string {
+export function appendSheet(wb: WorkBook, ws: WorkSheet, name?: string, roll?: boolean): string {
 	let i = 1;
 	if (!name) {
 		for (; i <= 0xffff; ++i, name = undefined) {
@@ -34,7 +34,7 @@ export function book_append_sheet(wb: WorkBook, ws: WorkSheet, name?: string, ro
 			}
 		}
 	}
-	check_ws_name(name);
+	validateSheetName(name);
 	if (wb.SheetNames.indexOf(name) >= 0) {
 		throw new Error("Worksheet with name |" + name + "| already exists!");
 	}
@@ -45,7 +45,7 @@ export function book_append_sheet(wb: WorkBook, ws: WorkSheet, name?: string, ro
 }
 
 /** Create a new empty worksheet */
-export function sheet_new(opts?: { dense?: boolean }): WorkSheet {
+export function createSheet(opts?: { dense?: boolean }): WorkSheet {
 	const out: any = {};
 	if (opts?.dense) {
 		out["!data"] = [];
@@ -54,7 +54,7 @@ export function sheet_new(opts?: { dense?: boolean }): WorkSheet {
 }
 
 /** Find sheet index for given name or validate index */
-export function wb_sheet_idx(wb: WorkBook, sh: number | string): number {
+export function getSheetIndex(wb: WorkBook, sh: number | string): number {
 	if (typeof sh === "number") {
 		if (sh >= 0 && wb.SheetNames.length > sh) {
 			return sh;
@@ -71,7 +71,7 @@ export function wb_sheet_idx(wb: WorkBook, sh: number | string): number {
 }
 
 /** Set sheet visibility (0=visible, 1=hidden, 2=veryHidden) */
-export function book_set_sheet_visibility(wb: WorkBook, sh: number | string, vis: 0 | 1 | 2): void {
+export function setSheetVisibility(wb: WorkBook, sh: number | string, vis: 0 | 1 | 2): void {
 	if (!wb.Workbook) {
 		wb.Workbook = {};
 	}
@@ -79,7 +79,7 @@ export function book_set_sheet_visibility(wb: WorkBook, sh: number | string, vis
 		wb.Workbook.Sheets = [];
 	}
 
-	const idx = wb_sheet_idx(wb, sh);
+	const idx = getSheetIndex(wb, sh);
 	if (!wb.Workbook.Sheets[idx]) {
 		wb.Workbook.Sheets[idx] = {};
 	}
@@ -96,13 +96,13 @@ export function book_set_sheet_visibility(wb: WorkBook, sh: number | string, vis
 }
 
 /** Set a cell's number format */
-export function cell_set_number_format(cell: CellObject, fmt: string | number): CellObject {
+export function setCellNumberFormat(cell: CellObject, fmt: string | number): CellObject {
 	cell.z = fmt;
 	return cell;
 }
 
 /** Set a cell's hyperlink */
-export function cell_set_hyperlink(cell: CellObject, target?: string, tooltip?: string): CellObject {
+export function setCellHyperlink(cell: CellObject, target?: string, tooltip?: string): CellObject {
 	if (!target) {
 		delete cell.l;
 	} else {
@@ -115,12 +115,12 @@ export function cell_set_hyperlink(cell: CellObject, target?: string, tooltip?: 
 }
 
 /** Set an internal link (starts with #) on a cell */
-export function cell_set_internal_link(cell: CellObject, range: string, tooltip?: string): CellObject {
-	return cell_set_hyperlink(cell, "#" + range, tooltip);
+export function setCellInternalLink(cell: CellObject, range: string, tooltip?: string): CellObject {
+	return setCellHyperlink(cell, "#" + range, tooltip);
 }
 
 /** Add a comment to a cell */
-export function cell_add_comment(cell: CellObject, text: string, author?: string): void {
+export function addCellComment(cell: CellObject, text: string, author?: string): void {
 	if (!cell.c) {
 		cell.c = [] as any;
 	}
@@ -128,18 +128,18 @@ export function cell_add_comment(cell: CellObject, text: string, author?: string
 }
 
 /** Set an array formula on a range of cells */
-export function sheet_set_array_formula(
+export function setArrayFormula(
 	ws: WorkSheet,
 	range: string | { s: { r: number; c: number }; e: { r: number; c: number } },
 	formula: string,
 	dynamic?: boolean,
 ): WorkSheet {
-	const rng = typeof range !== "string" ? range : safe_decode_range(range);
-	const rngstr = typeof range === "string" ? range : encode_range(range);
+	const rng = typeof range !== "string" ? range : safeDecodeRange(range);
+	const rngstr = typeof range === "string" ? range : encodeRange(range);
 
 	for (let R = rng.s.r; R <= rng.e.r; ++R) {
 		for (let C = rng.s.c; C <= rng.e.c; ++C) {
-			const ref = encode_col(C) + encode_row(R);
+			const ref = encodeCol(C) + encodeRow(R);
 			const dense = (ws as any)["!data"] != null;
 			let cell: any;
 			if (dense) {
@@ -163,7 +163,7 @@ export function sheet_set_array_formula(
 	}
 
 	if (ws["!ref"]) {
-		const wsr = decode_range(ws["!ref"]);
+		const wsr = decodeRange(ws["!ref"]);
 		if (wsr.s.r > rng.s.r) {
 			wsr.s.r = rng.s.r;
 		}
@@ -176,27 +176,27 @@ export function sheet_set_array_formula(
 		if (wsr.e.c < rng.e.c) {
 			wsr.e.c = rng.e.c;
 		}
-		ws["!ref"] = encode_range(wsr);
+		ws["!ref"] = encodeRange(wsr);
 	}
 	return ws;
 }
 
 /** Convert a worksheet to an array of formula strings */
-export function sheet_to_formulae(ws: WorkSheet): string[] {
+export function sheetToFormulae(ws: WorkSheet): string[] {
 	if (ws == null || ws["!ref"] == null) {
 		return [];
 	}
-	const r = safe_decode_range(ws["!ref"]);
+	const r = safeDecodeRange(ws["!ref"]);
 	const cols: string[] = [];
 	const cmds: string[] = [];
 	const dense = (ws as any)["!data"] != null;
 
 	for (let C = r.s.c; C <= r.e.c; ++C) {
-		cols[C] = encode_col(C);
+		cols[C] = encodeCol(C);
 	}
 
 	for (let R = r.s.r; R <= r.e.r; ++R) {
-		const rr = encode_row(R);
+		const rr = encodeRow(R);
 		for (let C = r.s.c; C <= r.e.c; ++C) {
 			const y = cols[C] + rr;
 			const x: any = dense ? ((ws as any)["!data"][R] || [])[C] : (ws as any)[y];

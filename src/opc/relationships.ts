@@ -1,6 +1,6 @@
-import { parsexmltag, XML_HEADER, tagregex } from "../xml/parser.js";
-import { unescapexml } from "../xml/escape.js";
-import { writextag } from "../xml/writer.js";
+import { parseXmlTag, XML_HEADER, XML_TAG_REGEX } from "../xml/parser.js";
+import { unescapeXml } from "../xml/escape.js";
+import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS, RELS } from "../xml/namespaces.js";
 
 export interface RelEntry {
@@ -35,13 +35,13 @@ function resolve_path(target: string, basePath: string): string {
 }
 
 /** Get the .rels path for a given file */
-export function get_rels_path(file: string): string {
+export function getRelsPath(file: string): string {
 	const n = file.lastIndexOf("/");
 	return file.slice(0, n + 1) + "_rels/" + file.slice(n + 1) + ".rels";
 }
 
 /** Parse a .rels XML file */
-export function parse_rels(data: string | null | undefined, currentFilePath: string): Relationships {
+export function parseRelationships(data: string | null | undefined, currentFilePath: string): Relationships {
 	const rels = { "!id": {} } as any as Relationships;
 	if (!data) {
 		return rels;
@@ -50,13 +50,13 @@ export function parse_rels(data: string | null | undefined, currentFilePath: str
 		currentFilePath = "/" + currentFilePath;
 	}
 
-	const matches = data.match(tagregex) || [];
+	const matches = data.match(XML_TAG_REGEX) || [];
 	for (const x of matches) {
-		const y = parsexmltag(x);
+		const y = parseXmlTag(x);
 		if (y[0] === "<Relationship") {
 			const rel: RelEntry = {
 				Type: y.Type,
-				Target: unescapexml(y.Target),
+				Target: unescapeXml(y.Target),
 				Id: y.Id,
 			};
 			if (y.TargetMode) {
@@ -71,15 +71,15 @@ export function parse_rels(data: string | null | undefined, currentFilePath: str
 }
 
 /** Serialize relationships to XML */
-export function write_rels(rels: Relationships): string {
+export function writeRelationships(rels: Relationships): string {
 	const o: string[] = [
 		XML_HEADER,
-		writextag("Relationships", null, {
+		writeXmlElement("Relationships", null, {
 			xmlns: XMLNS.RELS,
 		}),
 	];
 	for (const rid of Object.keys(rels["!id"])) {
-		o.push(writextag("Relationship", null, rels["!id"][rid] as any));
+		o.push(writeXmlElement("Relationship", null, rels["!id"][rid] as any));
 	}
 	if (o.length > 2) {
 		o.push("</Relationships>");
@@ -89,7 +89,7 @@ export function write_rels(rels: Relationships): string {
 }
 
 /** Add a relationship entry */
-export function add_rels(rels: Relationships, rId: number, f: string, type: string, targetmode?: string): number {
+export function addRelationship(rels: Relationships, rId: number, f: string, type: string, targetmode?: string): number {
 	if (!rels["!id"]) {
 		(rels as any)["!id"] = {};
 	}

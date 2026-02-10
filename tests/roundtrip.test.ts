@@ -2,15 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
 	read,
 	write,
-	book_new,
-	book_append_sheet,
-	aoa_to_sheet,
-	json_to_sheet,
-	sheet_to_json,
-	sheet_to_csv,
-	sheet_to_html,
-	sheet_add_aoa,
-	sheet_new,
+	createWorkbook,
+	appendSheet,
+	arrayToSheet,
+	jsonToSheet,
+	sheetToJson,
+	sheetToCsv,
+	sheetToHtml,
+	addArrayToSheet,
+	createSheet,
 } from "../src/index.js";
 
 describe("roundtrip", () => {
@@ -21,9 +21,9 @@ describe("roundtrip", () => {
 			["Bob", 25, false],
 			["Charlie", 35, true],
 		];
-		const ws = aoa_to_sheet(data);
-		const wb = book_new();
-		book_append_sheet(wb, ws, "People");
+		const ws = arrayToSheet(data);
+		const wb = createWorkbook();
+		appendSheet(wb, ws, "People");
 
 		const u8 = write(wb);
 		expect(u8).toBeInstanceOf(Uint8Array);
@@ -36,7 +36,7 @@ describe("roundtrip", () => {
 		const wb2 = read(u8);
 		expect(wb2.SheetNames).toEqual(["People"]);
 
-		const rows = sheet_to_json(wb2.Sheets["People"]);
+		const rows = sheetToJson(wb2.Sheets["People"]);
 		expect(rows.length).toBe(3);
 		expect(rows[0]["Name"]).toBe("Alice");
 		expect(rows[0]["Age"]).toBe(30);
@@ -46,18 +46,18 @@ describe("roundtrip", () => {
 	});
 
 	it("should roundtrip multiple sheets", () => {
-		const wb = book_new();
-		book_append_sheet(
+		const wb = createWorkbook();
+		appendSheet(
 			wb,
-			aoa_to_sheet([
+			arrayToSheet([
 				["A", "B"],
 				[1, 2],
 			]),
 			"Sheet1",
 		);
-		book_append_sheet(
+		appendSheet(
 			wb,
-			aoa_to_sheet([
+			arrayToSheet([
 				["X", "Y"],
 				[3, 4],
 			]),
@@ -67,9 +67,9 @@ describe("roundtrip", () => {
 		const wb2 = read(write(wb));
 		expect(wb2.SheetNames).toEqual(["Sheet1", "Sheet2"]);
 
-		const rows1 = sheet_to_json(wb2.Sheets["Sheet1"]);
+		const rows1 = sheetToJson(wb2.Sheets["Sheet1"]);
 		expect(rows1[0]["A"]).toBe(1);
-		const rows2 = sheet_to_json(wb2.Sheets["Sheet2"]);
+		const rows2 = sheetToJson(wb2.Sheets["Sheet2"]);
 		expect(rows2[0]["X"]).toBe(3);
 	});
 
@@ -79,12 +79,12 @@ describe("roundtrip", () => {
 			{ name: "Beta", value: 200 },
 			{ name: "Gamma", value: 300 },
 		];
-		const ws = json_to_sheet(data);
-		const wb = book_new();
-		book_append_sheet(wb, ws, "Data");
+		const ws = jsonToSheet(data);
+		const wb = createWorkbook();
+		appendSheet(wb, ws, "Data");
 
 		const wb2 = read(write(wb));
-		const rows = sheet_to_json(wb2.Sheets["Data"]);
+		const rows = sheetToJson(wb2.Sheets["Data"]);
 		expect(rows.length).toBe(3);
 		expect(rows[0]["name"]).toBe("Alpha");
 		expect(rows[0]["value"]).toBe(100);
@@ -92,9 +92,9 @@ describe("roundtrip", () => {
 	});
 
 	it("should write base64 and re-read", () => {
-		const ws = aoa_to_sheet([["Hello", "World"]]);
-		const wb = book_new();
-		book_append_sheet(wb, ws, "Test");
+		const ws = arrayToSheet([["Hello", "World"]]);
+		const wb = createWorkbook();
+		appendSheet(wb, ws, "Test");
 
 		const b64 = write(wb, { type: "base64" });
 		expect(typeof b64).toBe("string");
@@ -104,36 +104,36 @@ describe("roundtrip", () => {
 	});
 });
 
-describe("sheet_to_csv", () => {
+describe("sheetToCsv", () => {
 	it("should produce CSV from worksheet", () => {
-		const ws = aoa_to_sheet([
+		const ws = arrayToSheet([
 			["Name", "Score"],
 			["Alice", 95],
 			["Bob", 87],
 		]);
-		const csv = sheet_to_csv(ws);
+		const csv = sheetToCsv(ws);
 		expect(csv).toContain("Name,Score");
 		expect(csv).toContain("Alice,95");
 		expect(csv).toContain("Bob,87");
 	});
 
 	it("should handle custom separators", () => {
-		const ws = aoa_to_sheet([
+		const ws = arrayToSheet([
 			["A", "B"],
 			[1, 2],
 		]);
-		const tsv = sheet_to_csv(ws, { FS: "\t" });
+		const tsv = sheetToCsv(ws, { FS: "\t" });
 		expect(tsv).toContain("A\tB");
 	});
 });
 
-describe("sheet_to_html", () => {
+describe("sheetToHtml", () => {
 	it("should produce HTML table", () => {
-		const ws = aoa_to_sheet([
+		const ws = arrayToSheet([
 			["X", "Y"],
 			[1, 2],
 		]);
-		const html = sheet_to_html(ws);
+		const html = sheetToHtml(ws);
 		expect(html).toContain("<table");
 		expect(html).toContain("<td");
 		expect(html).toContain("X");
@@ -141,14 +141,14 @@ describe("sheet_to_html", () => {
 	});
 });
 
-describe("sheet_to_json options", () => {
+describe("sheetToJson options", () => {
 	it("should support header: 1 (array of arrays)", () => {
-		const ws = aoa_to_sheet([
+		const ws = arrayToSheet([
 			["A", "B"],
 			[1, 2],
 			[3, 4],
 		]);
-		const aoa = sheet_to_json(ws, { header: 1 });
+		const aoa = sheetToJson(ws, { header: 1 });
 		expect(aoa).toEqual([
 			["A", "B"],
 			[1, 2],
@@ -157,62 +157,62 @@ describe("sheet_to_json options", () => {
 	});
 
 	it("should support header: 'A' (column letter keys)", () => {
-		const ws = aoa_to_sheet([
+		const ws = arrayToSheet([
 			["Name", "Val"],
 			["x", 1],
 		]);
-		const rows = sheet_to_json(ws, { header: "A" });
+		const rows = sheetToJson(ws, { header: "A" });
 		expect(rows[0]["A"]).toBe("Name");
 		expect(rows[1]["A"]).toBe("x");
 	});
 
 	it("should support custom header array", () => {
-		const ws = aoa_to_sheet([
+		const ws = arrayToSheet([
 			["a", "b"],
 			[1, 2],
 		]);
-		const rows = sheet_to_json(ws, { header: ["col1", "col2"] });
+		const rows = sheetToJson(ws, { header: ["col1", "col2"] });
 		expect(rows[0]["col1"]).toBe("a");
 		expect(rows[1]["col1"]).toBe(1);
 	});
 
 	it("should support defval for missing cells", () => {
-		const ws = aoa_to_sheet([["A", "B"], [1]]);
-		const rows = sheet_to_json(ws, { defval: null });
+		const ws = arrayToSheet([["A", "B"], [1]]);
+		const rows = sheetToJson(ws, { defval: null });
 		expect(rows[0]["B"]).toBe(null);
 	});
 });
 
 describe("workbook utilities", () => {
 	it("should create a new empty workbook", () => {
-		const wb = book_new();
+		const wb = createWorkbook();
 		expect(wb.SheetNames).toEqual([]);
 		expect(wb.Sheets).toEqual({});
 	});
 
 	it("should create a workbook from a sheet", () => {
-		const ws = aoa_to_sheet([[1, 2, 3]]);
-		const wb = book_new(ws, "Data");
+		const ws = arrayToSheet([[1, 2, 3]]);
+		const wb = createWorkbook(ws, "Data");
 		expect(wb.SheetNames).toEqual(["Data"]);
 		expect(wb.Sheets["Data"]).toBe(ws);
 	});
 
 	it("should append sheets", () => {
-		const wb = book_new();
-		book_append_sheet(wb, aoa_to_sheet([[1]]), "A");
-		book_append_sheet(wb, aoa_to_sheet([[2]]), "B");
+		const wb = createWorkbook();
+		appendSheet(wb, arrayToSheet([[1]]), "A");
+		appendSheet(wb, arrayToSheet([[2]]), "B");
 		expect(wb.SheetNames).toEqual(["A", "B"]);
 	});
 
-	it("sheet_new should create an empty worksheet", () => {
-		const ws = sheet_new();
+	it("createSheet should create an empty worksheet", () => {
+		const ws = createSheet();
 		expect(ws["!ref"]).toBeUndefined();
 	});
 
-	it("sheet_add_aoa should extend a worksheet", () => {
-		const ws = aoa_to_sheet([["A"]]);
-		sheet_add_aoa(ws, [["B"]], { origin: "A2" });
-		const rows = sheet_to_json(ws, { header: 1 });
+	it("addArrayToSheet should extend a worksheet", () => {
+		const ws = arrayToSheet([["A"]]);
+		addArrayToSheet(ws, [["B"]], { origin: "A2" });
+		const rows = sheetToJson(ws, { header: 1 });
 		expect(rows).toEqual([["A"], ["B"]]);
 	});
 });

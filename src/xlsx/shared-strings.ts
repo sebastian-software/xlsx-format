@@ -1,6 +1,6 @@
-import { parsexmltag, tagregex } from "../xml/parser.js";
-import { unescapexml, escapexml, escapehtml } from "../xml/escape.js";
-import { writextag } from "../xml/writer.js";
+import { parseXmlTag, XML_TAG_REGEX } from "../xml/parser.js";
+import { unescapeXml, escapeXml, escapeHtml } from "../xml/escape.js";
+import { writeXmlElement } from "../xml/writer.js";
 import { XML_HEADER } from "../xml/parser.js";
 import { XMLNS_main } from "../xml/namespaces.js";
 import { utf8read } from "../utils/buffer.js";
@@ -18,13 +18,13 @@ export interface SST extends Array<XLString> {
 }
 
 /** Parse rich-text run properties */
-function parse_rpr(rpr: string): Record<string, any> {
+function parseRunProperties(rpr: string): Record<string, any> {
 	const font: Record<string, any> = {};
-	const m = rpr.match(tagregex);
+	const m = rpr.match(XML_TAG_REGEX);
 	let pass = false;
 	if (m) {
 		for (let i = 0; i < m.length; ++i) {
-			const y = parsexmltag(m[i]);
+			const y = parseXmlTag(m[i]);
 			switch ((y[0] as string).replace(/<\w*:/g, "<")) {
 				case "<condense":
 				case "<extend":
@@ -175,28 +175,28 @@ function str_remove_xml_ns_g_local(str: string, tag: string): string {
 	return out.join("");
 }
 
-function parse_r(r: string): { t: string; v: string; s?: any } {
+function parseRichTextRun(r: string): { t: string; v: string; s?: any } {
 	const t = str_match_xml_ns_local(r, "t");
 	if (!t) {
 		return { t: "s", v: "" };
 	}
-	const o: any = { t: "s", v: unescapexml(t[1]) };
+	const o: any = { t: "s", v: unescapeXml(t[1]) };
 	const rpr = str_match_xml_ns_local(r, "rPr");
 	if (rpr) {
-		o.s = parse_rpr(rpr[1]);
+		o.s = parseRunProperties(rpr[1]);
 	}
 	return o;
 }
 
-function parse_rs(rs: string): { t: string; v: string; s?: any }[] {
+function parseRichTextRuns(rs: string): { t: string; v: string; s?: any }[] {
 	return rs
 		.replace(rregex, "")
 		.split(rend)
-		.map(parse_r)
+		.map(parseRichTextRun)
 		.filter((r) => r.v);
 }
 
-function rs_to_html(rs: { t: string; v: string; s?: any }[]): string {
+function richTextToHtml(rs: { t: string; v: string; s?: any }[]): string {
 	const nlregex = /(\r\n|\n)/g;
 	return rs
 		.map((r) => {
@@ -256,7 +256,7 @@ function rs_to_html(rs: { t: string; v: string; s?: any }[]): string {
 const sitregex = /<(?:\w+:)?t\b[^<>]*>([^<]*)<\/(?:\w+:)?t>/g;
 const sirregex = /<(?:\w+:)?r\b[^<>]*>/;
 
-function parse_si(x: string, opts?: { cellHTML?: boolean }): XLString {
+function parseStringItem(x: string, opts?: { cellHTML?: boolean }): XLString {
 	const html = opts ? opts.cellHTML !== false : true;
 	const z: any = {};
 	if (!x) {
@@ -264,19 +264,19 @@ function parse_si(x: string, opts?: { cellHTML?: boolean }): XLString {
 	}
 
 	if (x.match(/^\s*<(?:\w+:)?t[^>]*>/)) {
-		z.t = unescapexml(utf8read(x.slice(x.indexOf(">") + 1).split(/<\/(?:\w+:)?t>/)[0] || ""), true);
+		z.t = unescapeXml(utf8read(x.slice(x.indexOf(">") + 1).split(/<\/(?:\w+:)?t>/)[0] || ""), true);
 		z.r = utf8read(x);
 		if (html) {
-			z.h = escapehtml(z.t);
+			z.h = escapeHtml(z.t);
 		}
 	} else if (x.match(sirregex)) {
 		z.r = utf8read(x);
 		const stripped = str_remove_xml_ns_g_local(x, "rPh");
 		sitregex.lastIndex = 0;
 		const matches = stripped.match(sitregex) || [];
-		z.t = unescapexml(utf8read(matches.join("").replace(tagregex, "")), true);
+		z.t = unescapeXml(utf8read(matches.join("").replace(XML_TAG_REGEX, "")), true);
 		if (html) {
-			z.h = rs_to_html(parse_rs(z.r));
+			z.h = richTextToHtml(parseRichTextRuns(z.r));
 		}
 	}
 	return z;
@@ -286,7 +286,7 @@ const sstr1 = /<(?:\w+:)?(?:si|sstItem)>/g;
 const sstr2 = /<\/(?:\w+:)?(?:si|sstItem)>/;
 
 /** Parse the Shared String Table XML */
-export function parse_sst_xml(data: string, opts?: { cellHTML?: boolean }): SST {
+export function parseSstXml(data: string, opts?: { cellHTML?: boolean }): SST {
 	const s: SST = [] as any;
 	if (!data) {
 		return s;
@@ -296,12 +296,12 @@ export function parse_sst_xml(data: string, opts?: { cellHTML?: boolean }): SST 
 	if (sst) {
 		const ss = sst[1].replace(sstr1, "").split(sstr2);
 		for (let i = 0; i < ss.length; ++i) {
-			const o = parse_si(ss[i].trim(), opts);
+			const o = parseStringItem(ss[i].trim(), opts);
 			if (o != null) {
 				s[s.length] = o;
 			}
 		}
-		const tag = parsexmltag(sst[0].slice(0, sst[0].indexOf(">")));
+		const tag = parseXmlTag(sst[0].slice(0, sst[0].indexOf(">")));
 		s.Count = tag.count;
 		s.Unique = tag.uniquecount;
 	}
@@ -311,13 +311,13 @@ export function parse_sst_xml(data: string, opts?: { cellHTML?: boolean }): SST 
 const straywsregex = /^\s|\s$|[\t\n\r]/;
 
 /** Write the Shared String Table XML */
-export function write_sst_xml(sst: SST, opts: { bookSST?: boolean }): string {
+export function writeSstXml(sst: SST, opts: { bookSST?: boolean }): string {
 	if (!opts.bookSST) {
 		return "";
 	}
 	const o: string[] = [XML_HEADER];
 	o.push(
-		writextag("sst", null, {
+		writeXmlElement("sst", null, {
 			xmlns: XMLNS_main[0],
 			count: String(sst.Count),
 			uniqueCount: String(sst.Unique),
@@ -342,7 +342,7 @@ export function write_sst_xml(sst: SST, opts: { bookSST?: boolean }): string {
 			if (s.t.match(straywsregex)) {
 				sitag += ' xml:space="preserve"';
 			}
-			sitag += ">" + escapexml(s.t) + "</t>";
+			sitag += ">" + escapeXml(s.t) + "</t>";
 		}
 		sitag += "</si>";
 		o.push(sitag);

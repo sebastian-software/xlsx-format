@@ -1,9 +1,9 @@
 import type { WorkBook, ReadOptions } from "./types.js";
-import { zip_read } from "./zip/index.js";
-import { parse_zip } from "./xlsx/parse-zip.js";
+import { zipRead } from "./zip/index.js";
+import { parseZip } from "./xlsx/parse-zip.js";
 import { base64decode } from "./utils/base64.js";
-import { make_ssf } from "./ssf/table.js";
-import { dup } from "./utils/helpers.js";
+import { resetFormatTable } from "./ssf/table.js";
+import { shallowClone } from "./utils/helpers.js";
 import * as fs from "node:fs";
 
 function to_uint8array(data: any, opts: ReadOptions): Uint8Array {
@@ -54,8 +54,8 @@ function detect_type(data: any): ReadOptions["type"] {
  * @returns Parsed WorkBook object
  */
 export function read(data: any, opts?: ReadOptions): WorkBook {
-	make_ssf();
-	const o: any = opts ? dup(opts) : {};
+	resetFormatTable();
+	const o: any = opts ? shallowClone(opts) : {};
 	if (!o.type) {
 		o.type = detect_type(data);
 	}
@@ -64,8 +64,8 @@ export function read(data: any, opts?: ReadOptions): WorkBook {
 
 	// Check first bytes - must be PK (ZIP)
 	if (u8[0] === 0x50 && u8[1] === 0x4b) {
-		const zip = zip_read(u8);
-		return parse_zip(zip, o);
+		const zip = zipRead(u8);
+		return parseZip(zip, o);
 	}
 
 	// Check for PDF

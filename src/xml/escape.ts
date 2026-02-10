@@ -6,7 +6,7 @@ const encodings: Record<string, string> = {
 	"&amp;": "&",
 };
 
-const rencoding: Record<string, string> = {
+const XML_ESCAPE_MAP: Record<string, string> = {
 	'"': "&quot;",
 	"'": "&apos;",
 	">": "&gt;",
@@ -20,7 +20,7 @@ const decregex = /[&<>'"]/g;
 // eslint-disable-next-line no-control-regex
 const charegex = /[\u0000-\u0008\u000b-\u001f\uFFFE-\uFFFF]/g;
 
-function raw_unescapexml(text: string): string {
+function rawUnescapeXml(text: string): string {
 	const s = text;
 	const i = s.indexOf("<![CDATA[");
 	if (i === -1) {
@@ -33,36 +33,36 @@ function raw_unescapexml(text: string): string {
 			});
 	}
 	const j = s.indexOf("]]>");
-	return raw_unescapexml(s.slice(0, i)) + s.slice(i + 9, j) + raw_unescapexml(s.slice(j + 3));
+	return rawUnescapeXml(s.slice(0, i)) + s.slice(i + 9, j) + rawUnescapeXml(s.slice(j + 3));
 }
 
 /** Unescape XML entities. When xlsx=true, normalize \r\n -> \n */
-export function unescapexml(text: string, xlsx?: boolean): string {
-	const out = raw_unescapexml(text);
+export function unescapeXml(text: string, xlsx?: boolean): string {
+	const out = rawUnescapeXml(text);
 	return xlsx ? out.replace(/\r\n/g, "\n") : out;
 }
 
 /** Escape a string for XML text content */
-export function escapexml(text: string): string {
+export function escapeXml(text: string): string {
 	const s = text;
 	return s
-		.replace(decregex, (y) => rencoding[y])
+		.replace(decregex, (y) => XML_ESCAPE_MAP[y])
 		.replace(charegex, (s) => "_x" + ("000" + s.charCodeAt(0).toString(16)).slice(-4) + "_");
 }
 
 /** Escape a string for XML tag names (spaces -> _x0020_) */
-export function escapexmltag(text: string): string {
-	return escapexml(text).replace(/ /g, "_x0020_");
+export function escapeXmlTag(text: string): string {
+	return escapeXml(text).replace(/ /g, "_x0020_");
 }
 
 // eslint-disable-next-line no-control-regex
 const htmlcharegex = /[\u0000-\u001f]/g;
 
 /** Escape a string for HTML output */
-export function escapehtml(text: string): string {
+export function escapeHtml(text: string): string {
 	const s = text;
 	return s
-		.replace(decregex, (y) => rencoding[y])
+		.replace(decregex, (y) => XML_ESCAPE_MAP[y])
 		.replace(/\n/g, "<br/>")
 		.replace(htmlcharegex, (s) => "&#x" + ("000" + s.charCodeAt(0).toString(16)).slice(-4) + ";");
 }
@@ -78,7 +78,7 @@ const entities: [RegExp, string][] = [
 ].map(([name, ch]) => [new RegExp("&" + name + ";", "gi"), ch]);
 
 /** Decode HTML entities */
-export function htmldecode(str: string): string {
+export function htmlDecode(str: string): string {
 	let o = str
 		.replace(/^[\t\n\r ]+/, "")
 		.replace(/(^|[^\t\n\r ])[\t\n\r ]+$/, "$1")

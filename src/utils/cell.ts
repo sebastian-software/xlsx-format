@@ -1,23 +1,23 @@
 import type { CellAddress, Range } from "../types.js";
 
-export function decode_row(rowstr: string): number {
-	return parseInt(unfix_row(rowstr), 10) - 1;
+export function decodeRow(rowstr: string): number {
+	return parseInt(removeRowAbsolute(rowstr), 10) - 1;
 }
 
-export function encode_row(row: number): string {
+export function encodeRow(row: number): string {
 	return "" + (row + 1);
 }
 
-export function fix_row(cstr: string): string {
+export function makeRowAbsolute(cstr: string): string {
 	return cstr.replace(/([A-Z]|^)(\d+)$/, "$1$$$2");
 }
 
-export function unfix_row(cstr: string): string {
+export function removeRowAbsolute(cstr: string): string {
 	return cstr.replace(/\$(\d+)$/, "$1");
 }
 
-export function decode_col(colstr: string): number {
-	const c = unfix_col(colstr);
+export function decodeCol(colstr: string): number {
+	const c = removeColAbsolute(colstr);
 	let d = 0;
 	for (let i = 0; i < c.length; ++i) {
 		d = 26 * d + c.charCodeAt(i) - 64;
@@ -25,117 +25,117 @@ export function decode_col(colstr: string): number {
 	return d - 1;
 }
 
-export function encode_col(col: number): string {
+export function encodeCol(col: number): string {
 	if (col < 0) {
 		throw new Error("invalid column " + col);
 	}
-	let s = "";
+	let result = "";
 	for (++col; col; col = Math.floor((col - 1) / 26)) {
-		s = String.fromCharCode(((col - 1) % 26) + 65) + s;
+		result = String.fromCharCode(((col - 1) % 26) + 65) + result;
 	}
-	return s;
+	return result;
 }
 
-export function fix_col(cstr: string): string {
+export function makeColAbsolute(cstr: string): string {
 	return cstr.replace(/^([A-Z])/, "$$$1");
 }
 
-export function unfix_col(cstr: string): string {
+export function removeColAbsolute(cstr: string): string {
 	return cstr.replace(/^\$([A-Z])/, "$1");
 }
 
-export function split_cell(cstr: string): string[] {
+export function splitCellReference(cstr: string): string[] {
 	return cstr.replace(/(\$?[A-Z]*)(\$?\d*)/, "$1,$2").split(",");
 }
 
-export function decode_cell(cstr: string): CellAddress {
+export function decodeCell(cstr: string): CellAddress {
 	let R = 0,
 		C = 0;
 	for (let i = 0; i < cstr.length; ++i) {
-		const cc = cstr.charCodeAt(i);
-		if (cc >= 48 && cc <= 57) {
-			R = 10 * R + (cc - 48);
-		} else if (cc >= 65 && cc <= 90) {
-			C = 26 * C + (cc - 64);
+		const charCode = cstr.charCodeAt(i);
+		if (charCode >= 48 && charCode <= 57) {
+			R = 10 * R + (charCode - 48);
+		} else if (charCode >= 65 && charCode <= 90) {
+			C = 26 * C + (charCode - 64);
 		}
 	}
 	return { c: C - 1, r: R - 1 };
 }
 
-export function encode_cell(cell: CellAddress): string {
+export function encodeCell(cell: CellAddress): string {
 	let col = cell.c + 1;
-	let s = "";
+	let result = "";
 	for (; col; col = ((col - 1) / 26) | 0) {
-		s = String.fromCharCode(((col - 1) % 26) + 65) + s;
+		result = String.fromCharCode(((col - 1) % 26) + 65) + result;
 	}
-	return s + (cell.r + 1);
+	return result + (cell.r + 1);
 }
 
-export function decode_range(range: string): Range {
+export function decodeRange(range: string): Range {
 	const idx = range.indexOf(":");
 	if (idx === -1) {
-		return { s: decode_cell(range), e: decode_cell(range) };
+		return { s: decodeCell(range), e: decodeCell(range) };
 	}
-	return { s: decode_cell(range.slice(0, idx)), e: decode_cell(range.slice(idx + 1)) };
+	return { s: decodeCell(range.slice(0, idx)), e: decodeCell(range.slice(idx + 1)) };
 }
 
-export function encode_range(cs: CellAddress | Range, ce?: CellAddress): string {
+export function encodeRange(cs: CellAddress | Range, ce?: CellAddress): string {
 	if (typeof ce === "undefined" || typeof ce === "number") {
-		return encode_range((cs as Range).s, (cs as Range).e);
+		return encodeRange((cs as Range).s, (cs as Range).e);
 	}
-	const s = typeof cs === "string" ? cs : encode_cell(cs as CellAddress);
-	const e = typeof ce === "string" ? ce : encode_cell(ce);
+	const s = typeof cs === "string" ? cs : encodeCell(cs as CellAddress);
+	const e = typeof ce === "string" ? ce : encodeCell(ce);
 	return s === e ? s : s + ":" + e;
 }
 
-export function safe_decode_range(range: string): Range {
-	const o = { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } };
+export function safeDecodeRange(range: string): Range {
+	const result = { s: { c: 0, r: 0 }, e: { c: 0, r: 0 } };
 	let idx = 0,
 		i = 0,
-		cc = 0;
+		charCode = 0;
 	const len = range.length;
 	for (idx = 0; i < len; ++i) {
-		if ((cc = range.charCodeAt(i) - 64) < 1 || cc > 26) {
+		if ((charCode = range.charCodeAt(i) - 64) < 1 || charCode > 26) {
 			break;
 		}
-		idx = 26 * idx + cc;
+		idx = 26 * idx + charCode;
 	}
-	o.s.c = --idx;
+	result.s.c = --idx;
 
 	for (idx = 0; i < len; ++i) {
-		if ((cc = range.charCodeAt(i) - 48) < 0 || cc > 9) {
+		if ((charCode = range.charCodeAt(i) - 48) < 0 || charCode > 9) {
 			break;
 		}
-		idx = 10 * idx + cc;
+		idx = 10 * idx + charCode;
 	}
-	o.s.r = --idx;
+	result.s.r = --idx;
 
-	if (i === len || cc !== 10) {
-		o.e.c = o.s.c;
-		o.e.r = o.s.r;
-		return o;
+	if (i === len || charCode !== 10) {
+		result.e.c = result.s.c;
+		result.e.r = result.s.r;
+		return result;
 	}
 	++i;
 
 	for (idx = 0; i !== len; ++i) {
-		if ((cc = range.charCodeAt(i) - 64) < 1 || cc > 26) {
+		if ((charCode = range.charCodeAt(i) - 64) < 1 || charCode > 26) {
 			break;
 		}
-		idx = 26 * idx + cc;
+		idx = 26 * idx + charCode;
 	}
-	o.e.c = --idx;
+	result.e.c = --idx;
 
 	for (idx = 0; i !== len; ++i) {
-		if ((cc = range.charCodeAt(i) - 48) < 0 || cc > 9) {
+		if ((charCode = range.charCodeAt(i) - 48) < 0 || charCode > 9) {
 			break;
 		}
-		idx = 10 * idx + cc;
+		idx = 10 * idx + charCode;
 	}
-	o.e.r = --idx;
-	return o;
+	result.e.r = --idx;
+	return result;
 }
 
-export function formula_quote_sheet_name(sname: string): string {
+export function quoteSheetName(sname: string): string {
 	if (!sname) {
 		throw new Error("empty sheet name");
 	}

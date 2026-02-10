@@ -1,5 +1,5 @@
 /** Convert a JS Date to Excel serial date number */
-export function datenum(v: Date, date1904?: boolean): number {
+export function dateToSerialNumber(v: Date, date1904?: boolean): number {
 	let epoch = v.getTime();
 	if (date1904) {
 		epoch -= 1462 * 24 * 60 * 60 * 1000;
@@ -17,7 +17,7 @@ export function datenum(v: Date, date1904?: boolean): number {
 }
 
 /** Convert an Excel serial date number to a JS Date */
-export function numdate(v: number, date1904?: boolean): Date {
+export function serialNumberToDate(v: number, date1904?: boolean): Date {
 	let date = v;
 	if (date1904) {
 		date += 1462;
@@ -31,13 +31,13 @@ export function numdate(v: number, date1904?: boolean): Date {
 }
 
 /** Convert a local Date to UTC (shift by timezone offset) */
-export function local_to_utc(d: Date): Date {
+export function localToUtc(d: Date): Date {
 	const off = d.getTimezoneOffset();
 	return new Date(d.getTime() + off * 60 * 1000);
 }
 
 /** Convert a UTC Date to local (shift by timezone offset) */
-export function utc_to_local(d: Date): Date {
+export function utcToLocal(d: Date): Date {
 	const off = d.getTimezoneOffset();
 	return new Date(d.getTime() - off * 60 * 1000);
 }

@@ -13,13 +13,13 @@ const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
 /** Read a ZIP archive from a Uint8Array */
-export function zip_read(data: Uint8Array): ZipArchive {
+export function zipRead(data: Uint8Array): ZipArchive {
 	const unzipped = unzipSync(data);
 	return { files: unzipped as Record<string, Uint8Array> };
 }
 
 /** Write a ZIP archive to a Uint8Array */
-export function zip_write(archive: ZipArchive, compress?: boolean): Uint8Array {
+export function zipWrite(archive: ZipArchive, compress?: boolean): Uint8Array {
 	const zippable: Zippable = {};
 	for (const [name, data] of Object.entries(archive.files)) {
 		zippable[name] = compress ? data : [data, { level: 0 }];
@@ -28,7 +28,7 @@ export function zip_write(archive: ZipArchive, compress?: boolean): Uint8Array {
 }
 
 /** Get a file from a ZIP archive as string */
-export function zip_read_str(archive: ZipArchive, path: string): string | null {
+export function zipReadString(archive: ZipArchive, path: string): string | null {
 	// Try exact path first
 	let data = archive.files[path];
 	if (!data) {
@@ -43,7 +43,7 @@ export function zip_read_str(archive: ZipArchive, path: string): string | null {
 }
 
 /** Get a file from a ZIP archive as Uint8Array */
-export function zip_read_bin(archive: ZipArchive, path: string): Uint8Array | null {
+export function zipReadBinary(archive: ZipArchive, path: string): Uint8Array | null {
 	let data = archive.files[path];
 	if (!data) {
 		const normalized = path.startsWith("/") ? path.slice(1) : "/" + path;
@@ -53,27 +53,27 @@ export function zip_read_bin(archive: ZipArchive, path: string): Uint8Array | nu
 }
 
 /** Add a string file to a ZIP archive */
-export function zip_add_str(archive: ZipArchive, path: string, content: string): void {
+export function zipAddString(archive: ZipArchive, path: string, content: string): void {
 	archive.files[path] = encoder.encode(content);
 }
 
 /** Add a binary file to a ZIP archive */
-export function zip_add_bin(archive: ZipArchive, path: string, data: Uint8Array): void {
+export function zipAddBinary(archive: ZipArchive, path: string, data: Uint8Array): void {
 	archive.files[path] = data;
 }
 
 /** Create a new empty ZIP archive */
-export function zip_new(): ZipArchive {
+export function zipCreate(): ZipArchive {
 	return { files: {} };
 }
 
 /** List all file paths in a ZIP archive */
-export function zip_list(archive: ZipArchive): string[] {
+export function zipList(archive: ZipArchive): string[] {
 	return Object.keys(archive.files);
 }
 
 /** Check if a file exists in the archive (case-insensitive fallback) */
-export function zip_has(archive: ZipArchive, path: string): boolean {
+export function zipHas(archive: ZipArchive, path: string): boolean {
 	if (archive.files[path]) {
 		return true;
 	}
@@ -92,7 +92,7 @@ export function zip_has(archive: ZipArchive, path: string): boolean {
 }
 
 /** Find a file path in the archive (case-insensitive) */
-export function zip_find(archive: ZipArchive, path: string): string | null {
+export function zipFind(archive: ZipArchive, path: string): string | null {
 	if (archive.files[path]) {
 		return path;
 	}

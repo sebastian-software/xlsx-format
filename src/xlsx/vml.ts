@@ -1,8 +1,7 @@
-import { parsexmltag, tagregex, strip_ns } from "../xml/parser.js";
-import { writetag, writextag } from "../xml/writer.js";
-import { decode_cell, encode_cell } from "../utils/cell.js";
-import { str_match_xml_ns_g } from "../utils/helpers.js";
-import { keys } from "../utils/helpers.js";
+import { parseXmlTag, XML_TAG_REGEX, stripNamespace } from "../xml/parser.js";
+import { writeXmlTag, writeXmlElement } from "../xml/writer.js";
+import { decodeCell, encodeCell } from "../utils/cell.js";
+import { matchXmlTagGlobal, objectKeys } from "../utils/helpers.js";
 import type { WorkSheet } from "../types.js";
 
 const XLMLNS: Record<string, string> = {
@@ -13,18 +12,18 @@ const XLMLNS: Record<string, string> = {
 };
 
 /** Parse VML drawings (comment shapes) */
-export function parse_vml(data: string, sheet: WorkSheet, comments: any[]): void {
+export function parseVml(data: string, sheet: WorkSheet, comments: any[]): void {
 	let cidx = 0;
-	(str_match_xml_ns_g(data, "(?:shape|rect)") || []).forEach((m) => {
+	(matchXmlTagGlobal(data, "(?:shape|rect)") || []).forEach((m) => {
 		let type = "";
 		let hidden = true;
 		let aidx = -1;
 		let R = -1,
 			C = -1;
 
-		m.replace(tagregex, function (x: string, idx: number): string {
-			const y = parsexmltag(x);
-			switch (strip_ns(y[0])) {
+		m.replace(XML_TAG_REGEX, function (x: string, idx: number): string {
+			const y = parseXmlTag(x);
+			switch (stripNamespace(y[0])) {
 				case "<ClientData":
 					if (y.ObjectType) {
 						type = y.ObjectType;
@@ -54,7 +53,7 @@ export function parse_vml(data: string, sheet: WorkSheet, comments: any[]): void
 
 		switch (type) {
 			case "Note": {
-				const ref = R >= 0 && C >= 0 ? encode_cell({ r: R, c: C }) : comments[cidx]?.ref;
+				const ref = R >= 0 && C >= 0 ? encodeCell({ r: R, c: C }) : comments[cidx]?.ref;
 				const dense = (sheet as any)["!data"] != null;
 				let cell: any;
 				if (dense) {
@@ -73,26 +72,26 @@ export function parse_vml(data: string, sheet: WorkSheet, comments: any[]): void
 	});
 }
 
-function wxt_helper(h: Record<string, string>): string {
-	return keys(h)
+function formatXmlAttributes(h: Record<string, string>): string {
+	return objectKeys(h)
 		.map((k) => " " + k + '="' + h[k] + '"')
 		.join("");
 }
 
-function write_vml_comment(x: [string, any], _shapeid: number): string {
-	const c = decode_cell(x[0]);
+function writeVmlComment(x: [string, any], _shapeid: number): string {
+	const c = decodeCell(x[0]);
 	const fillopts: any = { color2: "#BEFF82", type: "gradient" };
 	if (fillopts.type === "gradient") {
 		fillopts.angle = "-180";
 	}
 	const fillparm =
-		fillopts.type === "gradient" ? writextag("o:fill", null, { type: "gradientUnscaled", "v:ext": "view" }) : null;
-	const fillxml = writextag("v:fill", fillparm, fillopts);
+		fillopts.type === "gradient" ? writeXmlElement("o:fill", null, { type: "gradientUnscaled", "v:ext": "view" }) : null;
+	const fillxml = writeXmlElement("v:fill", fillparm, fillopts);
 	const shadata: any = { on: "t", obscured: "t" };
 
 	return [
 		"<v:shape" +
-			wxt_helper({
+			formatXmlAttributes({
 				id: "_x0000_s" + _shapeid,
 				type: "#_x0000_t202",
 				style:
@@ -103,16 +102,16 @@ function write_vml_comment(x: [string, any], _shapeid: number): string {
 			}) +
 			">",
 		fillxml,
-		writextag("v:shadow", null, shadata),
-		writextag("v:path", null, { "o:connecttype": "none" }),
+		writeXmlElement("v:shadow", null, shadata),
+		writeXmlElement("v:path", null, { "o:connecttype": "none" }),
 		'<v:textbox><div style="text-align:left"></div></v:textbox>',
 		'<x:ClientData ObjectType="Note">',
 		"<x:MoveWithCells/>",
 		"<x:SizeWithCells/>",
-		writetag("x:Anchor", [c.c + 1, 0, c.r + 1, 0, c.c + 3, 20, c.r + 5, 20].join(",")),
-		writetag("x:AutoFill", "False"),
-		writetag("x:Row", String(c.r)),
-		writetag("x:Column", String(c.c)),
+		writeXmlTag("x:Anchor", [c.c + 1, 0, c.r + 1, 0, c.c + 3, 20, c.r + 5, 20].join(",")),
+		writeXmlTag("x:AutoFill", "False"),
+		writeXmlTag("x:Row", String(c.r)),
+		writeXmlTag("x:Column", String(c.c)),
 		x[1].hidden ? "" : "<x:Visible/>",
 		"</x:ClientData>",
 		"</v:shape>",
@@ -120,17 +119,17 @@ function write_vml_comment(x: [string, any], _shapeid: number): string {
 }
 
 /** Write VML for comment boxes */
-export function write_vml(rId: number, comments: [string, any][]): string {
+export function writeVml(rId: number, comments: [string, any][]): string {
 	const csize = [21600, 21600];
 	const bbox = ["m0,0l0", csize[1], csize[0], csize[1], csize[0], "0xe"].join(",");
 	const o: string[] = [
-		writextag("xml", null, {
+		writeXmlElement("xml", null, {
 			"xmlns:v": XLMLNS.v,
 			"xmlns:o": XLMLNS.o,
 			"xmlns:x": XLMLNS.x,
 			"xmlns:mv": XLMLNS.mv,
 		}).replace(/\/>/, ">"),
-		writextag("o:shapelayout", writextag("o:idmap", null, { "v:ext": "edit", data: String(rId) }), {
+		writeXmlElement("o:shapelayout", writeXmlElement("o:idmap", null, { "v:ext": "edit", data: String(rId) }), {
 			"v:ext": "edit",
 		}),
 	];
@@ -140,11 +139,11 @@ export function write_vml(rId: number, comments: [string, any][]): string {
 
 	if (_comments.length > 0) {
 		o.push(
-			writextag(
+			writeXmlElement(
 				"v:shapetype",
 				[
-					writextag("v:stroke", null, { joinstyle: "miter" }),
-					writextag("v:path", null, { gradientshapeok: "t", "o:connecttype": "rect" }),
+					writeXmlElement("v:stroke", null, { joinstyle: "miter" }),
+					writeXmlElement("v:path", null, { gradientshapeok: "t", "o:connecttype": "rect" }),
 				].join(""),
 				{
 					id: "_x0000_t202",
@@ -158,7 +157,7 @@ export function write_vml(rId: number, comments: [string, any][]): string {
 
 	_comments.forEach((x) => {
 		++_shapeid;
-		o.push(write_vml_comment(x, _shapeid));
+		o.push(writeVmlComment(x, _shapeid));
 	});
 	o.push("</xml>");
 	return o.join("");

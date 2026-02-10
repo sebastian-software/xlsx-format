@@ -1,9 +1,9 @@
-import { parsexmltag, tagregex, XML_HEADER, strip_ns } from "../xml/parser.js";
-import { unescapexml, escapexml } from "../xml/escape.js";
-import { writetag, writextag } from "../xml/writer.js";
+import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace } from "../xml/parser.js";
+import { unescapeXml, escapeXml } from "../xml/escape.js";
+import { writeXmlTag, writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main, XMLNS } from "../xml/namespaces.js";
-import { decode_cell, encode_cell, encode_range, safe_decode_range } from "../utils/cell.js";
-import { str_match_xml_ns } from "../utils/helpers.js";
+import { decodeCell, encodeCell, encodeRange, safeDecodeRange } from "../utils/cell.js";
+import { matchXmlTagFirst } from "../utils/helpers.js";
 import type { WorkSheet } from "../types.js";
 
 export interface RawComment {
@@ -17,7 +17,7 @@ export interface RawComment {
 }
 
 /** Insert parsed comments into a worksheet */
-export function sheet_insert_comments(
+export function insertCommentsIntoSheet(
 	sheet: WorkSheet,
 	comments: RawComment[],
 	threaded: boolean,
@@ -25,7 +25,7 @@ export function sheet_insert_comments(
 ): void {
 	const dense = (sheet as any)["!data"] != null;
 	for (const comment of comments) {
-		const r = decode_cell(comment.ref);
+		const r = decodeCell(comment.ref);
 		if (r.r < 0 || r.c < 0) {
 			continue;
 		}
@@ -46,7 +46,7 @@ export function sheet_insert_comments(
 			} else {
 				(sheet as any)[comment.ref] = cell;
 			}
-			const range = safe_decode_range(sheet["!ref"] || "BDWGO1000001:A1");
+			const range = safeDecodeRange(sheet["!ref"] || "BDWGO1000001:A1");
 			if (range.s.r > r.r) {
 				range.s.r = r.r;
 			}
@@ -59,7 +59,7 @@ export function sheet_insert_comments(
 			if (range.e.c < r.c) {
 				range.e.c = r.c;
 			}
-			sheet["!ref"] = encode_range(range);
+			sheet["!ref"] = encodeRange(range);
 		}
 
 		if (!cell.c) {
@@ -97,19 +97,19 @@ function parse_si_simple(x: string): { t: string; r: string; h: string } {
 		return { t: "", r: "", h: "" };
 	}
 	const tMatch = x.match(/<(?:\w+:)?t[^>]*>([^<]*)<\/(?:\w+:)?t>/);
-	const t = tMatch ? unescapexml(tMatch[1]) : "";
+	const t = tMatch ? unescapeXml(tMatch[1]) : "";
 	return { t, r: x, h: t };
 }
 
 /** Parse comments XML (18.7) */
-export function parse_comments_xml(data: string, opts?: any): RawComment[] {
+export function parseCommentsXml(data: string, opts?: any): RawComment[] {
 	if (data.match(/<(?:\w+:)?comments\s*\/>/)) {
 		return [];
 	}
 	const authors: string[] = [];
 	const commentList: RawComment[] = [];
 
-	const authtag = str_match_xml_ns(data, "authors");
+	const authtag = matchXmlTagFirst(data, "authors");
 	if (authtag) {
 		authtag.split(/<\/\w*:?author>/).forEach((x) => {
 			if (x === "" || x.trim() === "") {
@@ -122,7 +122,7 @@ export function parse_comments_xml(data: string, opts?: any): RawComment[] {
 		});
 	}
 
-	const cmnttag = str_match_xml_ns(data, "commentList");
+	const cmnttag = matchXmlTagFirst(data, "commentList");
 	if (cmnttag) {
 		cmnttag.split(/<\/\w*:?comment>/).forEach((x) => {
 			if (x === "" || x.trim() === "") {
@@ -132,18 +132,18 @@ export function parse_comments_xml(data: string, opts?: any): RawComment[] {
 			if (!cm) {
 				return;
 			}
-			const y = parsexmltag(cm[0]);
+			const y = parseXmlTag(cm[0]);
 			const comment: RawComment = {
 				author: (y.authorId && authors[y.authorId]) || "sheetjsghost",
 				ref: y.ref,
 				guid: y.guid,
 				t: "",
 			};
-			const cell = decode_cell(y.ref);
+			const cell = decodeCell(y.ref);
 			if (opts && opts.sheetRows && opts.sheetRows <= cell.r) {
 				return;
 			}
-			const textMatch = str_match_xml_ns(x, "text");
+			const textMatch = matchXmlTagFirst(x, "text");
 			const rt = textMatch ? parse_si_simple(textMatch) : { r: "", t: "", h: "" };
 			comment.r = rt.r;
 			if (rt.r === "<t></t>") {
@@ -161,14 +161,14 @@ export function parse_comments_xml(data: string, opts?: any): RawComment[] {
 }
 
 /** Write comments XML */
-export function write_comments_xml(data: [string, any[]][]): string {
-	const o: string[] = [XML_HEADER, writextag("comments", null, { xmlns: XMLNS_main[0] })];
+export function writeCommentsXml(data: [string, any[]][]): string {
+	const o: string[] = [XML_HEADER, writeXmlElement("comments", null, { xmlns: XMLNS_main[0] })];
 
 	const iauthor: string[] = [];
 	o.push("<authors>");
 	data.forEach((x) => {
 		x[1].forEach((w: any) => {
-			const a = escapexml(w.a);
+			const a = escapeXml(w.a);
 			if (iauthor.indexOf(a) === -1) {
 				iauthor.push(a);
 				o.push("<author>" + a + "</author>");
@@ -195,17 +195,17 @@ export function write_comments_xml(data: [string, any[]][]): string {
 		}
 		d[1].forEach((c: any) => {
 			if (c.a) {
-				lastauthor = iauthor.indexOf(escapexml(c.a));
+				lastauthor = iauthor.indexOf(escapeXml(c.a));
 			}
 			if (c.T) {
 				++tcnt;
 			}
-			ts.push(c.t == null ? "" : escapexml(c.t));
+			ts.push(c.t == null ? "" : escapeXml(c.t));
 		});
 		if (tcnt === 0) {
 			d[1].forEach((c: any) => {
-				o.push('<comment ref="' + d[0] + '" authorId="' + iauthor.indexOf(escapexml(c.a)) + '"><text>');
-				o.push(writetag("t", c.t == null ? "" : escapexml(c.t)));
+				o.push('<comment ref="' + d[0] + '" authorId="' + iauthor.indexOf(escapeXml(c.a)) + '"><text>');
+				o.push(writeXmlTag("t", c.t == null ? "" : escapeXml(c.t)));
 				o.push("</text></comment>");
 			});
 		} else {
@@ -217,7 +217,7 @@ export function write_comments_xml(data: [string, any[]][]): string {
 			for (let i = 1; i < ts.length; ++i) {
 				t += "Reply:\n    " + ts[i] + "\n";
 			}
-			o.push(writetag("t", escapexml(t)));
+			o.push(writeXmlTag("t", escapeXml(t)));
 			o.push("</text></comment>");
 		}
 	});
@@ -230,15 +230,15 @@ export function write_comments_xml(data: [string, any[]][]): string {
 }
 
 /** Parse threaded comments XML [MS-XLSX] 2.1.17 */
-export function parse_tcmnt_xml(data: string, opts?: any): RawComment[] {
+export function parseTcmntXml(data: string, opts?: any): RawComment[] {
 	const out: RawComment[] = [];
 	let pass = false;
 	let comment: any = {};
 	let tidx = 0;
 
-	data.replace(tagregex, function xml_tcmnt(x: string, idx: number): string {
-		const y: any = parsexmltag(x);
-		switch (strip_ns(y[0])) {
+	data.replace(XML_TAG_REGEX, function xml_tcmnt(x: string, idx: number): string {
+		const y: any = parseXmlTag(x);
+		switch (stripNamespace(y[0])) {
 			case "<?xml":
 				break;
 			case "<ThreadedComments":
@@ -286,8 +286,8 @@ export function parse_tcmnt_xml(data: string, opts?: any): RawComment[] {
 }
 
 /** Write threaded comments XML */
-export function write_tcmnt_xml(comments: [string, any[]][], people: string[], opts: { tcid: number }): string {
-	const o: string[] = [XML_HEADER, writextag("ThreadedComments", null, { xmlns: XMLNS.TCMNT }).replace(/[/]>/, ">")];
+export function writeTcmntXml(comments: [string, any[]][], people: string[], opts: { tcid: number }): string {
+	const o: string[] = [XML_HEADER, writeXmlElement("ThreadedComments", null, { xmlns: XMLNS.TCMNT }).replace(/[/]>/, ">")];
 	comments.forEach((carr) => {
 		let rootid = "";
 		(carr[1] || []).forEach((c: any, idx: number) => {
@@ -311,7 +311,7 @@ export function write_tcmnt_xml(comments: [string, any[]][], people: string[], o
 			if (c.a) {
 				tcopts.personId = "{54EE7950-7262-4200-6969-" + ("000000000000" + people.indexOf(c.a)).slice(-12) + "}";
 			}
-			o.push(writextag("threadedComment", writetag("text", c.t || ""), tcopts));
+			o.push(writeXmlElement("threadedComment", writeXmlTag("text", c.t || ""), tcopts));
 		});
 	});
 	o.push("</ThreadedComments>");
@@ -319,12 +319,12 @@ export function write_tcmnt_xml(comments: [string, any[]][], people: string[], o
 }
 
 /** Parse people XML [MS-XLSX] 2.1.18 */
-export function parse_people_xml(data: string): { name: string; id: string }[] {
+export function parsePeopleXml(data: string): { name: string; id: string }[] {
 	const out: { name: string; id: string }[] = [];
 	let pass = false;
-	data.replace(tagregex, function xml_people(x: string): string {
-		const y: any = parsexmltag(x);
-		switch (strip_ns(y[0])) {
+	data.replace(XML_TAG_REGEX, function xml_people(x: string): string {
+		const y: any = parseXmlTag(x);
+		switch (stripNamespace(y[0])) {
 			case "<?xml":
 				break;
 			case "<personList":
@@ -355,17 +355,17 @@ export function parse_people_xml(data: string): { name: string; id: string }[] {
 }
 
 /** Write people XML */
-export function write_people_xml(people: string[]): string {
+export function writePeopleXml(people: string[]): string {
 	const o: string[] = [
 		XML_HEADER,
-		writextag("personList", null, {
+		writeXmlElement("personList", null, {
 			xmlns: XMLNS.TCMNT,
 			"xmlns:x": XMLNS_main[0],
 		}).replace(/[/]>/, ">"),
 	];
 	people.forEach((person, idx) => {
 		o.push(
-			writextag("person", null, {
+			writeXmlElement("person", null, {
 				displayName: person,
 				id: "{54EE7950-7262-4200-6969-" + ("000000000000" + idx).slice(-12) + "}",
 				userId: person,

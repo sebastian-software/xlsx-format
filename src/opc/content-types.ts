@@ -1,11 +1,11 @@
-import { parsexmltag, XML_HEADER, tagregex } from "../xml/parser.js";
-import { writextag } from "../xml/writer.js";
+import { parseXmlTag, XML_HEADER, XML_TAG_REGEX } from "../xml/parser.js";
+import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS } from "../xml/namespaces.js";
 
 const nsregex = /<(\w+):/;
 
 /** Map content types to internal categories */
-const ct2type: Record<string, string> = {
+const CONTENT_TYPE_MAP: Record<string, string> = {
 	"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml": "workbooks",
 	"application/vnd.ms-excel.sheet.macroEnabled.main+xml": "workbooks",
 	"application/vnd.ms-excel.sheet.binary.macroEnabled.main": "workbooks",
@@ -101,7 +101,7 @@ export interface ContentTypes {
 	defaults?: Record<string, string>;
 }
 
-export function new_ct(): ContentTypes {
+export function createContentTypes(): ContentTypes {
 	return {
 		workbooks: [],
 		sheets: [],
@@ -127,15 +127,15 @@ export function new_ct(): ContentTypes {
 	};
 }
 
-export function parse_ct(data: string | null | undefined): ContentTypes {
-	const ct = new_ct();
+export function parseContentTypes(data: string | null | undefined): ContentTypes {
+	const ct = createContentTypes();
 	if (!data) {
 		return ct;
 	}
 	const ctext: Record<string, string> = {};
-	const matches = data.match(tagregex) || [];
+	const matches = data.match(XML_TAG_REGEX) || [];
 	for (const x of matches) {
-		const y = parsexmltag(x);
+		const y = parseXmlTag(x);
 		switch ((y[0] as string).replace(nsregex, "<")) {
 			case "<?xml":
 				break;
@@ -146,8 +146,8 @@ export function parse_ct(data: string | null | undefined): ContentTypes {
 				ctext[y.Extension.toLowerCase()] = y.ContentType;
 				break;
 			case "<Override":
-				if (ct2type[y.ContentType] && (ct as any)[ct2type[y.ContentType]] !== undefined) {
-					(ct as any)[ct2type[y.ContentType]].push(y.PartName);
+				if (CONTENT_TYPE_MAP[y.ContentType] && (ct as any)[CONTENT_TYPE_MAP[y.ContentType]] !== undefined) {
+					(ct as any)[CONTENT_TYPE_MAP[y.ContentType]].push(y.PartName);
 				}
 				break;
 		}
@@ -163,7 +163,7 @@ export function parse_ct(data: string | null | undefined): ContentTypes {
 }
 
 /** Build reverse map from type category to content-type strings */
-function evert_arr(obj: Record<string, string>): Record<string, string[]> {
+function invertToArrayMap(obj: Record<string, string>): Record<string, string[]> {
 	const o: Record<string, string[]> = {};
 	for (const [k, v] of Object.entries(obj)) {
 		if (!o[v]) {
@@ -174,13 +174,13 @@ function evert_arr(obj: Record<string, string>): Record<string, string[]> {
 	return o;
 }
 
-export function write_ct(ct: ContentTypes, opts: { bookType?: string }): string {
-	const type2ct = evert_arr(ct2type);
+export function writeContentTypes(ct: ContentTypes, opts: { bookType?: string }): string {
+	const type2ct = invertToArrayMap(CONTENT_TYPE_MAP);
 	const o: string[] = [];
 
 	o.push(XML_HEADER);
 	o.push(
-		writextag("Types", null, {
+		writeXmlElement("Types", null, {
 			xmlns: XMLNS.CT,
 			"xmlns:xsd": XMLNS.xsd,
 			"xmlns:xsi": XMLNS.xsi,
@@ -206,14 +206,14 @@ export function write_ct(ct: ContentTypes, opts: { bookType?: string }): string 
 	];
 
 	for (const [ext, contentType] of defaults) {
-		o.push(writextag("Default", null, { Extension: ext, ContentType: contentType }));
+		o.push(writeXmlElement("Default", null, { Extension: ext, ContentType: contentType }));
 	}
 
 	const f1 = (w: string) => {
 		if ((ct as any)[w] && (ct as any)[w].length > 0) {
 			const v = (ct as any)[w][0];
 			o.push(
-				writextag("Override", null, {
+				writeXmlElement("Override", null, {
 					PartName: (v[0] === "/" ? "" : "/") + v,
 					ContentType: CT_LIST[w]?.[opts.bookType || "xlsx"] || CT_LIST[w]?.["xlsx"],
 				}),
@@ -224,7 +224,7 @@ export function write_ct(ct: ContentTypes, opts: { bookType?: string }): string 
 	const f2 = (w: string) => {
 		for (const v of (ct as any)[w] || []) {
 			o.push(
-				writextag("Override", null, {
+				writeXmlElement("Override", null, {
 					PartName: (v[0] === "/" ? "" : "/") + v,
 					ContentType: CT_LIST[w]?.[opts.bookType || "xlsx"] || CT_LIST[w]?.["xlsx"],
 				}),
@@ -235,7 +235,7 @@ export function write_ct(ct: ContentTypes, opts: { bookType?: string }): string 
 	const f3 = (t: string) => {
 		for (const v of (ct as any)[t] || []) {
 			o.push(
-				writextag("Override", null, {
+				writeXmlElement("Override", null, {
 					PartName: (v[0] === "/" ? "" : "/") + v,
 					ContentType: type2ct[t]?.[0],
 				}),

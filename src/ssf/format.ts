@@ -1,11 +1,11 @@
 /* ssf.js (C) 2013-present SheetJS -- http://sheetjs.com */
 /* Ported to TypeScript for xlsx-format. 1:1 faithful port. */
 
-import { datenum } from "../utils/date.js";
-import { fill } from "../utils/helpers.js";
-import { table_fmt, SSF_default_map, SSF_default_str } from "./table.js";
+import { dateToSerialNumber } from "../utils/date.js";
+import { repeatChar } from "../utils/helpers.js";
+import { formatTable, DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS } from "./table.js";
 
-function _strrev(x: string): string {
+function reverseString(x: string): string {
 	let o = "";
 	let i = x.length - 1;
 	while (i >= 0) {
@@ -13,36 +13,36 @@ function _strrev(x: string): string {
 	}
 	return o;
 }
-function pad0(v: any, d: number): string {
+function padWithZeros(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : fill("0", d - t.length) + t;
+	return t.length >= d ? t : repeatChar("0", d - t.length) + t;
 }
-function pad_(v: any, d: number): string {
+function padWithSpaces(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : fill(" ", d - t.length) + t;
+	return t.length >= d ? t : repeatChar(" ", d - t.length) + t;
 }
-function rpad_(v: any, d: number): string {
+function rightPadWithSpaces(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : t + fill(" ", d - t.length);
+	return t.length >= d ? t : t + repeatChar(" ", d - t.length);
 }
-function pad0r1(v: any, d: number): string {
+function padRoundedZeros1(v: any, d: number): string {
 	const t = "" + Math.round(v);
-	return t.length >= d ? t : fill("0", d - t.length) + t;
+	return t.length >= d ? t : repeatChar("0", d - t.length) + t;
 }
-function pad0r2(v: any, d: number): string {
+function padRoundedZeros2(v: any, d: number): string {
 	const t = "" + v;
-	return t.length >= d ? t : fill("0", d - t.length) + t;
+	return t.length >= d ? t : repeatChar("0", d - t.length) + t;
 }
 const p2_32 = Math.pow(2, 32);
-function pad0r(v: any, d: number): string {
+function padRoundedZeros(v: any, d: number): string {
 	if (v > p2_32 || v < -p2_32) {
-		return pad0r1(v, d);
+		return padRoundedZeros1(v, d);
 	}
 	const i = Math.round(v);
-	return pad0r2(i, d);
+	return padRoundedZeros2(i, d);
 }
 
-function SSF_isgeneral(s: string, i?: number): boolean {
+function isGeneralFormat(s: string, i?: number): boolean {
 	i = i || 0;
 	return (
 		s.length >= 7 + i &&
@@ -93,18 +93,18 @@ interface SSFDateVal {
 	q: number;
 }
 
-function SSF_normalize_xl_unsafe(v: number): number {
+function normalizeExcelNumber(v: number): number {
 	const s = v.toPrecision(16);
 	if (s.indexOf("e") > -1) {
 		const m = s.slice(0, s.indexOf("e"));
 		const ml =
 			m.indexOf(".") > -1
 				? m.slice(0, m.slice(0, 2) === "0." ? 17 : 16)
-				: m.slice(0, 15) + fill("0", m.length - 15);
+				: m.slice(0, 15) + repeatChar("0", m.length - 15);
 		return +ml + +("1" + s.slice(s.indexOf("e"))) - 1 || +s;
 	}
 	const n =
-		s.indexOf(".") > -1 ? s.slice(0, s.slice(0, 2) === "0." ? 17 : 16) : s.slice(0, 15) + fill("0", s.length - 15);
+		s.indexOf(".") > -1 ? s.slice(0, s.slice(0, 2) === "0." ? 17 : 16) : s.slice(0, 15) + repeatChar("0", s.length - 15);
 	return Number(n);
 }
 
@@ -117,11 +117,11 @@ function SSF_fix_hijri(_date: Date, o: number[]): number {
 	return dow;
 }
 
-export function SSF_parse_date_code(v: number, opts?: any, b2?: boolean): SSFDateVal | null {
+export function parseExcelDateCode(v: number, opts?: any, b2?: boolean): SSFDateVal | null {
 	if (v > 2958465 || v < 0) {
 		return null;
 	}
-	v = SSF_normalize_xl_unsafe(v);
+	v = normalizeExcelNumber(v);
 	let date = v | 0;
 	let time = Math.floor(86400 * (v - date));
 	const out: SSFDateVal = {
@@ -249,7 +249,7 @@ function SSF_general(v: any, opts: any): string {
 				return "";
 			}
 			if (v instanceof Date) {
-				return SSF_format(14, datenum(v, opts && opts.date1904), opts);
+				return formatNumber(14, dateToSerialNumber(v, opts && opts.date1904), opts);
 			}
 	}
 	throw new Error("unsupported value in General format: " + v);
@@ -345,7 +345,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 				throw new Error("bad second format: " + fmt);
 			}
 			if (val.u === 0 && (fmt === "s" || fmt === "ss")) {
-				return pad0(val.S, fmt.length);
+				return padWithZeros(val.S, fmt.length);
 			}
 			if (ss0! >= 2) {
 				tt = ss0 === 3 ? 1000 : 100;
@@ -359,7 +359,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 			if (fmt === "s") {
 				return ss === 0 ? "0" : "" + ss / tt;
 			}
-			o = pad0(ss, 2 + ss0!);
+			o = padWithZeros(ss, 2 + ss0!);
 			if (fmt === "ss") {
 				return o.substring(0, 2);
 			}
@@ -388,7 +388,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 			outl = 1;
 			break;
 	}
-	return outl > 0 ? pad0(out, outl) : "";
+	return outl > 0 ? padWithZeros(out, outl) : "";
 }
 
 function commaify(s: string): string {
@@ -408,7 +408,7 @@ const pct1 = /%/g;
 function write_num_pct(type: string, fmt: string, val: number): string {
 	const sfmt = fmt.replace(pct1, "");
 	const mul = fmt.length - sfmt.length;
-	return write_num(type, sfmt, val * Math.pow(10, 2 * mul)) + fill("%", mul);
+	return write_num(type, sfmt, val * Math.pow(10, 2 * mul)) + repeatChar("%", mul);
 }
 function write_num_cm(type: string, fmt: string, val: number): string {
 	let idx = fmt.length - 1;
@@ -513,12 +513,12 @@ function write_num_f1(r: string[], aval: number, sign: string): string {
 		(base === 0 ? "" : "" + base) +
 		" " +
 		(myn === 0
-			? fill(" ", r[1].length + 1 + r[4].length)
-			: pad_(myn, r[1].length) + r[2] + "/" + r[3] + pad0(myd, r[4].length))
+			? repeatChar(" ", r[1].length + 1 + r[4].length)
+			: padWithSpaces(myn, r[1].length) + r[2] + "/" + r[3] + padWithZeros(myd, r[4].length))
 	);
 }
 function write_num_f2(r: string[], aval: number, sign: string): string {
-	return sign + (aval === 0 ? "" : "" + aval) + fill(" ", r[1].length + 2 + r[4].length);
+	return sign + (aval === 0 ? "" : "" + aval) + repeatChar(" ", r[1].length + 2 + r[4].length);
 }
 
 const dec1 = /^#*0*\.([0#]+)/;
@@ -598,10 +598,10 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 	const aval = Math.abs(val);
 	const sign = val < 0 ? "-" : "";
 	if (fmt.match(/^00+$/)) {
-		return sign + pad0r(aval, fmt.length);
+		return sign + padRoundedZeros(aval, fmt.length);
 	}
 	if (fmt.match(/^[#?]+$/)) {
-		o = pad0r(val, 0);
+		o = padRoundedZeros(val, 0);
 		if (o === "0") {
 			o = "";
 		}
@@ -611,13 +611,13 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 		return write_num_f1(r, aval, sign);
 	}
 	if (fmt.match(/^#+0+$/)) {
-		return sign + pad0r(aval, fmt.length - fmt.indexOf("0"));
+		return sign + padRoundedZeros(aval, fmt.length - fmt.indexOf("0"));
 	}
 	if ((r = fmt.match(dec1))) {
 		o = rnd(val, r[1].length)
 			.replace(/^([^.]+)$/, "$1." + hashq(r[1]))
 			.replace(/\.$/, "." + hashq(r[1]))
-			.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + fill("0", hashq(r![1]).length - $1.length));
+			.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + repeatChar("0", hashq(r![1]).length - $1.length));
 		return fmt.indexOf("0.") !== -1 ? o : o.replace(/^0\./, ".");
 	}
 	fmt = fmt.replace(/^#+([0.])/, "$1");
@@ -631,23 +631,23 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 		);
 	}
 	if (fmt.match(/^#{1,3},##0(\.?)$/)) {
-		return sign + commaify(pad0r(aval, 0));
+		return sign + commaify(padRoundedZeros(aval, 0));
 	}
 	if ((r = fmt.match(/^#,##0\.([#0]*0)$/))) {
 		return val < 0
 			? "-" + write_num_flt(type, fmt, -val)
 			: commaify("" + (Math.floor(val) + carry(val, r[1].length))) +
 					"." +
-					pad0(dec(val, r[1].length), r[1].length);
+					padWithZeros(dec(val, r[1].length), r[1].length);
 	}
 	if ((r = fmt.match(/^#,#*,#0/))) {
 		return write_num_flt(type, fmt.replace(/^#,#*,/, ""), val);
 	}
 	if ((r = fmt.match(/^([0#]+)(\\?-([0#]+))+$/))) {
-		o = _strrev(write_num_flt(type, fmt.replace(/[\\-]/g, ""), val));
+		o = reverseString(write_num_flt(type, fmt.replace(/[\\-]/g, ""), val));
 		ri = 0;
-		return _strrev(
-			_strrev(fmt.replace(/\\/g, "")).replace(/[0#]/g, (x) => {
+		return reverseString(
+			reverseString(fmt.replace(/\\/g, "")).replace(/[0#]/g, (x) => {
 				return ri < o.length ? o.charAt(ri++) : x === "0" ? "0" : "";
 			}),
 		);
@@ -666,7 +666,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 			oa = oa.substring(0, oa.length - 1) + "0";
 		}
 		o += oa + r[2] + "/" + r[3];
-		oa = rpad_(ff[2], ri);
+		oa = rightPadWithSpaces(ff[2], ri);
 		if (oa.length < r[4].length) {
 			oa = hashq(r[4].substring(r[4].length - oa.length)) + oa;
 		}
@@ -681,12 +681,12 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 			(ff[0] || (ff[1] ? "" : "0")) +
 			" " +
 			(ff[1]
-				? pad_(ff[1], ri) + r[2] + "/" + r[3] + rpad_(ff[2], ri)
-				: fill(" ", 2 * ri + 1 + r[2].length + r[3].length))
+				? padWithSpaces(ff[1], ri) + r[2] + "/" + r[3] + rightPadWithSpaces(ff[2], ri)
+				: repeatChar(" ", 2 * ri + 1 + r[2].length + r[3].length))
 		);
 	}
 	if ((r = fmt.match(/^[#0?]+$/))) {
-		o = pad0r(val, 0);
+		o = padRoundedZeros(val, 0);
 		if (fmt.length <= o.length) {
 			return o;
 		}
@@ -705,9 +705,9 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 			? "-" + write_num_flt(type, fmt, -val)
 			: commaify(flr(val))
 					.replace(/^\d,\d{3}$/, "0$&")
-					.replace(/^\d*$/, ($$) => "00," + ($$.length < 3 ? pad0(0, 3 - $$.length) : "") + $$) +
+					.replace(/^\d*$/, ($$) => "00," + ($$.length < 3 ? padWithZeros(0, 3 - $$.length) : "") + $$) +
 					"." +
-					pad0(ri, r[1].length);
+					padWithZeros(ri, r[1].length);
 	}
 	switch (fmt) {
 		case "###,##0.00":
@@ -715,7 +715,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 		case "###,###":
 		case "##,###":
 		case "#,###": {
-			const x = commaify(pad0r(aval, 0));
+			const x = commaify(padRoundedZeros(aval, 0));
 			return x !== "0" ? sign + x : "";
 		}
 		case "###,###.00":
@@ -753,7 +753,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 	const aval = Math.abs(val);
 	const sign = val < 0 ? "-" : "";
 	if (fmt.match(/^00+$/)) {
-		return sign + pad0(aval, fmt.length);
+		return sign + padWithZeros(aval, fmt.length);
 	}
 	if (fmt.match(/^[#?]+$/)) {
 		o = "" + val;
@@ -766,11 +766,11 @@ function write_num_int(type: string, fmt: string, val: number): string {
 		return write_num_f2(r, aval, sign);
 	}
 	if (fmt.match(/^#+0+$/)) {
-		return sign + pad0(aval, fmt.length - fmt.indexOf("0"));
+		return sign + padWithZeros(aval, fmt.length - fmt.indexOf("0"));
 	}
 	if ((r = fmt.match(dec1))) {
 		o = ("" + val).replace(/^([^.]+)$/, "$1." + hashq(r[1])).replace(/\.$/, "." + hashq(r[1]));
-		o = o.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + fill("0", hashq(r![1]).length - $1.length));
+		o = o.replace(/\.(\d*)$/, ($$, $1) => "." + $1 + repeatChar("0", hashq(r![1]).length - $1.length));
 		return fmt.indexOf("0.") !== -1 ? o : o.replace(/^0\./, ".");
 	}
 	fmt = fmt.replace(/^#+([0.])/, "$1");
@@ -787,16 +787,16 @@ function write_num_int(type: string, fmt: string, val: number): string {
 		return sign + commaify("" + aval);
 	}
 	if ((r = fmt.match(/^#,##0\.([#0]*0)$/))) {
-		return val < 0 ? "-" + write_num_int(type, fmt, -val) : commaify("" + val) + "." + fill("0", r[1].length);
+		return val < 0 ? "-" + write_num_int(type, fmt, -val) : commaify("" + val) + "." + repeatChar("0", r[1].length);
 	}
 	if ((r = fmt.match(/^#,#*,#0/))) {
 		return write_num_int(type, fmt.replace(/^#,#*,/, ""), val);
 	}
 	if ((r = fmt.match(/^([0#]+)(\\?-([0#]+))+$/))) {
-		o = _strrev(write_num_int(type, fmt.replace(/[\\-]/g, ""), val));
+		o = reverseString(write_num_int(type, fmt.replace(/[\\-]/g, ""), val));
 		ri = 0;
-		return _strrev(
-			_strrev(fmt.replace(/\\/g, "")).replace(/[0#]/g, (x) => {
+		return reverseString(
+			reverseString(fmt.replace(/\\/g, "")).replace(/[0#]/g, (x) => {
 				return ri < o.length ? o.charAt(ri++) : x === "0" ? "0" : "";
 			}),
 		);
@@ -815,7 +815,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 			oa = oa.substring(0, oa.length - 1) + "0";
 		}
 		o += oa + r[2] + "/" + r[3];
-		oa = rpad_(ff[2], ri);
+		oa = rightPadWithSpaces(ff[2], ri);
 		if (oa.length < r[4].length) {
 			oa = hashq(r[4].substring(r[4].length - oa.length)) + oa;
 		}
@@ -830,8 +830,8 @@ function write_num_int(type: string, fmt: string, val: number): string {
 			(ff[0] || (ff[1] ? "" : "0")) +
 			" " +
 			(ff[1]
-				? pad_(ff[1], ri) + r[2] + "/" + r[3] + rpad_(ff[2], ri)
-				: fill(" ", 2 * ri + 1 + r[2].length + r[3].length))
+				? padWithSpaces(ff[1], ri) + r[2] + "/" + r[3] + rightPadWithSpaces(ff[2], ri)
+				: repeatChar(" ", 2 * ri + 1 + r[2].length + r[3].length))
 		);
 	}
 	if ((r = fmt.match(/^[#0?]+$/))) {
@@ -853,9 +853,9 @@ function write_num_int(type: string, fmt: string, val: number): string {
 			? "-" + write_num_int(type, fmt, -val)
 			: commaify("" + val)
 					.replace(/^\d,\d{3}$/, "0$&")
-					.replace(/^\d*$/, ($$) => "00," + ($$.length < 3 ? pad0(0, 3 - $$.length) : "") + $$) +
+					.replace(/^\d*$/, ($$) => "00," + ($$.length < 3 ? padWithZeros(0, 3 - $$.length) : "") + $$) +
 					"." +
-					pad0(0, r[1].length);
+					padWithZeros(0, r[1].length);
 	}
 	switch (fmt) {
 		case "###,###":
@@ -907,14 +907,14 @@ function SSF_split_fmt(fmt: string): string[] {
 
 const SSF_abstime = /\[[HhMmSs\u0E0A\u0E19\u0E17]*\]/;
 
-export function fmt_is_date(fmt: string): boolean {
+export function isDateFormat(fmt: string): boolean {
 	let i = 0;
 	let c = "";
 	let o = "";
 	while (i < fmt.length) {
 		switch ((c = fmt.charAt(i))) {
 			case "G":
-				if (SSF_isgeneral(fmt, i)) {
+				if (isGeneralFormat(fmt, i)) {
 					i += 6;
 				}
 				i++;
@@ -1047,7 +1047,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 	while (i < fmt.length) {
 		switch ((c = fmt.charAt(i))) {
 			case "G":
-				if (!SSF_isgeneral(fmt, i)) {
+				if (!isGeneralFormat(fmt, i)) {
 					throw new Error("unrecognized character " + c + " in " + fmt);
 				}
 				out[out.length] = { t: "G", v: "General" };
@@ -1079,7 +1079,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 			case "b":
 				if (fmt.charAt(i + 1) === "1" || fmt.charAt(i + 1) === "2") {
 					if (dt == null) {
-						dt = SSF_parse_date_code(v, opts, fmt.charAt(i + 1) === "2");
+						dt = parseExcelDateCode(v, opts, fmt.charAt(i + 1) === "2");
 						if (dt == null) {
 							return "";
 						}
@@ -1109,7 +1109,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 					return "";
 				}
 				if (dt == null) {
-					dt = SSF_parse_date_code(v, opts);
+					dt = parseExcelDateCode(v, opts);
 					if (dt == null) {
 						return "";
 					}
@@ -1132,7 +1132,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 			case "\u4E0A": {
 				const q: FmtToken = { t: c, v: c };
 				if (dt == null) {
-					dt = SSF_parse_date_code(v, opts);
+					dt = parseExcelDateCode(v, opts);
 				}
 				if (fmt.substring(i, 3).toUpperCase() === "A/P") {
 					if (dt != null) {
@@ -1176,7 +1176,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 				}
 				if (o.match(SSF_abstime)) {
 					if (dt == null) {
-						dt = SSF_parse_date_code(v, opts);
+						dt = parseExcelDateCode(v, opts);
 						if (dt == null) {
 							return "";
 						}
@@ -1185,7 +1185,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 					lst = o.charAt(1);
 				} else if (o.indexOf("$") > -1) {
 					o = (o.match(/\$([^-[\]]*)/) || [])[1] || "$";
-					if (!fmt_is_date(fmt)) {
+					if (!isDateFormat(fmt)) {
 						out[out.length] = { t: "t", v: o };
 					}
 				}
@@ -1344,7 +1344,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 				if (dt.H >= 24) {
 					dt.H = 0;
 					++dt.D;
-					_dt = SSF_parse_date_code(dt.D);
+					_dt = parseExcelDateCode(dt.D);
 					if (_dt) {
 						_dt.u = dt.u;
 						_dt.S = dt.S;
@@ -1381,7 +1381,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 				if (dt.H >= 24) {
 					dt.H = 0;
 					++dt.D;
-					_dt = SSF_parse_date_code(dt.D);
+					_dt = parseExcelDateCode(dt.D);
 					if (_dt) {
 						_dt.u = dt.u;
 						_dt.S = dt.S;
@@ -1639,7 +1639,7 @@ function choose_fmt(f: string, v: any): [number, string] {
 }
 
 /** Format a value using an Excel number format string */
-export function SSF_format(fmt: string | number, v: any, o?: any): string {
+export function formatNumber(fmt: string | number, v: any, o?: any): string {
 	if (o == null) {
 		o = {};
 	}
@@ -1656,24 +1656,24 @@ export function SSF_format(fmt: string | number, v: any, o?: any): string {
 			if (fmt === 14 && o.dateNF) {
 				sfmt = o.dateNF;
 			} else {
-				sfmt = (o.table != null ? o.table : table_fmt)[fmt];
+				sfmt = (o.table != null ? o.table : formatTable)[fmt];
 			}
 			if (sfmt == null) {
-				sfmt = (o.table && o.table[SSF_default_map[fmt]]) || table_fmt[SSF_default_map[fmt]];
+				sfmt = (o.table && o.table[DEFAULT_FORMAT_MAP[fmt]]) || formatTable[DEFAULT_FORMAT_MAP[fmt]];
 			}
 			if (sfmt == null) {
-				sfmt = SSF_default_str[fmt] || "General";
+				sfmt = DEFAULT_FORMAT_STRINGS[fmt] || "General";
 			}
 			break;
 	}
-	if (SSF_isgeneral(sfmt, 0)) {
+	if (isGeneralFormat(sfmt, 0)) {
 		return SSF_general(v, o);
 	}
 	if (v instanceof Date) {
-		v = datenum(v, o.date1904);
+		v = dateToSerialNumber(v, o.date1904);
 	}
 	const f = choose_fmt(sfmt, v);
-	if (SSF_isgeneral(f[1])) {
+	if (isGeneralFormat(f[1])) {
 		return SSF_general(v, o);
 	}
 	if (v === true) {

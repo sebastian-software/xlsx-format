@@ -1,4 +1,4 @@
-import { parsexmltag, tagregex, XML_HEADER, strip_ns } from "../xml/parser.js";
+import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace } from "../xml/parser.js";
 
 export interface XLMeta {
 	Types: { name: string; offsets?: number[] }[];
@@ -7,7 +7,7 @@ export interface XLMeta {
 }
 
 /** Parse metadata XML */
-export function parse_xlmeta_xml(data: string, opts?: any): XLMeta {
+export function parseMetadataXml(data: string, opts?: any): XLMeta {
 	const out: XLMeta = { Types: [], Cell: [], Value: [] };
 	if (!data) {
 		return out;
@@ -17,9 +17,9 @@ export function parse_xlmeta_xml(data: string, opts?: any): XLMeta {
 	let metatype = 2;
 	let lastmeta: any;
 
-	data.replace(tagregex, function (x: string): string {
-		const y: any = parsexmltag(x);
-		switch (strip_ns(y[0])) {
+	data.replace(XML_TAG_REGEX, function (x: string): string {
+		const y: any = parseXmlTag(x);
+		switch (stripNamespace(y[0])) {
 			case "<?xml":
 				break;
 			case "<metadata":
@@ -95,7 +95,7 @@ export function parse_xlmeta_xml(data: string, opts?: any): XLMeta {
 }
 
 /** Write minimal metadata XML for dynamic arrays */
-export function write_xlmeta_xml(): string {
+export function writeMetadataXml(): string {
 	const o: string[] = [XML_HEADER];
 	o.push(
 		'<metadata xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:xlrd="http://schemas.microsoft.com/office/spreadsheetml/2017/richdata" xmlns:xda="http://schemas.microsoft.com/office/spreadsheetml/2017/dynamicarray">\n' +

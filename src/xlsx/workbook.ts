@@ -1,6 +1,6 @@
-import { parsexmltag, tagregex, XML_HEADER, strip_ns, parsexmlbool } from "../xml/parser.js";
-import { unescapexml, escapexml } from "../xml/escape.js";
-import { writextag } from "../xml/writer.js";
+import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace, parseXmlBoolean } from "../xml/parser.js";
+import { unescapeXml, escapeXml } from "../xml/escape.js";
+import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main, XMLNS } from "../xml/namespaces.js";
 import { utf8read } from "../utils/buffer.js";
 import type { WorkBook } from "../types.js";
@@ -78,7 +78,7 @@ const CalcPrDef: [string, any, string?][] = [
 	["refMode", "A1"],
 ];
 
-function push_defaults_array(target: any[], defaults: [string, any, string?][]): void {
+function applyDefaultsToArray(target: any[], defaults: [string, any, string?][]): void {
 	for (let j = 0; j < target.length; ++j) {
 		const w = target[j];
 		for (let i = 0; i < defaults.length; ++i) {
@@ -89,7 +89,7 @@ function push_defaults_array(target: any[], defaults: [string, any, string?][]):
 				switch (z[2]) {
 					case "bool":
 						if (typeof w[z[0]] === "string") {
-							w[z[0]] = parsexmlbool(w[z[0]]);
+							w[z[0]] = parseXmlBoolean(w[z[0]]);
 						}
 						break;
 					case "int":
@@ -103,7 +103,7 @@ function push_defaults_array(target: any[], defaults: [string, any, string?][]):
 	}
 }
 
-function push_defaults(target: Record<string, any>, defaults: [string, any, string?][]): void {
+function applyDefaults(target: Record<string, any>, defaults: [string, any, string?][]): void {
 	for (let i = 0; i < defaults.length; ++i) {
 		const z = defaults[i];
 		if (target[z[0]] == null) {
@@ -112,7 +112,7 @@ function push_defaults(target: Record<string, any>, defaults: [string, any, stri
 			switch (z[2]) {
 				case "bool":
 					if (typeof target[z[0]] === "string") {
-						target[z[0]] = parsexmlbool(target[z[0]]);
+						target[z[0]] = parseXmlBoolean(target[z[0]]);
 					}
 					break;
 				case "int":
@@ -126,25 +126,25 @@ function push_defaults(target: Record<string, any>, defaults: [string, any, stri
 }
 
 export function parse_wb_defaults(wb: WorkbookFile): void {
-	push_defaults(wb.WBProps, WBPropsDef);
-	push_defaults(wb.CalcPr, CalcPrDef);
-	push_defaults_array(wb.WBView, WBViewDef);
-	push_defaults_array(wb.Sheets, SheetDef);
+	applyDefaults(wb.WBProps, WBPropsDef);
+	applyDefaults(wb.CalcPr, CalcPrDef);
+	applyDefaultsToArray(wb.WBView, WBViewDef);
+	applyDefaultsToArray(wb.Sheets, SheetDef);
 }
 
-export function safe1904(wb: WorkBook): string {
+export function is1904DateSystem(wb: WorkBook): string {
 	if (!wb.Workbook) {
 		return "false";
 	}
 	if (!wb.Workbook.WBProps) {
 		return "false";
 	}
-	return parsexmlbool(wb.Workbook.WBProps.date1904) ? "true" : "false";
+	return parseXmlBoolean(wb.Workbook.WBProps.date1904) ? "true" : "false";
 }
 
 const badchars = ":][*?/\\".split("");
 
-export function check_ws_name(n: string, safe?: boolean): boolean {
+export function validateSheetName(n: string, safe?: boolean): boolean {
 	try {
 		if (n === "") {
 			throw new Error("Sheet name cannot be blank");
@@ -172,9 +172,9 @@ export function check_ws_name(n: string, safe?: boolean): boolean {
 	return true;
 }
 
-export function check_wb_names(N: string[], S?: any[]): void {
+export function validateWorkbookNames(N: string[], S?: any[]): void {
 	for (let i = 0; i < N.length; ++i) {
-		check_ws_name(N[i]);
+		validateSheetName(N[i]);
 		for (let j = 0; j < i; ++j) {
 			if (N[i] === N[j]) {
 				throw new Error("Duplicate Sheet Name: " + N[i]);
@@ -183,7 +183,7 @@ export function check_wb_names(N: string[], S?: any[]): void {
 	}
 }
 
-export function check_wb(wb: WorkBook): void {
+export function validateWorkbook(wb: WorkBook): void {
 	if (!wb || !wb.SheetNames || !wb.Sheets) {
 		throw new Error("Invalid Workbook");
 	}
@@ -191,13 +191,13 @@ export function check_wb(wb: WorkBook): void {
 		throw new Error("Workbook is empty");
 	}
 	const Sheets = (wb.Workbook && wb.Workbook.Sheets) || [];
-	check_wb_names(wb.SheetNames, Sheets);
+	validateWorkbookNames(wb.SheetNames, Sheets);
 }
 
 const wbnsregex = /<\w+:workbook/;
 
 /** Parse a workbook XML file */
-export function parse_wb_xml(data: string, opts?: any): WorkbookFile {
+export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 	if (!data) {
 		throw new Error("Could not find file");
 	}
@@ -215,9 +215,9 @@ export function parse_wb_xml(data: string, opts?: any): WorkbookFile {
 	let dname: any = {};
 	let dnstart = 0;
 
-	data.replace(tagregex, function xml_wb(x: string, idx: number): string {
-		const y: any = parsexmltag(x);
-		switch (strip_ns(y[0])) {
+	data.replace(XML_TAG_REGEX, function xml_wb(x: string, idx: number): string {
+		const y: any = parseXmlTag(x);
+		switch (stripNamespace(y[0])) {
 			case "<?xml":
 				break;
 
@@ -250,7 +250,7 @@ export function parse_wb_xml(data: string, opts?: any): WorkbookFile {
 					}
 					switch (w[2]) {
 						case "bool":
-							wb.WBProps[w[0]] = parsexmlbool(y[w[0]]);
+							wb.WBProps[w[0]] = parseXmlBoolean(y[w[0]]);
 							break;
 						case "int":
 							wb.WBProps[w[0]] = parseInt(y[w[0]], 10);
@@ -298,7 +298,7 @@ export function parse_wb_xml(data: string, opts?: any): WorkbookFile {
 						y.Hidden = 0;
 				}
 				delete y.state;
-				y.name = unescapexml(utf8read(y.name));
+				y.name = unescapeXml(utf8read(y.name));
 				delete y[0];
 				wb.Sheets.push(y);
 				break;
@@ -334,14 +334,14 @@ export function parse_wb_xml(data: string, opts?: any): WorkbookFile {
 				if (y.localSheetId) {
 					dname.Sheet = +y.localSheetId;
 				}
-				if (parsexmlbool(y.hidden || "0")) {
+				if (parseXmlBoolean(y.hidden || "0")) {
 					dname.Hidden = true;
 				}
 				dnstart = idx + x.length;
 				break;
 			}
 			case "</definedName>": {
-				dname.Ref = unescapexml(utf8read(data.slice(dnstart, idx)));
+				dname.Ref = unescapeXml(utf8read(data.slice(dnstart, idx)));
 				wb.Names.push(dname);
 				break;
 			}
@@ -437,10 +437,10 @@ export function parse_wb_xml(data: string, opts?: any): WorkbookFile {
 }
 
 /** Write the workbook XML */
-export function write_wb_xml(wb: WorkBook): string {
-	const o: string[] = [XML_HEADER];
-	o.push(
-		writextag("workbook", null, {
+export function writeWorkbookXml(wb: WorkBook): string {
+	const lines: string[] = [XML_HEADER];
+	lines.push(
+		writeXmlElement("workbook", null, {
 			xmlns: XMLNS_main[0],
 			"xmlns:r": XMLNS.r,
 		}),
@@ -468,13 +468,13 @@ export function write_wb_xml(wb: WorkBook): string {
 			delete workbookPr.CodeName;
 		}
 	}
-	o.push(writextag("workbookPr", null, workbookPr));
+	lines.push(writeXmlElement("workbookPr", null, workbookPr));
 
 	const sheets = (wb.Workbook && wb.Workbook.Sheets) || [];
 
 	/* bookViews only written if first worksheet is hidden */
 	if (sheets[0] && !!sheets[0].Hidden) {
-		o.push("<bookViews>");
+		lines.push("<bookViews>");
 		let i = 0;
 		for (i = 0; i < wb.SheetNames.length; ++i) {
 			if (!sheets[i]) {
@@ -487,13 +487,13 @@ export function write_wb_xml(wb: WorkBook): string {
 		if (i === wb.SheetNames.length) {
 			i = 0;
 		}
-		o.push('<workbookView firstSheet="' + i + '" activeTab="' + i + '"/>');
-		o.push("</bookViews>");
+		lines.push('<workbookView firstSheet="' + i + '" activeTab="' + i + '"/>');
+		lines.push("</bookViews>");
 	}
 
-	o.push("<sheets>");
+	lines.push("<sheets>");
 	for (let i = 0; i < wb.SheetNames.length; ++i) {
-		const sht: any = { name: escapexml(wb.SheetNames[i].slice(0, 31)) };
+		const sht: any = { name: escapeXml(wb.SheetNames[i].slice(0, 31)) };
 		sht.sheetId = "" + (i + 1);
 		sht["r:id"] = "rId" + (i + 1);
 		if (sheets[i]) {
@@ -506,12 +506,12 @@ export function write_wb_xml(wb: WorkBook): string {
 					break;
 			}
 		}
-		o.push(writextag("sheet", null, sht));
+		lines.push(writeXmlElement("sheet", null, sht));
 	}
-	o.push("</sheets>");
+	lines.push("</sheets>");
 
 	if (write_names) {
-		o.push("<definedNames>");
+		lines.push("<definedNames>");
 		if (wb.Workbook && wb.Workbook.Names) {
 			wb.Workbook.Names.forEach((n) => {
 				const d: any = { name: n.Name };
@@ -527,15 +527,15 @@ export function write_wb_xml(wb: WorkBook): string {
 				if (!n.Ref) {
 					return;
 				}
-				o.push(writextag("definedName", escapexml(n.Ref), d));
+				lines.push(writeXmlElement("definedName", escapeXml(n.Ref), d));
 			});
 		}
-		o.push("</definedNames>");
+		lines.push("</definedNames>");
 	}
 
-	if (o.length > 2) {
-		o.push("</workbook>");
-		o[1] = o[1].replace("/>", ">");
+	if (lines.length > 2) {
+		lines.push("</workbook>");
+		lines[1] = lines[1].replace("/>", ">");
 	}
-	return o.join("");
+	return lines.join("");
 }

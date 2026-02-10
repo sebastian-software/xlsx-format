@@ -1,4 +1,4 @@
-import { parsexmltag, tagregex } from "../xml/parser.js";
+import { parseXmlTag, XML_TAG_REGEX } from "../xml/parser.js";
 
 export interface CalcChainEntry {
 	r?: string;
@@ -9,14 +9,14 @@ export interface CalcChainEntry {
 }
 
 /** Parse calculation chain XML (18.6) */
-export function parse_cc_xml(data: string): CalcChainEntry[] {
+export function parseCalcChainXml(data: string): CalcChainEntry[] {
 	const d: CalcChainEntry[] = [];
 	if (!data) {
 		return d;
 	}
 	let i: any = 1;
-	(data.match(tagregex) || []).forEach((x) => {
-		const y: any = parsexmltag(x);
+	(data.match(XML_TAG_REGEX) || []).forEach((x) => {
+		const y: any = parseXmlTag(x);
 		switch (y[0]) {
 			case "<?xml":
 				break;
