@@ -17,7 +17,7 @@ export default tseslint.config(
 			},
 		},
 		rules: {
-			// Nötig für den portierten Code — viele intentionale any-Casts
+			// Required for ported code — many intentional any casts
 			"@typescript-eslint/no-explicit-any": "off",
 			"@typescript-eslint/no-unsafe-argument": "off",
 			"@typescript-eslint/no-unsafe-assignment": "off",
@@ -25,27 +25,27 @@ export default tseslint.config(
 			"@typescript-eslint/no-unsafe-member-access": "off",
 			"@typescript-eslint/no-unsafe-return": "off",
 
-			// Portierter Code nutzt non-null assertions bewusst
+			// Ported code uses non-null assertions intentionally
 			"@typescript-eslint/no-non-null-assertion": "off",
 
-			// switch fallthrough ist intentional (SSF, shared-strings)
+			// Switch fallthrough is intentional (SSF, shared-strings)
 			"no-fallthrough": "off",
 
-			// Erlaubt: leere catch-Blöcke für safe_format etc.
+			// Allow empty catch blocks for safe_format etc.
 			"@typescript-eslint/no-empty-function": "off",
 			"no-empty": ["error", { allowEmptyCatch: true }],
 
-			// Portierter Code nutzt Parameter-Reassignment
+			// Ported code uses parameter reassignment
 			"@typescript-eslint/no-unnecessary-condition": "off",
 
-			// Restrict template expressions ist zu streng für den portierten Code
+			// Too strict for ported code
 			"@typescript-eslint/restrict-template-expressions": "off",
 			"@typescript-eslint/restrict-plus-operands": "off",
 
-			// Curly braces immer erforderlich
+			// Always require curly braces
 			curly: "error",
 
-			// Unused vars als Warning
+			// Unused vars as warning only
 			"@typescript-eslint/no-unused-vars": [
 				"warn",
 				{ argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
