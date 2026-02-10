@@ -80,21 +80,21 @@ const CalcPrDef: [string, any, string?][] = [
 
 function applyDefaultsToArray(target: any[], defaults: [string, any, string?][]): void {
 	for (let j = 0; j < target.length; ++j) {
-		const w = target[j];
+		const entry = target[j];
 		for (let i = 0; i < defaults.length; ++i) {
-			const z = defaults[i];
-			if (w[z[0]] == null) {
-				w[z[0]] = z[1];
+			const defaultDef = defaults[i];
+			if (entry[defaultDef[0]] == null) {
+				entry[defaultDef[0]] = defaultDef[1];
 			} else {
-				switch (z[2]) {
+				switch (defaultDef[2]) {
 					case "bool":
-						if (typeof w[z[0]] === "string") {
-							w[z[0]] = parseXmlBoolean(w[z[0]]);
+						if (typeof entry[defaultDef[0]] === "string") {
+							entry[defaultDef[0]] = parseXmlBoolean(entry[defaultDef[0]]);
 						}
 						break;
 					case "int":
-						if (typeof w[z[0]] === "string") {
-							w[z[0]] = parseInt(w[z[0]], 10);
+						if (typeof entry[defaultDef[0]] === "string") {
+							entry[defaultDef[0]] = parseInt(entry[defaultDef[0]], 10);
 						}
 						break;
 				}
@@ -105,19 +105,19 @@ function applyDefaultsToArray(target: any[], defaults: [string, any, string?][])
 
 function applyDefaults(target: Record<string, any>, defaults: [string, any, string?][]): void {
 	for (let i = 0; i < defaults.length; ++i) {
-		const z = defaults[i];
-		if (target[z[0]] == null) {
-			target[z[0]] = z[1];
+		const defaultDef = defaults[i];
+		if (target[defaultDef[0]] == null) {
+			target[defaultDef[0]] = defaultDef[1];
 		} else {
-			switch (z[2]) {
+			switch (defaultDef[2]) {
 				case "bool":
-					if (typeof target[z[0]] === "string") {
-						target[z[0]] = parseXmlBoolean(target[z[0]]);
+					if (typeof target[defaultDef[0]] === "string") {
+						target[defaultDef[0]] = parseXmlBoolean(target[defaultDef[0]]);
 					}
 					break;
 				case "int":
-					if (typeof target[z[0]] === "string") {
-						target[z[0]] = parseInt(target[z[0]], 10);
+					if (typeof target[defaultDef[0]] === "string") {
+						target[defaultDef[0]] = parseInt(target[defaultDef[0]], 10);
 					}
 					break;
 			}
@@ -172,12 +172,12 @@ export function validateSheetName(n: string, safe?: boolean): boolean {
 	return true;
 }
 
-export function validateWorkbookNames(N: string[], S?: any[]): void {
-	for (let i = 0; i < N.length; ++i) {
-		validateSheetName(N[i]);
+export function validateWorkbookNames(sheetNames: string[], sheetEntries?: any[]): void {
+	for (let i = 0; i < sheetNames.length; ++i) {
+		validateSheetName(sheetNames[i]);
 		for (let j = 0; j < i; ++j) {
-			if (N[i] === N[j]) {
-				throw new Error("Duplicate Sheet Name: " + N[i]);
+			if (sheetNames[i] === sheetNames[j]) {
+				throw new Error("Duplicate Sheet Name: " + sheetNames[i]);
 			}
 		}
 	}
@@ -201,7 +201,7 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 	if (!data) {
 		throw new Error("Could not find file");
 	}
-	const wb: WorkbookFile = {
+	const workbook: WorkbookFile = {
 		AppVersion: {},
 		WBProps: {},
 		WBView: [],
@@ -215,24 +215,24 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 	let dname: any = {};
 	let dnstart = 0;
 
-	data.replace(XML_TAG_REGEX, function xml_wb(x: string, idx: number): string {
-		const y: any = parseXmlTag(x);
-		switch (stripNamespace(y[0])) {
+	data.replace(XML_TAG_REGEX, function xml_wb(xmlTag: string, idx: number): string {
+		const parsedTag: any = parseXmlTag(xmlTag);
+		switch (stripNamespace(parsedTag[0])) {
 			case "<?xml":
 				break;
 
 			case "<workbook":
-				if (x.match(wbnsregex)) {
-					xmlns = "xmlns" + x.match(/<(\w+):/)?.[1];
+				if (xmlTag.match(wbnsregex)) {
+					xmlns = "xmlns" + xmlTag.match(/<(\w+):/)?.[1];
 				}
-				wb.xmlns = y[xmlns];
+				workbook.xmlns = parsedTag[xmlns];
 				break;
 			case "</workbook>":
 				break;
 
 			case "<fileVersion":
-				delete y[0];
-				wb.AppVersion = y;
+				delete parsedTag[0];
+				workbook.AppVersion = parsedTag;
 				break;
 			case "<fileVersion/>":
 			case "</fileVersion>":
@@ -244,23 +244,23 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 
 			case "<workbookPr":
 			case "<workbookPr/>":
-				WBPropsDef.forEach((w) => {
-					if (y[w[0]] == null) {
+				WBPropsDef.forEach((propDef) => {
+					if (parsedTag[propDef[0]] == null) {
 						return;
 					}
-					switch (w[2]) {
+					switch (propDef[2]) {
 						case "bool":
-							wb.WBProps[w[0]] = parseXmlBoolean(y[w[0]]);
+							workbook.WBProps[propDef[0]] = parseXmlBoolean(parsedTag[propDef[0]]);
 							break;
 						case "int":
-							wb.WBProps[w[0]] = parseInt(y[w[0]], 10);
+							workbook.WBProps[propDef[0]] = parseInt(parsedTag[propDef[0]], 10);
 							break;
 						default:
-							wb.WBProps[w[0]] = y[w[0]];
+							workbook.WBProps[propDef[0]] = parsedTag[propDef[0]];
 					}
 				});
-				if (y.codeName) {
-					wb.WBProps.CodeName = utf8read(y.codeName);
+				if (parsedTag.codeName) {
+					workbook.WBProps.CodeName = utf8read(parsedTag.codeName);
 				}
 				break;
 			case "</workbookPr>":
@@ -276,8 +276,8 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 				break;
 			case "<workbookView":
 			case "<workbookView/>":
-				delete y[0];
-				wb.WBView.push(y);
+				delete parsedTag[0];
+				workbook.WBView.push(parsedTag);
 				break;
 			case "</workbookView>":
 				break;
@@ -287,20 +287,20 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 			case "</sheets>":
 				break;
 			case "<sheet":
-				switch (y.state) {
+				switch (parsedTag.state) {
 					case "hidden":
-						y.Hidden = 1;
+						parsedTag.Hidden = 1;
 						break;
 					case "veryHidden":
-						y.Hidden = 2;
+						parsedTag.Hidden = 2;
 						break;
 					default:
-						y.Hidden = 0;
+						parsedTag.Hidden = 0;
 				}
-				delete y.state;
-				y.name = unescapeXml(utf8read(y.name));
-				delete y[0];
-				wb.Sheets.push(y);
+				delete parsedTag.state;
+				parsedTag.name = unescapeXml(utf8read(parsedTag.name));
+				delete parsedTag[0];
+				workbook.Sheets.push(parsedTag);
 				break;
 			case "</sheet>":
 				break;
@@ -327,22 +327,22 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 				break;
 			case "<definedName": {
 				dname = {};
-				dname.Name = utf8read(y.name);
-				if (y.comment) {
-					dname.Comment = y.comment;
+				dname.Name = utf8read(parsedTag.name);
+				if (parsedTag.comment) {
+					dname.Comment = parsedTag.comment;
 				}
-				if (y.localSheetId) {
-					dname.Sheet = +y.localSheetId;
+				if (parsedTag.localSheetId) {
+					dname.Sheet = +parsedTag.localSheetId;
 				}
-				if (parseXmlBoolean(y.hidden || "0")) {
+				if (parseXmlBoolean(parsedTag.hidden || "0")) {
 					dname.Hidden = true;
 				}
-				dnstart = idx + x.length;
+				dnstart = idx + xmlTag.length;
 				break;
 			}
 			case "</definedName>": {
 				dname.Ref = unescapeXml(utf8read(data.slice(dnstart, idx)));
-				wb.Names.push(dname);
+				workbook.Names.push(dname);
 				break;
 			}
 			case "<definedName/>":
@@ -350,8 +350,8 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 
 			case "<calcPr":
 			case "<calcPr/>":
-				delete y[0];
-				wb.CalcPr = y;
+				delete parsedTag[0];
+				workbook.CalcPr = parsedTag;
 				break;
 			case "</calcPr>":
 				break;
@@ -424,16 +424,16 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 			default:
 				break;
 		}
-		return x;
+		return xmlTag;
 	});
 
-	if (XMLNS_main.indexOf(wb.xmlns) === -1) {
-		throw new Error("Unknown Namespace: " + wb.xmlns);
+	if (XMLNS_main.indexOf(workbook.xmlns) === -1) {
+		throw new Error("Unknown Namespace: " + workbook.xmlns);
 	}
 
-	parse_wb_defaults(wb);
+	parse_wb_defaults(workbook);
 
-	return wb;
+	return workbook;
 }
 
 /** Write the workbook XML */

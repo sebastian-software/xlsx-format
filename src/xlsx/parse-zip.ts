@@ -76,9 +76,9 @@ function safe_parse_wbrels(wbrels: Relationships, sheets: SheetEntry[]): [string
 		return null;
 	}
 	try {
-		const result: [string, string, string][] = sheets.map((w) => {
-			const id = (w as any).id || (w as any).strRelID;
-			return [w.name, wbrels["!id"][id].Target, get_sheet_type(wbrels["!id"][id].Type)];
+		const result: [string, string, string][] = sheets.map((sheetEntry) => {
+			const id = (sheetEntry as any).id || (sheetEntry as any).strRelID;
+			return [sheetEntry.name, wbrels["!id"][id].Target, get_sheet_type(wbrels["!id"][id].Type)];
 		});
 		return result.length === 0 ? null : result;
 	} catch {
@@ -179,7 +179,7 @@ function safe_parse_sheet(
 /** Parse an XLSX ZIP archive into a WorkBook */
 export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	resetFormatTable();
-	const o: any = opts || {};
+	const options: any = opts || {};
 
 	if (!zipHas(zip, "[Content_Types].xml")) {
 		throw new Error("Unsupported ZIP file");
@@ -201,15 +201,15 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	let styles: StylesData = { NumberFmt: {}, CellXf: [], Fonts: [], Fills: [], Borders: [] };
 	let strs: SST = [] as any;
 
-	if (!o.bookSheets && !o.bookProps) {
+	if (!options.bookSheets && !options.bookProps) {
 		if (dir.sst) {
 			try {
 				const sstData = getZipData(zip, stripLeadingSlash(dir.sst));
 				if (sstData) {
-					strs = parseSstXml(sstData, o);
+					strs = parseSstXml(sstData, options);
 				}
 			} catch (e) {
-				if (o.WTF) {
+				if (options.WTF) {
 					throw e;
 				}
 			}
@@ -226,12 +226,12 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		if (dir.style) {
 			const styData = getZipData(zip, stripLeadingSlash(dir.style));
 			if (styData) {
-				styles = parseStylesXml(styData, themes, o);
+				styles = parseStylesXml(styData, themes, options);
 			}
 		}
 	}
 
-	const wb: WorkbookFile = parseWorkbookXml(getZipData(zip, stripLeadingSlash(dir.workbooks[0]))!, o);
+	const wb: WorkbookFile = parseWorkbookXml(getZipData(zip, stripLeadingSlash(dir.workbooks[0]))!, options);
 
 	const props: any = {};
 	if (dir.coreprops.length) {
@@ -248,38 +248,38 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	}
 
 	let custprops: Record<string, any> = {};
-	if (!o.bookSheets || o.bookProps) {
+	if (!options.bookSheets || options.bookProps) {
 		if (dir.custprops.length) {
 			const custdata = getZipString(zip, stripLeadingSlash(dir.custprops[0]), true);
 			if (custdata) {
-				custprops = parseCustomProperties(custdata, o);
+				custprops = parseCustomProperties(custdata, options);
 			}
 		}
 	}
 
 	const out: any = {};
-	if (o.bookSheets || o.bookProps) {
+	if (options.bookSheets || options.bookProps) {
 		let sheets: string[] | undefined;
 		if (wb.Sheets) {
 			sheets = wb.Sheets.map((x: SheetEntry) => x.name);
 		} else if (props.Worksheets && props.SheetNames?.length > 0) {
 			sheets = props.SheetNames;
 		}
-		if (o.bookProps) {
+		if (options.bookProps) {
 			out.Props = props;
 			out.Custprops = custprops;
 		}
-		if (o.bookSheets && sheets) {
+		if (options.bookSheets && sheets) {
 			out.SheetNames = sheets;
 		}
-		if (o.bookSheets ? out.SheetNames : o.bookProps) {
+		if (options.bookSheets ? out.SheetNames : options.bookProps) {
 			return out as WorkBook;
 		}
 	}
 
 	const sheets: Record<string, WorkSheet> = {};
 
-	if (o.bookDeps && dir.calcchain) {
+	if (options.bookDeps && dir.calcchain) {
 		parseCalcChainXml(getZipData(zip, stripLeadingSlash(dir.calcchain), true) || "");
 	}
 
@@ -305,12 +305,12 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 	// Parse metadata
 	if ((dir.metadata || []).length >= 1) {
-		o.xlmeta = parseMetadataXml(getZipData(zip, stripLeadingSlash(dir.metadata[0]), true) || "", o);
+		options.xlmeta = parseMetadataXml(getZipData(zip, stripLeadingSlash(dir.metadata[0]), true) || "", options);
 	}
 
 	// Parse people (for threaded comments)
 	if ((dir.people || []).length >= 1) {
-		o.people = parsePeopleXml(getZipData(zip, stripLeadingSlash(dir.people[0]), true) || "");
+		options.people = parsePeopleXml(getZipData(zip, stripLeadingSlash(dir.people[0]), true) || "");
 	}
 
 	const wbrelsArr = wbrels ? safe_parse_wbrels(wbrels, wb.Sheets) : null;
@@ -335,16 +335,16 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		}
 
 		// Check sheet filter
-		if (o.sheets != null) {
-			if (typeof o.sheets === "number" && i !== o.sheets) {
+		if (options.sheets != null) {
+			if (typeof options.sheets === "number" && i !== options.sheets) {
 				continue;
 			}
-			if (typeof o.sheets === "string" && props.SheetNames[i].toLowerCase() !== o.sheets.toLowerCase()) {
+			if (typeof options.sheets === "string" && props.SheetNames[i].toLowerCase() !== options.sheets.toLowerCase()) {
 				continue;
 			}
-			if (Array.isArray(o.sheets)) {
+			if (Array.isArray(options.sheets)) {
 				let seen = false;
-				for (const s of o.sheets) {
+				for (const s of options.sheets) {
 					if (typeof s === "number" && s === i) {
 						seen = true;
 					}
@@ -368,7 +368,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 			sheetRels,
 			sheets,
 			stype,
-			o,
+			options,
 			wb,
 			themes,
 			styles,

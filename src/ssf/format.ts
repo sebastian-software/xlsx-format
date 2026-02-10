@@ -5,24 +5,24 @@ import { dateToSerialNumber } from "../utils/date.js";
 import { formatTable, DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS } from "./table.js";
 
 function reverseString(x: string): string {
-	let o = "";
+	let result = "";
 	let i = x.length - 1;
 	while (i >= 0) {
-		o += x.charAt(i--);
+		result += x.charAt(i--);
 	}
-	return o;
+	return result;
 }
-function padWithZeros(v: any, d: number): string {
-	const t = "" + v;
-	return t.length >= d ? t : "0".repeat(d - t.length) + t;
+function padWithZeros(value: any, width: number): string {
+	const str = "" + value;
+	return str.length >= width ? str : "0".repeat(width - str.length) + str;
 }
-function padWithSpaces(v: any, d: number): string {
-	const t = "" + v;
-	return t.length >= d ? t : " ".repeat(d - t.length) + t;
+function padWithSpaces(value: any, width: number): string {
+	const str = "" + value;
+	return str.length >= width ? str : " ".repeat(width - str.length) + str;
 }
-function rightPadWithSpaces(v: any, d: number): string {
-	const t = "" + v;
-	return t.length >= d ? t : t + " ".repeat(d - t.length);
+function rightPadWithSpaces(value: any, width: number): string {
+	const str = "" + value;
+	return str.length >= width ? str : str + " ".repeat(width - str.length);
 }
 function padRoundedZeros1(v: any, d: number): string {
 	const t = "" + Math.round(v);
@@ -80,31 +80,31 @@ const months: string[][] = [
 ];
 
 interface SSFDateVal {
-	D: number;
-	T: number;
-	u: number;
-	y: number;
-	m: number;
-	d: number;
-	H: number;
-	M: number;
-	S: number;
-	q: number;
+	daySerial: number;
+	timeSeconds: number;
+	subSeconds: number;
+	year: number;
+	month: number;
+	day: number;
+	hours: number;
+	minutes: number;
+	seconds: number;
+	dayOfWeek: number;
 }
 
-function normalizeExcelNumber(v: number): number {
-	const s = v.toPrecision(16);
-	if (s.indexOf("e") > -1) {
-		const m = s.slice(0, s.indexOf("e"));
+function normalizeExcelNumber(value: number): number {
+	const precStr = value.toPrecision(16);
+	if (precStr.indexOf("e") > -1) {
+		const mantissa = precStr.slice(0, precStr.indexOf("e"));
 		const ml =
-			m.indexOf(".") > -1
-				? m.slice(0, m.slice(0, 2) === "0." ? 17 : 16)
-				: m.slice(0, 15) + "0".repeat(m.length - 15);
-		return +ml + +("1" + s.slice(s.indexOf("e"))) - 1 || +s;
+			mantissa.indexOf(".") > -1
+				? mantissa.slice(0, mantissa.slice(0, 2) === "0." ? 17 : 16)
+				: mantissa.slice(0, 15) + "0".repeat(mantissa.length - 15);
+		return +ml + +("1" + precStr.slice(precStr.indexOf("e"))) - 1 || +precStr;
 	}
-	const n =
-		s.indexOf(".") > -1 ? s.slice(0, s.slice(0, 2) === "0." ? 17 : 16) : s.slice(0, 15) + "0".repeat(s.length - 15);
-	return Number(n);
+	const normalizedStr =
+		precStr.indexOf(".") > -1 ? precStr.slice(0, precStr.slice(0, 2) === "0." ? 17 : 16) : precStr.slice(0, 15) + "0".repeat(precStr.length - 15);
+	return Number(normalizedStr);
 }
 
 function SSF_fix_hijri(_date: Date, o: number[]): number {
@@ -116,71 +116,71 @@ function SSF_fix_hijri(_date: Date, o: number[]): number {
 	return dow;
 }
 
-export function parseExcelDateCode(v: number, opts?: any, b2?: boolean): SSFDateVal | null {
-	if (v > 2958465 || v < 0) {
+export function parseExcelDateCode(value: number, opts?: any, hijriMode?: boolean): SSFDateVal | null {
+	if (value > 2958465 || value < 0) {
 		return null;
 	}
-	v = normalizeExcelNumber(v);
-	let date = v | 0;
-	let time = Math.floor(86400 * (v - date));
+	value = normalizeExcelNumber(value);
+	let date = value | 0;
+	let time = Math.floor(86400 * (value - date));
 	const out: SSFDateVal = {
-		D: date,
-		T: time,
-		u: 86400 * (v - date) - time,
-		y: 0,
-		m: 0,
-		d: 0,
-		H: 0,
-		M: 0,
-		S: 0,
-		q: 0,
+		daySerial: date,
+		timeSeconds: time,
+		subSeconds: 86400 * (value - date) - time,
+		year: 0,
+		month: 0,
+		day: 0,
+		hours: 0,
+		minutes: 0,
+		seconds: 0,
+		dayOfWeek: 0,
 	};
-	if (Math.abs(out.u) < 1e-6) {
-		out.u = 0;
+	if (Math.abs(out.subSeconds) < 1e-6) {
+		out.subSeconds = 0;
 	}
 	if (opts && opts.date1904) {
 		date += 1462;
 	}
-	if (out.u > 0.9999) {
-		out.u = 0;
+	if (out.subSeconds > 0.9999) {
+		out.subSeconds = 0;
 		if (++time === 86400) {
-			out.T = time = 0;
+			out.timeSeconds = time = 0;
 			++date;
-			++out.D;
+			++out.daySerial;
 		}
 	}
 	let dout: number[];
 	let dow = 0;
 	if (date === 60) {
-		dout = b2 ? [1317, 10, 29] : [1900, 2, 29];
+		dout = hijriMode ? [1317, 10, 29] : [1900, 2, 29];
 		dow = 3;
 	} else if (date === 0) {
-		dout = b2 ? [1317, 8, 29] : [1900, 1, 0];
+		dout = hijriMode ? [1317, 8, 29] : [1900, 1, 0];
 		dow = 6;
 	} else {
 		if (date > 60) {
 			--date;
 		}
-		const d = new Date(1900, 0, 1);
-		d.setDate(d.getDate() + date - 1);
-		dout = [d.getFullYear(), d.getMonth() + 1, d.getDate()];
-		dow = d.getDay();
+		const baseDate = new Date(1900, 0, 1);
+		baseDate.setDate(baseDate.getDate() + date - 1);
+		dout = [baseDate.getFullYear(), baseDate.getMonth() + 1, baseDate.getDate()];
+		dow = baseDate.getDay();
 		if (date < 60) {
 			dow = (dow + 6) % 7;
 		}
-		if (b2) {
-			dow = SSF_fix_hijri(d, dout);
+		if (hijriMode) {
+			dow = SSF_fix_hijri(baseDate, dout);
 		}
 	}
-	out.y = dout[0];
-	out.m = dout[1];
-	out.d = dout[2];
-	out.S = time % 60;
+	out.year = dout[0];
+	out.month = dout[1];
+	out.day = dout[2];
+	out.seconds = time % 60;
 	time = Math.floor(time / 60);
-	out.M = time % 60;
+	out.minutes = time % 60;
 	time = Math.floor(time / 60);
-	out.H = time;
-	out.q = dow;
+	out.hours = time;
+	out.dayOfWeek = dow;
 	return out;
 }
 
@@ -255,26 +255,26 @@ function SSF_general(v: any, opts: any): string {
 }
 
 function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number): string {
-	let o = "";
-	let ss = 0;
-	let tt = 0;
-	let y = val.y;
-	let out: number = 0;
-	let outl = 0;
+	let result = "";
+	let scaledSeconds = 0;
+	let scaleFactor = 0;
+	let year = val.year;
+	let numericOut: number = 0;
+	let outputLength = 0;
 	switch (type) {
 		case 98 /* 'b' buddhist year */:
-			y = val.y + 543;
+			year = val.year + 543;
 		/* falls through */
 		case 121 /* 'y' year */:
 			switch (fmt.length) {
 				case 1:
 				case 2:
-					out = y % 100;
-					outl = 2;
+					numericOut = year % 100;
+					outputLength = 2;
 					break;
 				default:
-					out = y % 10000;
-					outl = 4;
+					numericOut = year % 10000;
+					outputLength = 4;
 					break;
 			}
 			break;
@@ -282,36 +282,36 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 			switch (fmt.length) {
 				case 1:
 				case 2:
-					out = val.m;
-					outl = fmt.length;
+					numericOut = val.month;
+					outputLength = fmt.length;
 					break;
 				case 3:
-					return months[val.m - 1][1];
+					return months[val.month - 1][1];
 				case 5:
-					return months[val.m - 1][0];
+					return months[val.month - 1][0];
 				default:
-					return months[val.m - 1][2];
+					return months[val.month - 1][2];
 			}
 			break;
 		case 100 /* 'd' day */:
 			switch (fmt.length) {
 				case 1:
 				case 2:
-					out = val.d;
-					outl = fmt.length;
+					numericOut = val.day;
+					outputLength = fmt.length;
 					break;
 				case 3:
-					return days[val.q][0];
+					return days[val.dayOfWeek][0];
 				default:
-					return days[val.q][1];
+					return days[val.dayOfWeek][1];
 			}
 			break;
 		case 104 /* 'h' 12-hour */:
 			switch (fmt.length) {
 				case 1:
 				case 2:
-					out = 1 + ((val.H + 11) % 12);
-					outl = fmt.length;
+					numericOut = 1 + ((val.hours + 11) % 12);
+					outputLength = fmt.length;
 					break;
 				default:
 					throw new Error("bad hour format: " + fmt);
@@ -321,8 +321,8 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 			switch (fmt.length) {
 				case 1:
 				case 2:
-					out = val.H;
-					outl = fmt.length;
+					numericOut = val.hours;
+					outputLength = fmt.length;
 					break;
 				default:
 					throw new Error("bad hour format: " + fmt);
@@ -332,8 +332,8 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 			switch (fmt.length) {
 				case 1:
 				case 2:
-					out = val.M;
-					outl = fmt.length;
+					numericOut = val.minutes;
+					outputLength = fmt.length;
 					break;
 				default:
 					throw new Error("bad minute format: " + fmt);
@@ -343,64 +343,64 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 			if (fmt !== "s" && fmt !== "ss" && fmt !== ".0" && fmt !== ".00" && fmt !== ".000") {
 				throw new Error("bad second format: " + fmt);
 			}
-			if (val.u === 0 && (fmt === "s" || fmt === "ss")) {
-				return padWithZeros(val.S, fmt.length);
+			if (val.subSeconds === 0 && (fmt === "s" || fmt === "ss")) {
+				return padWithZeros(val.seconds, fmt.length);
 			}
 			if (ss0! >= 2) {
-				tt = ss0 === 3 ? 1000 : 100;
+				scaleFactor = ss0 === 3 ? 1000 : 100;
 			} else {
-				tt = ss0 === 1 ? 10 : 1;
+				scaleFactor = ss0 === 1 ? 10 : 1;
 			}
-			ss = Math.round(tt * (val.S + val.u));
-			if (ss >= 60 * tt) {
-				ss = 0;
+			scaledSeconds = Math.round(scaleFactor * (val.seconds + val.subSeconds));
+			if (scaledSeconds >= 60 * scaleFactor) {
+				scaledSeconds = 0;
 			}
 			if (fmt === "s") {
-				return ss === 0 ? "0" : "" + ss / tt;
+				return scaledSeconds === 0 ? "0" : "" + scaledSeconds / scaleFactor;
 			}
-			o = padWithZeros(ss, 2 + ss0!);
+			result = padWithZeros(scaledSeconds, 2 + ss0!);
 			if (fmt === "ss") {
-				return o.substring(0, 2);
+				return result.substring(0, 2);
 			}
-			return "." + o.substring(2, fmt.length - 1);
+			return "." + result.substring(2, fmt.length - 1);
 		case 90 /* 'Z' absolute time */:
 			switch (fmt) {
 				case "[h]":
 				case "[hh]":
-					out = val.D * 24 + val.H;
+					numericOut = val.daySerial * 24 + val.hours;
 					break;
 				case "[m]":
 				case "[mm]":
-					out = (val.D * 24 + val.H) * 60 + val.M;
+					numericOut = (val.daySerial * 24 + val.hours) * 60 + val.minutes;
 					break;
 				case "[s]":
 				case "[ss]":
-					out = ((val.D * 24 + val.H) * 60 + val.M) * 60 + (ss0 === 0 ? Math.round(val.S + val.u) : val.S);
+					numericOut = ((val.daySerial * 24 + val.hours) * 60 + val.minutes) * 60 + (ss0 === 0 ? Math.round(val.seconds + val.subSeconds) : val.seconds);
 					break;
 				default:
 					throw new Error("bad abstime format: " + fmt);
 			}
-			outl = fmt.length === 3 ? 1 : 2;
+			outputLength = fmt.length === 3 ? 1 : 2;
 			break;
 		case 101 /* 'e' era */:
-			out = y;
-			outl = 1;
+			numericOut = year;
+			outputLength = 1;
 			break;
 	}
-	return outl > 0 ? padWithZeros(out, outl) : "";
+	return outputLength > 0 ? padWithZeros(numericOut, outputLength) : "";
 }
 
-function commaify(s: string): string {
-	const w = 3;
-	if (s.length <= w) {
-		return s;
+function commaify(str: string): string {
+	const groupSize = 3;
+	if (str.length <= groupSize) {
+		return str;
 	}
-	const j = s.length % w;
-	let o = s.substring(0, j);
-	for (let i = j; i !== s.length; i += w) {
-		o += (o.length > 0 ? "," : "") + s.substring(i, w);
+	const remainder = str.length % groupSize;
+	let result = str.substring(0, remainder);
+	for (let i = remainder; i !== str.length; i += groupSize) {
+		result += (result.length > 0 ? "," : "") + str.substring(i, groupSize);
 	}
-	return o;
+	return result;
 }
 
 const pct1 = /%/g;
@@ -461,43 +461,43 @@ function write_num_exp(fmt: string, val: number): string {
 	return o.replace("e", "E");
 }
 
-function SSF_frac(x: number, D: number, mixed?: boolean): number[] {
-	const sgn = x < 0 ? -1 : 1;
-	let B = x * sgn;
-	let P_2 = 0,
-		P_1 = 1,
-		P = 0;
-	let Q_2 = 1,
-		Q_1 = 0,
-		Q = 0;
-	let A = Math.floor(B);
-	while (Q_1 < D) {
-		A = Math.floor(B);
-		P = A * P_1 + P_2;
-		Q = A * Q_1 + Q_2;
-		if (B - A < 0.00000005) {
+function SSF_frac(value: number, maxDenominator: number, mixed?: boolean): number[] {
+	const sgn = value < 0 ? -1 : 1;
+	let absValue = value * sgn;
+	let prevPrevNumer = 0,
+		prevNumer = 1,
+		numerator = 0;
+	let prevPrevDenom = 1,
+		prevDenom = 0,
+		denominator = 0;
+	let intPart = Math.floor(absValue);
+	while (prevDenom < maxDenominator) {
+		intPart = Math.floor(absValue);
+		numerator = intPart * prevNumer + prevPrevNumer;
+		denominator = intPart * prevDenom + prevPrevDenom;
+		if (absValue - intPart < 0.00000005) {
 			break;
 		}
-		B = 1 / (B - A);
-		P_2 = P_1;
-		P_1 = P;
-		Q_2 = Q_1;
-		Q_1 = Q;
+		absValue = 1 / (absValue - intPart);
+		prevPrevNumer = prevNumer;
+		prevNumer = numerator;
+		prevPrevDenom = prevDenom;
+		prevDenom = denominator;
 	}
-	if (Q > D) {
-		if (Q_1 > D) {
-			Q = Q_2;
-			P = P_2;
+	if (denominator > maxDenominator) {
+		if (prevDenom > maxDenominator) {
+			denominator = prevPrevDenom;
+			numerator = prevPrevNumer;
 		} else {
-			Q = Q_1;
-			P = P_1;
+			denominator = prevDenom;
+			numerator = prevNumer;
 		}
 	}
 	if (!mixed) {
-		return [0, sgn * P, Q];
+		return [0, sgn * numerator, denominator];
 	}
-	const q = Math.floor((sgn * P) / Q);
-	return [q, sgn * P - q * Q, Q];
+	const wholePart = Math.floor((sgn * numerator) / denominator);
+	return [wholePart, sgn * numerator - wholePart * denominator, denominator];
 }
 
 const frac1 = /# (\?+)( ?)\/( ?)(\d+)/;
@@ -1027,64 +1027,64 @@ export function isDateFormat(fmt: string): boolean {
 }
 
 interface FmtToken {
-	t: string;
-	v: string;
+	type: string;
+	value: string;
 }
 
-function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
+function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 	const out: (FmtToken | null)[] = [];
-	let o = "";
+	let tokenStr = "";
 	let i = 0;
-	let c = "";
-	let lst = "t";
-	let dt: SSFDateVal | null = null;
-	let j: number;
-	let cc: number;
-	let hr = "H";
+	let char = "";
+	let lastTokenType = "t";
+	let dateVal: SSFDateVal | null = null;
+	let scanIdx: number;
+	let charCode: number;
+	let hourFormat = "H";
 
 	/* Tokenize */
 	while (i < fmt.length) {
-		switch ((c = fmt.charAt(i))) {
+		switch ((char = fmt.charAt(i))) {
 			case "G":
 				if (!isGeneralFormat(fmt, i)) {
-					throw new Error("unrecognized character " + c + " in " + fmt);
+					throw new Error("unrecognized character " + char + " in " + fmt);
 				}
-				out[out.length] = { t: "G", v: "General" };
+				out[out.length] = { type: "G", value: "General" };
 				i += 7;
 				break;
 			case '"':
-				for (o = ""; (cc = fmt.charCodeAt(++i)) !== 34 && i < fmt.length; ) {
-					o += String.fromCharCode(cc);
+				for (tokenStr = ""; (charCode = fmt.charCodeAt(++i)) !== 34 && i < fmt.length; ) {
+					tokenStr += String.fromCharCode(charCode);
 				}
-				out[out.length] = { t: "t", v: o };
+				out[out.length] = { type: "t", value: tokenStr };
 				++i;
 				break;
 			case "\\": {
-				const w = fmt.charAt(++i);
-				const t2 = w === "(" || w === ")" ? w : "t";
-				out[out.length] = { t: t2, v: w };
+				const nextChar = fmt.charAt(++i);
+				const t2 = nextChar === "(" || nextChar === ")" ? nextChar : "t";
+				out[out.length] = { type: t2, value: nextChar };
 				++i;
 				break;
 			}
 			case "_":
-				out[out.length] = { t: "t", v: " " };
+				out[out.length] = { type: "t", value: " " };
 				i += 2;
 				break;
 			case "@":
-				out[out.length] = { t: "T", v: v };
+				out[out.length] = { type: "T", value: value };
 				++i;
 				break;
 			case "B":
 			case "b":
 				if (fmt.charAt(i + 1) === "1" || fmt.charAt(i + 1) === "2") {
-					if (dt == null) {
-						dt = parseExcelDateCode(v, opts, fmt.charAt(i + 1) === "2");
-						if (dt == null) {
+					if (dateVal == null) {
+						dateVal = parseExcelDateCode(value, opts, fmt.charAt(i + 1) === "2");
+						if (dateVal == null) {
 							return "";
 						}
 					}
-					out[out.length] = { t: "X", v: fmt.substring(i, 2) };
-					lst = c;
+					out[out.length] = { type: "X", value: fmt.substring(i, 2) };
+					lastTokenType = char;
 					i += 2;
 					break;
 				}
@@ -1095,7 +1095,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 			case "H":
 			case "S":
 			case "E":
-				c = c.toLowerCase();
+				char = char.toLowerCase();
 			/* falls through */
 			case "m":
 			case "d":
@@ -1104,116 +1104,116 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 			case "s":
 			case "e":
 			case "g":
-				if (v < 0) {
+				if (value < 0) {
 					return "";
 				}
-				if (dt == null) {
-					dt = parseExcelDateCode(v, opts);
-					if (dt == null) {
+				if (dateVal == null) {
+					dateVal = parseExcelDateCode(value, opts);
+					if (dateVal == null) {
 						return "";
 					}
 				}
-				o = c;
-				while (++i < fmt.length && fmt.charAt(i).toLowerCase() === c) {
-					o += c;
+				tokenStr = char;
+				while (++i < fmt.length && fmt.charAt(i).toLowerCase() === char) {
+					tokenStr += char;
 				}
-				if (c === "m" && lst.toLowerCase() === "h") {
-					c = "M";
+				if (char === "m" && lastTokenType.toLowerCase() === "h") {
+					char = "M";
 				}
-				if (c === "h") {
-					c = hr;
+				if (char === "h") {
+					char = hourFormat;
 				}
-				out[out.length] = { t: c, v: o };
-				lst = c;
+				out[out.length] = { type: char, value: tokenStr };
+				lastTokenType = char;
 				break;
 			case "A":
 			case "a":
 			case "\u4E0A": {
-				const q: FmtToken = { t: c, v: c };
-				if (dt == null) {
-					dt = parseExcelDateCode(v, opts);
+				const ampmToken: FmtToken = { type: char, value: char };
+				if (dateVal == null) {
+					dateVal = parseExcelDateCode(value, opts);
 				}
 				if (fmt.substring(i, 3).toUpperCase() === "A/P") {
-					if (dt != null) {
-						q.v = dt.H >= 12 ? fmt.charAt(i + 2) : c;
+					if (dateVal != null) {
+						ampmToken.value = dateVal.hours >= 12 ? fmt.charAt(i + 2) : char;
 					}
-					q.t = "T";
-					hr = "h";
+					ampmToken.type = "T";
+					hourFormat = "h";
 					i += 3;
 				} else if (fmt.substring(i, 5).toUpperCase() === "AM/PM") {
-					if (dt != null) {
-						q.v = dt.H >= 12 ? "PM" : "AM";
+					if (dateVal != null) {
+						ampmToken.value = dateVal.hours >= 12 ? "PM" : "AM";
 					}
-					q.t = "T";
+					ampmToken.type = "T";
 					i += 5;
-					hr = "h";
+					hourFormat = "h";
 				} else if (fmt.substring(i, 5).toUpperCase() === "\u4E0A\u5348/\u4E0B\u5348") {
-					if (dt != null) {
-						q.v = dt.H >= 12 ? "\u4E0B\u5348" : "\u4E0A\u5348";
+					if (dateVal != null) {
+						ampmToken.value = dateVal.hours >= 12 ? "\u4E0B\u5348" : "\u4E0A\u5348";
 					}
-					q.t = "T";
+					ampmToken.type = "T";
 					i += 5;
-					hr = "h";
+					hourFormat = "h";
 				} else {
-					q.t = "t";
+					ampmToken.type = "t";
 					++i;
 				}
-				if (dt == null && q.t === "T") {
+				if (dateVal == null && ampmToken.type === "T") {
 					return "";
 				}
-				out[out.length] = q;
-				lst = c;
+				out[out.length] = ampmToken;
+				lastTokenType = char;
 				break;
 			}
 			case "[":
-				o = c;
+				tokenStr = char;
 				while (fmt.charAt(i++) !== "]" && i < fmt.length) {
-					o += fmt.charAt(i);
+					tokenStr += fmt.charAt(i);
 				}
-				if (o.slice(-1) !== "]") {
-					throw new Error('unterminated "[" block: |' + o + "|");
+				if (tokenStr.slice(-1) !== "]") {
+					throw new Error('unterminated "[" block: |' + tokenStr + "|");
 				}
-				if (o.match(SSF_abstime)) {
-					if (dt == null) {
-						dt = parseExcelDateCode(v, opts);
-						if (dt == null) {
+				if (tokenStr.match(SSF_abstime)) {
+					if (dateVal == null) {
+						dateVal = parseExcelDateCode(value, opts);
+						if (dateVal == null) {
 							return "";
 						}
 					}
-					out[out.length] = { t: "Z", v: o.toLowerCase() };
-					lst = o.charAt(1);
-				} else if (o.indexOf("$") > -1) {
-					o = (o.match(/\$([^-[\]]*)/) || [])[1] || "$";
+					out[out.length] = { type: "Z", value: tokenStr.toLowerCase() };
+					lastTokenType = tokenStr.charAt(1);
+				} else if (tokenStr.indexOf("$") > -1) {
+					tokenStr = (tokenStr.match(/\$([^-[\]]*)/) || [])[1] || "$";
 					if (!isDateFormat(fmt)) {
-						out[out.length] = { t: "t", v: o };
+						out[out.length] = { type: "t", value: tokenStr };
 					}
 				}
 				break;
 			case ".":
-				if (dt != null) {
-					o = c;
-					while (++i < fmt.length && (c = fmt.charAt(i)) === "0") {
-						o += c;
+				if (dateVal != null) {
+					tokenStr = char;
+					while (++i < fmt.length && (char = fmt.charAt(i)) === "0") {
+						tokenStr += char;
 					}
-					out[out.length] = { t: "s", v: o };
+					out[out.length] = { type: "s", value: tokenStr };
 					break;
 				}
 			/* falls through */
 			case "0":
 			case "#":
-				o = c;
-				while (++i < fmt.length && "0#?.,E+-%".indexOf((c = fmt.charAt(i))) > -1) {
-					o += c;
+				tokenStr = char;
+				while (++i < fmt.length && "0#?.,E+-%".indexOf((char = fmt.charAt(i))) > -1) {
+					tokenStr += char;
 				}
-				out[out.length] = { t: "n", v: o };
+				out[out.length] = { type: "n", value: tokenStr };
 				break;
 			case "?":
-				o = c;
-				while (fmt.charAt(++i) === c) {
-					o += c;
+				tokenStr = char;
+				while (fmt.charAt(++i) === char) {
+					tokenStr += char;
 				}
-				out[out.length] = { t: c, v: o };
-				lst = c;
+				out[out.length] = { type: char, value: tokenStr };
+				lastTokenType = char;
 				break;
 			case "*":
 				++i;
@@ -1223,7 +1223,7 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 				break;
 			case "(":
 			case ")":
-				out[out.length] = { t: flen === 1 ? "t" : c, v: c };
+				out[out.length] = { type: flen === 1 ? "t" : char, value: char };
 				++i;
 				break;
 			case "1":
@@ -1235,158 +1235,158 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 			case "7":
 			case "8":
 			case "9":
-				o = c;
+				tokenStr = char;
 				while (i < fmt.length && "0123456789".indexOf(fmt.charAt(++i)) > -1) {
-					o += fmt.charAt(i);
+					tokenStr += fmt.charAt(i);
 				}
-				out[out.length] = { t: "D", v: o };
+				out[out.length] = { type: "D", value: tokenStr };
 				break;
 			case " ":
-				out[out.length] = { t: c, v: c };
+				out[out.length] = { type: char, value: char };
 				++i;
 				break;
 			case "$":
-				out[out.length] = { t: "t", v: "$" };
+				out[out.length] = { type: "t", value: "$" };
 				++i;
 				break;
 			default:
-				if (",$-+/():!^&'~{}<>=\u20ACacfijklopqrtuvwxzP".indexOf(c) === -1) {
-					throw new Error("unrecognized character " + c + " in " + fmt);
+				if (",$-+/():!^&'~{}<>=\u20ACacfijklopqrtuvwxzP".indexOf(char) === -1) {
+					throw new Error("unrecognized character " + char + " in " + fmt);
 				}
-				out[out.length] = { t: "t", v: c };
+				out[out.length] = { type: "t", value: char };
 				++i;
 				break;
 		}
 	}
 
 	/* Scan for date/time parts */
-	let bt = 0;
-	let ss0 = 0;
+	let dateTimePrecision = 0;
+	let subSecondDigits = 0;
 	let ssm: RegExpMatchArray | null;
-	for (i = out.length - 1, lst = "t"; i >= 0; --i) {
+	for (i = out.length - 1, lastTokenType = "t"; i >= 0; --i) {
 		if (!out[i]) {
 			continue;
 		}
-		switch (out[i]!.t) {
+		switch (out[i]!.type) {
 			case "h":
 			case "H":
-				out[i]!.t = hr;
-				lst = "h";
-				if (bt < 1) {
-					bt = 1;
+				out[i]!.type = hourFormat;
+				lastTokenType = "h";
+				if (dateTimePrecision < 1) {
+					dateTimePrecision = 1;
 				}
 				break;
 			case "s":
-				if ((ssm = out[i]!.v.match(/\.0+$/))) {
-					ss0 = Math.max(ss0, ssm[0].length - 1);
-					bt = 4;
+				if ((ssm = out[i]!.value.match(/\.0+$/))) {
+					subSecondDigits = Math.max(subSecondDigits, ssm[0].length - 1);
+					dateTimePrecision = 4;
 				}
-				if (bt < 3) {
-					bt = 3;
+				if (dateTimePrecision < 3) {
+					dateTimePrecision = 3;
 				}
 			/* falls through */
 			case "d":
 			case "y":
 			case "e":
-				lst = out[i]!.t;
+				lastTokenType = out[i]!.type;
 				break;
 			case "M":
-				lst = out[i]!.t;
-				if (bt < 2) {
-					bt = 2;
+				lastTokenType = out[i]!.type;
+				if (dateTimePrecision < 2) {
+					dateTimePrecision = 2;
 				}
 				break;
 			case "m":
-				if (lst === "s") {
-					out[i]!.t = "M";
-					if (bt < 2) {
-						bt = 2;
+				if (lastTokenType === "s") {
+					out[i]!.type = "M";
+					if (dateTimePrecision < 2) {
+						dateTimePrecision = 2;
 					}
 				}
 				break;
 			case "X":
 				break;
 			case "Z":
-				if (bt < 1 && out[i]!.v.match(/[Hh]/)) {
-					bt = 1;
+				if (dateTimePrecision < 1 && out[i]!.value.match(/[Hh]/)) {
+					dateTimePrecision = 1;
 				}
-				if (bt < 2 && out[i]!.v.match(/[Mm]/)) {
-					bt = 2;
+				if (dateTimePrecision < 2 && out[i]!.value.match(/[Mm]/)) {
+					dateTimePrecision = 2;
 				}
-				if (bt < 3 && out[i]!.v.match(/[Ss]/)) {
-					bt = 3;
+				if (dateTimePrecision < 3 && out[i]!.value.match(/[Ss]/)) {
+					dateTimePrecision = 3;
 				}
 		}
 	}
 
 	/* time rounding */
-	if (dt) {
+	if (dateVal) {
 		let _dt: SSFDateVal | null;
-		switch (bt) {
+		switch (dateTimePrecision) {
 			case 0:
 				break;
 			case 1:
 			case 2:
 			case 3:
-				if (dt.u >= 0.5) {
-					dt.u = 0;
-					++dt.S;
+				if (dateVal.subSeconds >= 0.5) {
+					dateVal.subSeconds = 0;
+					++dateVal.seconds;
 				}
-				if (dt.S >= 60) {
-					dt.S = 0;
-					++dt.M;
+				if (dateVal.seconds >= 60) {
+					dateVal.seconds = 0;
+					++dateVal.minutes;
 				}
-				if (dt.M >= 60) {
-					dt.M = 0;
-					++dt.H;
+				if (dateVal.minutes >= 60) {
+					dateVal.minutes = 0;
+					++dateVal.hours;
 				}
-				if (dt.H >= 24) {
-					dt.H = 0;
-					++dt.D;
-					_dt = parseExcelDateCode(dt.D);
+				if (dateVal.hours >= 24) {
+					dateVal.hours = 0;
+					++dateVal.daySerial;
+					_dt = parseExcelDateCode(dateVal.daySerial);
 					if (_dt) {
-						_dt.u = dt.u;
-						_dt.S = dt.S;
-						_dt.M = dt.M;
-						_dt.H = dt.H;
-						dt = _dt;
+						_dt.subSeconds = dateVal.subSeconds;
+						_dt.seconds = dateVal.seconds;
+						_dt.minutes = dateVal.minutes;
+						_dt.hours = dateVal.hours;
+						dateVal = _dt;
 					}
 				}
 				break;
 			case 4:
-				switch (ss0) {
+				switch (subSecondDigits) {
 					case 1:
-						dt.u = Math.round(dt.u * 10) / 10;
+						dateVal.subSeconds = Math.round(dateVal.subSeconds * 10) / 10;
 						break;
 					case 2:
-						dt.u = Math.round(dt.u * 100) / 100;
+						dateVal.subSeconds = Math.round(dateVal.subSeconds * 100) / 100;
 						break;
 					case 3:
-						dt.u = Math.round(dt.u * 1000) / 1000;
+						dateVal.subSeconds = Math.round(dateVal.subSeconds * 1000) / 1000;
 						break;
 				}
-				if (dt.u >= 1) {
-					dt.u = 0;
-					++dt.S;
+				if (dateVal.subSeconds >= 1) {
+					dateVal.subSeconds = 0;
+					++dateVal.seconds;
 				}
-				if (dt.S >= 60) {
-					dt.S = 0;
-					++dt.M;
+				if (dateVal.seconds >= 60) {
+					dateVal.seconds = 0;
+					++dateVal.minutes;
 				}
-				if (dt.M >= 60) {
-					dt.M = 0;
-					++dt.H;
+				if (dateVal.minutes >= 60) {
+					dateVal.minutes = 0;
+					++dateVal.hours;
 				}
-				if (dt.H >= 24) {
-					dt.H = 0;
-					++dt.D;
-					_dt = parseExcelDateCode(dt.D);
+				if (dateVal.hours >= 24) {
+					dateVal.hours = 0;
+					++dateVal.daySerial;
+					_dt = parseExcelDateCode(dateVal.daySerial);
 					if (_dt) {
-						_dt.u = dt.u;
-						_dt.S = dt.S;
-						_dt.M = dt.M;
-						_dt.H = dt.H;
-						dt = _dt;
+						_dt.subSeconds = dateVal.subSeconds;
+						_dt.seconds = dateVal.seconds;
+						_dt.minutes = dateVal.minutes;
+						_dt.hours = dateVal.hours;
+						dateVal = _dt;
 					}
 				}
 				break;
@@ -1394,21 +1394,21 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 	}
 
 	/* replace fields */
-	let nstr = "";
-	let jj: number;
+	let numberFmtStr = "";
+	let numFmtIdx: number;
 	for (i = 0; i < out.length; ++i) {
 		if (!out[i]) {
 			continue;
 		}
-		switch (out[i]!.t) {
+		switch (out[i]!.type) {
 			case "t":
 			case "T":
 			case " ":
 			case "D":
 				break;
 			case "X":
-				out[i]!.v = "";
-				out[i]!.t = ";";
+				out[i]!.value = "";
+				out[i]!.type = ";";
 				break;
 			case "d":
 			case "m":
@@ -1420,131 +1420,131 @@ function eval_fmt(fmt: string, v: any, opts: any, flen: number): string {
 			case "e":
 			case "b":
 			case "Z":
-				out[i]!.v = SSF_write_date(out[i]!.t.charCodeAt(0), out[i]!.v, dt!, ss0);
-				out[i]!.t = "t";
+				out[i]!.value = SSF_write_date(out[i]!.type.charCodeAt(0), out[i]!.value, dateVal!, subSecondDigits);
+				out[i]!.type = "t";
 				break;
 			case "n":
 			case "?":
-				jj = i + 1;
+				numFmtIdx = i + 1;
 				while (
-					out[jj] != null &&
-					((c = out[jj]!.t) === "?" ||
-						c === "D" ||
-						((c === " " || c === "t") &&
-							out[jj + 1] != null &&
-							(out[jj + 1]!.t === "?" || (out[jj + 1]!.t === "t" && out[jj + 1]!.v === "/"))) ||
-						(out[i]!.t === "(" && (c === " " || c === "n" || c === ")")) ||
-						(c === "t" &&
-							(out[jj]!.v === "/" ||
-								(out[jj]!.v === " " && out[jj + 1] != null && out[jj + 1]!.t === "?"))))
+					out[numFmtIdx] != null &&
+					((char = out[numFmtIdx]!.type) === "?" ||
+						char === "D" ||
+						((char === " " || char === "t") &&
+							out[numFmtIdx + 1] != null &&
+							(out[numFmtIdx + 1]!.type === "?" || (out[numFmtIdx + 1]!.type === "t" && out[numFmtIdx + 1]!.value === "/"))) ||
+						(out[i]!.type === "(" && (char === " " || char === "n" || char === ")")) ||
+						(char === "t" &&
+							(out[numFmtIdx]!.value === "/" ||
+								(out[numFmtIdx]!.value === " " && out[numFmtIdx + 1] != null && out[numFmtIdx + 1]!.type === "?"))))
 				) {
-					out[i]!.v += out[jj]!.v;
-					out[jj] = { v: "", t: ";" };
-					++jj;
+					out[i]!.value += out[numFmtIdx]!.value;
+					out[numFmtIdx] = { value: "", type: ";" };
+					++numFmtIdx;
 				}
-				nstr += out[i]!.v;
-				i = jj - 1;
+				numberFmtStr += out[i]!.value;
+				i = numFmtIdx - 1;
 				break;
 			case "G":
-				out[i]!.t = "t";
-				out[i]!.v = SSF_general(v, opts);
+				out[i]!.type = "t";
+				out[i]!.value = SSF_general(value, opts);
 				break;
 		}
 	}
 
-	let vv = "";
-	let myv: number;
-	let ostr: string;
-	if (nstr.length > 0) {
-		if (nstr.charCodeAt(0) === 40) {
-			myv = v < 0 && nstr.charCodeAt(0) === 45 ? -v : v;
-			ostr = write_num("n", nstr, myv);
+	let partialValue = "";
+	let adjustedValue: number;
+	let formattedNumber: string;
+	if (numberFmtStr.length > 0) {
+		if (numberFmtStr.charCodeAt(0) === 40) {
+			adjustedValue = value < 0 && numberFmtStr.charCodeAt(0) === 45 ? -value : value;
+			formattedNumber = write_num("n", numberFmtStr, adjustedValue);
 		} else {
-			myv = v < 0 && flen > 1 ? -v : v;
-			ostr = write_num("n", nstr, myv);
-			if (myv < 0 && out[0] && out[0].t === "t") {
-				ostr = ostr.substring(1);
-				out[0].v = "-" + out[0].v;
+			adjustedValue = value < 0 && flen > 1 ? -value : value;
+			formattedNumber = write_num("n", numberFmtStr, adjustedValue);
+			if (adjustedValue < 0 && out[0] && out[0].type === "t") {
+				formattedNumber = formattedNumber.substring(1);
+				out[0].value = "-" + out[0].value;
 			}
 		}
-		jj = ostr.length - 1;
+		numFmtIdx = formattedNumber.length - 1;
 		let decpt = out.length;
 		for (i = 0; i < out.length; ++i) {
-			if (out[i] != null && out[i]!.t !== "t" && out[i]!.v.indexOf(".") > -1) {
+			if (out[i] != null && out[i]!.type !== "t" && out[i]!.value.indexOf(".") > -1) {
 				decpt = i;
 				break;
 			}
 		}
 		let lasti = out.length;
-		if (decpt === out.length && ostr.indexOf("E") === -1) {
+		if (decpt === out.length && formattedNumber.indexOf("E") === -1) {
 			for (i = out.length - 1; i >= 0; --i) {
-				if (out[i] == null || "n?".indexOf(out[i]!.t) === -1) {
+				if (out[i] == null || "n?".indexOf(out[i]!.type) === -1) {
 					continue;
 				}
-				if (jj >= out[i]!.v.length - 1) {
-					jj -= out[i]!.v.length;
-					out[i]!.v = ostr.substring(jj + 1, out[i]!.v.length);
-				} else if (jj < 0) {
-					out[i]!.v = "";
+				if (numFmtIdx >= out[i]!.value.length - 1) {
+					numFmtIdx -= out[i]!.value.length;
+					out[i]!.value = formattedNumber.substring(numFmtIdx + 1, out[i]!.value.length);
+				} else if (numFmtIdx < 0) {
+					out[i]!.value = "";
 				} else {
-					out[i]!.v = ostr.substring(0, jj + 1);
-					jj = -1;
+					out[i]!.value = formattedNumber.substring(0, numFmtIdx + 1);
+					numFmtIdx = -1;
 				}
-				out[i]!.t = "t";
+				out[i]!.type = "t";
 				lasti = i;
 			}
-			if (jj >= 0 && lasti < out.length) {
-				out[lasti]!.v = ostr.substring(0, jj + 1) + out[lasti]!.v;
+			if (numFmtIdx >= 0 && lasti < out.length) {
+				out[lasti]!.value = formattedNumber.substring(0, numFmtIdx + 1) + out[lasti]!.value;
 			}
-		} else if (decpt !== out.length && ostr.indexOf("E") === -1) {
-			jj = ostr.indexOf(".") - 1;
+		} else if (decpt !== out.length && formattedNumber.indexOf("E") === -1) {
+			numFmtIdx = formattedNumber.indexOf(".") - 1;
 			for (i = decpt; i >= 0; --i) {
-				if (out[i] == null || "n?".indexOf(out[i]!.t) === -1) {
+				if (out[i] == null || "n?".indexOf(out[i]!.type) === -1) {
 					continue;
 				}
-				j = out[i]!.v.indexOf(".") > -1 && i === decpt ? out[i]!.v.indexOf(".") - 1 : out[i]!.v.length - 1;
-				vv = out[i]!.v.substring(j + 1);
-				for (; j >= 0; --j) {
-					if (jj >= 0 && (out[i]!.v.charAt(j) === "0" || out[i]!.v.charAt(j) === "#")) {
-						vv = ostr.charAt(jj--) + vv;
+				scanIdx = out[i]!.value.indexOf(".") > -1 && i === decpt ? out[i]!.value.indexOf(".") - 1 : out[i]!.value.length - 1;
+				partialValue = out[i]!.value.substring(scanIdx + 1);
+				for (; scanIdx >= 0; --scanIdx) {
+					if (numFmtIdx >= 0 && (out[i]!.value.charAt(scanIdx) === "0" || out[i]!.value.charAt(scanIdx) === "#")) {
+						partialValue = formattedNumber.charAt(numFmtIdx--) + partialValue;
 					}
 				}
-				out[i]!.v = vv;
-				out[i]!.t = "t";
+				out[i]!.value = partialValue;
+				out[i]!.type = "t";
 				lasti = i;
 			}
-			if (jj >= 0 && lasti < out.length) {
-				out[lasti]!.v = ostr.substring(0, jj + 1) + out[lasti]!.v;
+			if (numFmtIdx >= 0 && lasti < out.length) {
+				out[lasti]!.value = formattedNumber.substring(0, numFmtIdx + 1) + out[lasti]!.value;
 			}
-			jj = ostr.indexOf(".") + 1;
+			numFmtIdx = formattedNumber.indexOf(".") + 1;
 			for (i = decpt; i < out.length; ++i) {
-				if (out[i] == null || ("n?(".indexOf(out[i]!.t) === -1 && i !== decpt)) {
+				if (out[i] == null || ("n?(".indexOf(out[i]!.type) === -1 && i !== decpt)) {
 					continue;
 				}
-				j = out[i]!.v.indexOf(".") > -1 && i === decpt ? out[i]!.v.indexOf(".") + 1 : 0;
-				vv = out[i]!.v.substring(0, j);
-				for (; j < out[i]!.v.length; ++j) {
-					if (jj < ostr.length) {
-						vv += ostr.charAt(jj++);
+				scanIdx = out[i]!.value.indexOf(".") > -1 && i === decpt ? out[i]!.value.indexOf(".") + 1 : 0;
+				partialValue = out[i]!.value.substring(0, scanIdx);
+				for (; scanIdx < out[i]!.value.length; ++scanIdx) {
+					if (numFmtIdx < formattedNumber.length) {
+						partialValue += formattedNumber.charAt(numFmtIdx++);
 					}
 				}
-				out[i]!.v = vv;
-				out[i]!.t = "t";
+				out[i]!.value = partialValue;
+				out[i]!.type = "t";
 				lasti = i;
 			}
 		}
 	}
 	for (i = 0; i < out.length; ++i) {
-		if (out[i] != null && "n?".indexOf(out[i]!.t) > -1) {
-			myv = flen > 1 && v < 0 && i > 0 && out[i - 1]!.v === "-" ? -v : v;
-			out[i]!.v = write_num(out[i]!.t, out[i]!.v, myv);
-			out[i]!.t = "t";
+		if (out[i] != null && "n?".indexOf(out[i]!.type) > -1) {
+			adjustedValue = flen > 1 && value < 0 && i > 0 && out[i - 1]!.value === "-" ? -value : value;
+			out[i]!.value = write_num(out[i]!.type, out[i]!.value, adjustedValue);
+			out[i]!.type = "t";
 		}
 	}
 	let retval = "";
 	for (i = 0; i !== out.length; ++i) {
 		if (out[i] != null) {
-			retval += out[i]!.v;
+			retval += out[i]!.value;
 		}
 	}
 	return retval;
@@ -1591,22 +1591,22 @@ function chkcond(v: number, rr: RegExpMatchArray | null): boolean {
 	return false;
 }
 
-function choose_fmt(f: string, v: any): [number, string] {
-	let fmt = SSF_split_fmt(f);
-	const l = fmt.length;
-	const lat = fmt[l - 1].indexOf("@");
-	let ll = l;
-	if (l < 4 && lat > -1) {
+function choose_fmt(fmtStr: string, value: any): [number, string] {
+	let fmt = SSF_split_fmt(fmtStr);
+	const sectionCount = fmt.length;
+	const lat = fmt[sectionCount - 1].indexOf("@");
+	let ll = sectionCount;
+	if (sectionCount < 4 && lat > -1) {
 		--ll;
 	}
 	if (fmt.length > 4) {
 		throw new Error("cannot find right format for |" + fmt.join("|") + "|");
 	}
-	if (typeof v !== "number") {
+	if (typeof value !== "number") {
 		return [4, fmt.length === 4 || lat > -1 ? fmt[fmt.length - 1] : "@"];
 	}
-	if (typeof v === "number" && !isFinite(v)) {
-		v = 0;
+	if (typeof value === "number" && !isFinite(value)) {
+		value = 0;
 	}
 	switch (fmt.length) {
 		case 1:
@@ -1621,44 +1621,44 @@ function choose_fmt(f: string, v: any): [number, string] {
 		case 4:
 			break;
 	}
-	const ff = v > 0 ? fmt[0] : v < 0 ? fmt[1] : fmt[2];
+	const selectedFmt = value > 0 ? fmt[0] : value < 0 ? fmt[1] : fmt[2];
 	if (fmt[0].indexOf("[") === -1 && fmt[1].indexOf("[") === -1) {
-		return [ll, ff];
+		return [ll, selectedFmt];
 	}
 	if (fmt[0].match(/\[[=<>]/) != null || fmt[1].match(/\[[=<>]/) != null) {
 		const m1 = fmt[0].match(cfregex2);
 		const m2 = fmt[1].match(cfregex2);
-		return chkcond(v, m1)
+		return chkcond(value, m1)
 			? [ll, fmt[0]]
-			: chkcond(v, m2)
+			: chkcond(value, m2)
 				? [ll, fmt[1]]
 				: [ll, fmt[m1 != null && m2 != null ? 2 : 1]];
 	}
-	return [ll, ff];
+	return [ll, selectedFmt];
 }
 
 /** Format a value using an Excel number format string */
-export function formatNumber(fmt: string | number, v: any, o?: any): string {
-	if (o == null) {
-		o = {};
+export function formatNumber(fmt: string | number, value: any, options?: any): string {
+	if (options == null) {
+		options = {};
 	}
 	let sfmt = "";
 	switch (typeof fmt) {
 		case "string":
-			if (fmt === "m/d/yy" && o.dateNF) {
-				sfmt = o.dateNF;
+			if (fmt === "m/d/yy" && options.dateNF) {
+				sfmt = options.dateNF;
 			} else {
 				sfmt = fmt;
 			}
 			break;
 		case "number":
-			if (fmt === 14 && o.dateNF) {
-				sfmt = o.dateNF;
+			if (fmt === 14 && options.dateNF) {
+				sfmt = options.dateNF;
 			} else {
-				sfmt = (o.table != null ? o.table : formatTable)[fmt];
+				sfmt = (options.table != null ? options.table : formatTable)[fmt];
 			}
 			if (sfmt == null) {
-				sfmt = (o.table && o.table[DEFAULT_FORMAT_MAP[fmt]]) || formatTable[DEFAULT_FORMAT_MAP[fmt]];
+				sfmt = (options.table && options.table[DEFAULT_FORMAT_MAP[fmt]]) || formatTable[DEFAULT_FORMAT_MAP[fmt]];
 			}
 			if (sfmt == null) {
 				sfmt = DEFAULT_FORMAT_STRINGS[fmt] || "General";
@@ -1666,25 +1666,25 @@ export function formatNumber(fmt: string | number, v: any, o?: any): string {
 			break;
 	}
 	if (isGeneralFormat(sfmt, 0)) {
-		return SSF_general(v, o);
+		return SSF_general(value, options);
 	}
-	if (v instanceof Date) {
-		v = dateToSerialNumber(v, o.date1904);
+	if (value instanceof Date) {
+		value = dateToSerialNumber(value, options.date1904);
 	}
-	const f = choose_fmt(sfmt, v);
-	if (isGeneralFormat(f[1])) {
-		return SSF_general(v, o);
+	const chosenFmt = choose_fmt(sfmt, value);
+	if (isGeneralFormat(chosenFmt[1])) {
+		return SSF_general(value, options);
 	}
-	if (v === true) {
-		v = "TRUE";
-	} else if (v === false) {
-		v = "FALSE";
-	} else if (v === "" || v == null) {
+	if (value === true) {
+		value = "TRUE";
+	} else if (value === false) {
+		value = "FALSE";
+	} else if (value === "" || value == null) {
 		return "";
-	} else if (isNaN(v) && f[1].indexOf("0") > -1) {
+	} else if (isNaN(value) && chosenFmt[1].indexOf("0") > -1) {
 		return "#NUM!";
-	} else if (!isFinite(v) && f[1].indexOf("0") > -1) {
+	} else if (!isFinite(value) && chosenFmt[1].indexOf("0") > -1) {
 		return "#DIV/0!";
 	}
-	return eval_fmt(f[1], v, o, f[0]);
+	return eval_fmt(chosenFmt[1], value, options, chosenFmt[0]);
 }

@@ -3,35 +3,35 @@ import { BErr } from "../types.js";
 import { formatNumber } from "../ssf/format.js";
 import { dateToSerialNumber } from "../utils/date.js";
 
-function safeFormatCell(cell: CellObject, v: any): string {
-	const q = cell.t === "d" && v instanceof Date;
+function safeFormatCell(cell: CellObject, value: any): string {
+	const isDateCell = cell.t === "d" && value instanceof Date;
 	if (cell.z != null) {
 		try {
-			return (cell.w = formatNumber(cell.z, q ? dateToSerialNumber(v) : v));
+			return (cell.w = formatNumber(cell.z, isDateCell ? dateToSerialNumber(value) : value));
 		} catch {}
 	}
 	try {
-		return (cell.w = formatNumber((cell.XF || {}).numFmtId || (q ? 14 : 0), q ? dateToSerialNumber(v) : v));
+		return (cell.w = formatNumber((cell.XF || {}).numFmtId || (isDateCell ? 14 : 0), isDateCell ? dateToSerialNumber(value) : value));
 	} catch {
-		return "" + v;
+		return "" + value;
 	}
 }
 
-export function formatCell(cell: CellObject, v?: any, o?: any): string {
+export function formatCell(cell: CellObject, value?: any, options?: any): string {
 	if (cell == null || cell.t == null || cell.t === "z") {
 		return "";
 	}
 	if (cell.w !== undefined) {
 		return cell.w;
 	}
-	if (cell.t === "d" && !cell.z && o && o.dateNF) {
-		cell.z = o.dateNF;
+	if (cell.t === "d" && !cell.z && options && options.dateNF) {
+		cell.z = options.dateNF;
 	}
 	if (cell.t === "e") {
 		return BErr[cell.v as number] || String(cell.v);
 	}
-	if (v == null) {
+	if (value == null) {
 		return safeFormatCell(cell, cell.v);
 	}
-	return safeFormatCell(cell, v);
+	return safeFormatCell(cell, value);
 }

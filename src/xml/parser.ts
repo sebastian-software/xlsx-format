@@ -10,63 +10,63 @@ const nsregex2 = /<(\/?)\w+:/;
 
 /** Parse XML attributes from a tag string */
 export function parseXmlTag(tag: string, skip_root?: boolean, skip_LC?: boolean): Record<string, any> {
-	const z: Record<string, any> = {};
-	let eq = 0;
-	let c = 0;
-	for (; eq !== tag.length; ++eq) {
-		if ((c = tag.charCodeAt(eq)) === 32 || c === 10 || c === 13) {
+	const attrs: Record<string, any> = {};
+	let scanPos = 0;
+	let charCode = 0;
+	for (; scanPos !== tag.length; ++scanPos) {
+		if ((charCode = tag.charCodeAt(scanPos)) === 32 || charCode === 10 || charCode === 13) {
 			break;
 		}
 	}
 	if (!skip_root) {
-		z[0] = tag.slice(0, eq);
+		attrs[0] = tag.slice(0, scanPos);
 	}
-	if (eq === tag.length) {
-		return z;
+	if (scanPos === tag.length) {
+		return attrs;
 	}
-	const m = tag.match(attregexg);
-	if (m) {
-		for (let i = 0; i < m.length; ++i) {
-			const cc = m[i].slice(1);
-			let c2 = 0;
-			for (c2 = 0; c2 < cc.length; ++c2) {
-				if (cc.charCodeAt(c2) === 61) {
+	const matches = tag.match(attregexg);
+	if (matches) {
+		for (let i = 0; i < matches.length; ++i) {
+			const attrStr = matches[i].slice(1);
+			let eqPos = 0;
+			for (eqPos = 0; eqPos < attrStr.length; ++eqPos) {
+				if (attrStr.charCodeAt(eqPos) === 61) {
 					break;
 				}
 			}
-			let q = cc.slice(0, c2).trim();
-			while (cc.charCodeAt(c2 + 1) === 32) {
-				++c2;
+			let attrName = attrStr.slice(0, eqPos).trim();
+			while (attrStr.charCodeAt(eqPos + 1) === 32) {
+				++eqPos;
 			}
-			const quot = (eq = cc.charCodeAt(c2 + 1)) === 34 || eq === 39 ? 1 : 0;
-			const v = cc.slice(c2 + 1 + quot, cc.length - quot);
-			let j = 0;
-			for (j = 0; j < q.length; ++j) {
-				if (q.charCodeAt(j) === 58) {
+			const quoteOffset = (scanPos = attrStr.charCodeAt(eqPos + 1)) === 34 || scanPos === 39 ? 1 : 0;
+			const attrValue = attrStr.slice(eqPos + 1 + quoteOffset, attrStr.length - quoteOffset);
+			let colonPos = 0;
+			for (colonPos = 0; colonPos < attrName.length; ++colonPos) {
+				if (attrName.charCodeAt(colonPos) === 58) {
 					break;
 				}
 			}
-			if (j === q.length) {
-				if (q.indexOf("_") > 0) {
-					q = q.slice(0, q.indexOf("_"));
+			if (colonPos === attrName.length) {
+				if (attrName.indexOf("_") > 0) {
+					attrName = attrName.slice(0, attrName.indexOf("_"));
 				}
-				z[q] = v;
+				attrs[attrName] = attrValue;
 				if (!skip_LC) {
-					z[q.toLowerCase()] = v;
+					attrs[attrName.toLowerCase()] = attrValue;
 				}
 			} else {
-				const k = (j === 5 && q.slice(0, 5) === "xmlns" ? "xmlns" : "") + q.slice(j + 1);
-				if (z[k] && q.slice(j - 3, j) === "ext") {
+				const localName = (colonPos === 5 && attrName.slice(0, 5) === "xmlns" ? "xmlns" : "") + attrName.slice(colonPos + 1);
+				if (attrs[localName] && attrName.slice(colonPos - 3, colonPos) === "ext") {
 					continue;
 				}
-				z[k] = v;
+				attrs[localName] = attrValue;
 				if (!skip_LC) {
-					z[k.toLowerCase()] = v;
+					attrs[localName.toLowerCase()] = attrValue;
 				}
 			}
 		}
 	}
-	return z;
+	return attrs;
 }
 
 /** Strip namespace prefixes from XML */

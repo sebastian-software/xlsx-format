@@ -20,17 +20,17 @@ export interface SST extends Array<XLString> {
 /** Parse rich-text run properties */
 function parseRunProperties(rpr: string): Record<string, any> {
 	const font: Record<string, any> = {};
-	const m = rpr.match(XML_TAG_REGEX);
+	const matches = rpr.match(XML_TAG_REGEX);
 	let pass = false;
-	if (m) {
-		for (let i = 0; i < m.length; ++i) {
-			const y = parseXmlTag(m[i]);
-			switch ((y[0] as string).replace(/<\w*:/g, "<")) {
+	if (matches) {
+		for (let i = 0; i < matches.length; ++i) {
+			const parsedTag = parseXmlTag(matches[i]);
+			switch ((parsedTag[0] as string).replace(/<\w*:/g, "<")) {
 				case "<condense":
 				case "<extend":
 					break;
 				case "<shadow":
-					if (!y.val) {
+					if (!parsedTag.val) {
 						break;
 					}
 				case "<shadow>":
@@ -40,13 +40,13 @@ function parseRunProperties(rpr: string): Record<string, any> {
 				case "</shadow>":
 					break;
 				case "<rFont":
-					font.name = y.val;
+					font.name = parsedTag.val;
 					break;
 				case "<sz":
-					font.sz = y.val;
+					font.sz = parsedTag.val;
 					break;
 				case "<strike":
-					if (!y.val) {
+					if (!parsedTag.val) {
 						break;
 					}
 				case "<strike>":
@@ -56,10 +56,10 @@ function parseRunProperties(rpr: string): Record<string, any> {
 				case "</strike>":
 					break;
 				case "<u":
-					if (!y.val) {
+					if (!parsedTag.val) {
 						break;
 					}
-					switch (y.val) {
+					switch (parsedTag.val) {
 						case "double":
 							font.uval = "double";
 							break;
@@ -77,7 +77,7 @@ function parseRunProperties(rpr: string): Record<string, any> {
 				case "</u>":
 					break;
 				case "<b":
-					if (y.val === "0") {
+					if (parsedTag.val === "0") {
 						break;
 					}
 				case "<b>":
@@ -87,7 +87,7 @@ function parseRunProperties(rpr: string): Record<string, any> {
 				case "</b>":
 					break;
 				case "<i":
-					if (y.val === "0") {
+					if (parsedTag.val === "0") {
 						break;
 					}
 				case "<i>":
@@ -97,8 +97,8 @@ function parseRunProperties(rpr: string): Record<string, any> {
 				case "</i>":
 					break;
 				case "<color":
-					if (y.rgb) {
-						font.color = y.rgb.slice(2, 8);
+					if (parsedTag.rgb) {
+						font.color = parsedTag.rgb.slice(2, 8);
 					}
 					break;
 				case "<color>":
@@ -106,10 +106,10 @@ function parseRunProperties(rpr: string): Record<string, any> {
 				case "</color>":
 					break;
 				case "<family":
-					font.family = y.val;
+					font.family = parsedTag.val;
 					break;
 				case "<vertAlign":
-					font.valign = y.val;
+					font.valign = parsedTag.val;
 					break;
 				case "<scheme":
 					break;
@@ -124,8 +124,8 @@ function parseRunProperties(rpr: string): Record<string, any> {
 					pass = false;
 					break;
 				default:
-					if ((y[0] as string).charCodeAt(1) !== 47 && !pass) {
-						throw new Error("Unrecognized rich format " + y[0]);
+					if ((parsedTag[0] as string).charCodeAt(1) !== 47 && !pass) {
+						throw new Error("Unrecognized rich format " + parsedTag[0]);
 					}
 			}
 		}
@@ -139,20 +139,20 @@ const rend = /<\/(?:\w+:)?r>/;
 function str_match_xml_ns_local(str: string, tag: string): [string, string] | null {
 	const re = new RegExp("<(?:\\w+:)?" + tag + "\\b[^<>]*>", "g");
 	const reEnd = new RegExp("<\\/(?:\\w+:)?" + tag + ">", "g");
-	const m = re.exec(str);
-	if (!m) {
+	const openMatch = re.exec(str);
+	if (!openMatch) {
 		return null;
 	}
-	const si = m.index;
-	const sf = re.lastIndex;
+	const startIdx = openMatch.index;
+	const contentStart = re.lastIndex;
 	reEnd.lastIndex = re.lastIndex;
-	const m2 = reEnd.exec(str);
-	if (!m2) {
+	const closeMatch = reEnd.exec(str);
+	if (!closeMatch) {
 		return null;
 	}
-	const ei = m2.index;
-	const ef = reEnd.lastIndex;
-	return [str.slice(si, ef), str.slice(sf, ei)];
+	const endIdx = closeMatch.index;
+	const contentEnd = reEnd.lastIndex;
+	return [str.slice(startIdx, contentEnd), str.slice(contentStart, endIdx)];
 }
 
 function str_remove_xml_ns_g_local(str: string, tag: string): string {
@@ -160,12 +160,12 @@ function str_remove_xml_ns_g_local(str: string, tag: string): string {
 	const reEnd = new RegExp("<\\/(?:\\w+:)?" + tag + ">", "g");
 	const out: string[] = [];
 	let lastEnd = 0;
-	let m;
-	while ((m = re.exec(str))) {
-		out.push(str.slice(lastEnd, m.index));
+	let openMatch;
+	while ((openMatch = re.exec(str))) {
+		out.push(str.slice(lastEnd, openMatch.index));
 		reEnd.lastIndex = re.lastIndex;
-		const m2 = reEnd.exec(str);
-		if (!m2) {
+		const closeMatch = reEnd.exec(str);
+		if (!closeMatch) {
 			break;
 		}
 		lastEnd = reEnd.lastIndex;
@@ -176,16 +176,16 @@ function str_remove_xml_ns_g_local(str: string, tag: string): string {
 }
 
 function parseRichTextRun(r: string): { t: string; v: string; s?: any } {
-	const t = str_match_xml_ns_local(r, "t");
-	if (!t) {
+	const textMatch = str_match_xml_ns_local(r, "t");
+	if (!textMatch) {
 		return { t: "s", v: "" };
 	}
-	const o: any = { t: "s", v: unescapeXml(t[1]) };
+	const runObj: any = { t: "s", v: unescapeXml(textMatch[1]) };
 	const rpr = str_match_xml_ns_local(r, "rPr");
 	if (rpr) {
-		o.s = parseRunProperties(rpr[1]);
+		runObj.s = parseRunProperties(rpr[1]);
 	}
-	return o;
+	return runObj;
 }
 
 function parseRichTextRuns(rs: string): { t: string; v: string; s?: any }[] {
@@ -258,28 +258,28 @@ const sirregex = /<(?:\w+:)?r\b[^<>]*>/;
 
 function parseStringItem(x: string, opts?: { cellHTML?: boolean }): XLString {
 	const html = opts ? opts.cellHTML !== false : true;
-	const z: any = {};
+	const result: any = {};
 	if (!x) {
 		return { t: "" };
 	}
 
 	if (x.match(/^\s*<(?:\w+:)?t[^>]*>/)) {
-		z.t = unescapeXml(utf8read(x.slice(x.indexOf(">") + 1).split(/<\/(?:\w+:)?t>/)[0] || ""), true);
-		z.r = utf8read(x);
+		result.t = unescapeXml(utf8read(x.slice(x.indexOf(">") + 1).split(/<\/(?:\w+:)?t>/)[0] || ""), true);
+		result.r = utf8read(x);
 		if (html) {
-			z.h = escapeHtml(z.t);
+			result.h = escapeHtml(result.t);
 		}
 	} else if (x.match(sirregex)) {
-		z.r = utf8read(x);
+		result.r = utf8read(x);
 		const stripped = str_remove_xml_ns_g_local(x, "rPh");
 		sitregex.lastIndex = 0;
 		const matches = stripped.match(sitregex) || [];
-		z.t = unescapeXml(utf8read(matches.join("").replace(XML_TAG_REGEX, "")), true);
+		result.t = unescapeXml(utf8read(matches.join("").replace(XML_TAG_REGEX, "")), true);
 		if (html) {
-			z.h = richTextToHtml(parseRichTextRuns(z.r));
+			result.h = richTextToHtml(parseRichTextRuns(result.r));
 		}
 	}
-	return z;
+	return result;
 }
 
 const sstr1 = /<(?:\w+:)?(?:si|sstItem)>/g;
@@ -287,25 +287,25 @@ const sstr2 = /<\/(?:\w+:)?(?:si|sstItem)>/;
 
 /** Parse the Shared String Table XML */
 export function parseSstXml(data: string, opts?: { cellHTML?: boolean }): SST {
-	const s: SST = [] as any;
+	const strings: SST = [] as any;
 	if (!data) {
-		return s;
+		return strings;
 	}
 
 	const sst = str_match_xml_ns_local(data, "sst");
 	if (sst) {
-		const ss = sst[1].replace(sstr1, "").split(sstr2);
-		for (let i = 0; i < ss.length; ++i) {
-			const o = parseStringItem(ss[i].trim(), opts);
-			if (o != null) {
-				s[s.length] = o;
+		const stringItems = sst[1].replace(sstr1, "").split(sstr2);
+		for (let i = 0; i < stringItems.length; ++i) {
+			const parsedItem = parseStringItem(stringItems[i].trim(), opts);
+			if (parsedItem != null) {
+				strings[strings.length] = parsedItem;
 			}
 		}
 		const tag = parseXmlTag(sst[0].slice(0, sst[0].indexOf(">")));
-		s.Count = tag.count;
-		s.Unique = tag.uniquecount;
+		strings.Count = tag.count;
+		strings.Unique = tag.uniquecount;
 	}
-	return s;
+	return strings;
 }
 
 const straywsregex = /^\s|\s$|[\t\n\r]/;
@@ -315,8 +315,8 @@ export function writeSstXml(sst: SST, opts: { bookSST?: boolean }): string {
 	if (!opts.bookSST) {
 		return "";
 	}
-	const o: string[] = [XML_HEADER];
-	o.push(
+	const lines: string[] = [XML_HEADER];
+	lines.push(
 		writeXmlElement("sst", null, {
 			xmlns: XMLNS_main[0],
 			count: String(sst.Count),
@@ -327,29 +327,29 @@ export function writeSstXml(sst: SST, opts: { bookSST?: boolean }): string {
 		if (sst[i] == null) {
 			continue;
 		}
-		const s = sst[i];
+		const entry = sst[i];
 		let sitag = "<si>";
-		if (s.r) {
-			sitag += s.r;
+		if (entry.r) {
+			sitag += entry.r;
 		} else {
 			sitag += "<t";
-			if (!s.t) {
-				s.t = "";
+			if (!entry.t) {
+				entry.t = "";
 			}
-			if (typeof s.t !== "string") {
-				s.t = String(s.t);
+			if (typeof entry.t !== "string") {
+				entry.t = String(entry.t);
 			}
-			if (s.t.match(straywsregex)) {
+			if (entry.t.match(straywsregex)) {
 				sitag += ' xml:space="preserve"';
 			}
-			sitag += ">" + escapeXml(s.t) + "</t>";
+			sitag += ">" + escapeXml(entry.t) + "</t>";
 		}
 		sitag += "</si>";
-		o.push(sitag);
+		lines.push(sitag);
 	}
-	if (o.length > 2) {
-		o.push("</sst>");
-		o[1] = o[1].replace("/>", ">");
+	if (lines.length > 2) {
+		lines.push("</sst>");
+		lines[1] = lines[1].replace("/>", ">");
 	}
-	return o.join("");
+	return lines.join("");
 }

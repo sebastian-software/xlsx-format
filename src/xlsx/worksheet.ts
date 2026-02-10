@@ -514,18 +514,18 @@ function writeWorksheetXml_merges(merges: Range[]): string {
 	if (merges.length === 0) {
 		return "";
 	}
-	const o = ['<mergeCells count="' + merges.length + '">'];
+	const lines = ['<mergeCells count="' + merges.length + '">'];
 	for (let i = 0; i < merges.length; ++i) {
-		o.push('<mergeCell ref="' + encodeRange(merges[i]) + '"/>');
+		lines.push('<mergeCell ref="' + encodeRange(merges[i]) + '"/>');
 	}
-	o.push("</mergeCells>");
-	return o.join("");
+	lines.push("</mergeCells>");
+	return lines.join("");
 }
 
 /** Write a worksheet XML */
 export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels: Relationships, _wb: any): string {
-	const o: string[] = [XML_HEADER];
-	o.push(
+	const lines: string[] = [XML_HEADER];
+	lines.push(
 		writeXmlElement("worksheet", null, {
 			xmlns: XMLNS_main[0],
 			"xmlns:r": "http://schemas.openxmlformats.org/officeDocument/2006/relationships",
@@ -533,20 +533,20 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	);
 
 	const ref = ws["!ref"] || "A1";
-	o.push('<dimension ref="' + ref + '"/>');
+	lines.push('<dimension ref="' + ref + '"/>');
 
-	o.push('<sheetViews><sheetView workbookViewId="0"');
+	lines.push('<sheetViews><sheetView workbookViewId="0"');
 	// Only add tabSelected for first sheet
 	if (_idx === 0) {
-		o.push(' tabSelected="1"');
+		lines.push(' tabSelected="1"');
 	}
-	o.push("/></sheetViews>");
+	lines.push("/></sheetViews>");
 
-	o.push('<sheetFormatPr defaultRowHeight="15"/>');
+	lines.push('<sheetFormatPr defaultRowHeight="15"/>');
 
 	// Columns
 	if (ws["!cols"]) {
-		o.push("<cols>");
+		lines.push("<cols>");
 		for (let i = 0; i < ws["!cols"].length; ++i) {
 			if (!ws["!cols"][i]) {
 				continue;
@@ -565,63 +565,63 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 				attrs.hidden = "1";
 			}
 			attrs.customWidth = "1";
-			o.push(writeXmlElement("col", null, attrs));
+			lines.push(writeXmlElement("col", null, attrs));
 		}
-		o.push("</cols>");
+		lines.push("</cols>");
 	}
 
-	o.push("<sheetData>");
+	lines.push("<sheetData>");
 
 	const dense = ws["!data"] != null;
 	const range = safeDecodeRange(ref);
 
-	for (let R = range.s.r; R <= range.e.r; ++R) {
+	for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
 		const row_cells: string[] = [];
-		for (let C = range.s.c; C <= range.e.c; ++C) {
+		for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
 			let cell: CellObject | undefined;
 			if (dense) {
-				cell = ws["!data"]?.[R]?.[C];
+				cell = ws["!data"]?.[rowIdx]?.[colIdx];
 			} else {
-				const addr = encodeCell({ r: R, c: C });
+				const addr = encodeCell({ r: rowIdx, c: colIdx });
 				cell = ws[addr] as CellObject | undefined;
 			}
 			if (!cell || cell.t === "z") {
 				continue;
 			}
 
-			const addr = encodeCell({ r: R, c: C });
-			let v = "";
-			let t = "";
+			const addr = encodeCell({ r: rowIdx, c: colIdx });
+			let cellValueStr = "";
+			let cellTypeAttr = "";
 
 			switch (cell.t) {
 				case "b":
-					v = cell.v ? "1" : "0";
-					t = "b";
+					cellValueStr = cell.v ? "1" : "0";
+					cellTypeAttr = "b";
 					break;
 				case "n":
-					v = String(cell.v);
+					cellValueStr = String(cell.v);
 					break;
 				case "e":
-					v = String(cell.v);
-					t = "e";
+					cellValueStr = String(cell.v);
+					cellTypeAttr = "e";
 					break;
 				case "d":
 					if (opts.cellDates) {
-						v = (cell.v as Date).toISOString();
-						t = "d";
+						cellValueStr = (cell.v as Date).toISOString();
+						cellTypeAttr = "d";
 					} else {
-						v = String(dateToSerialNumber(cell.v as Date));
+						cellValueStr = String(dateToSerialNumber(cell.v as Date));
 					}
 					break;
 				case "s":
-					v = escapeXml(String(cell.v));
-					t = "str";
+					cellValueStr = escapeXml(String(cell.v));
+					cellTypeAttr = "str";
 					break;
 			}
 
 			let cellXml = '<c r="' + addr + '"';
-			if (t) {
-				cellXml += ' t="' + t + '"';
+			if (cellTypeAttr) {
+				cellXml += ' t="' + cellTypeAttr + '"';
 			}
 			cellXml += ">";
 			if (cell.f) {
@@ -631,57 +631,57 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 				}
 				cellXml += ">" + escapeXml(cell.f) + "</f>";
 			}
-			if (v !== "") {
-				cellXml += "<v>" + v + "</v>";
+			if (cellValueStr !== "") {
+				cellXml += "<v>" + cellValueStr + "</v>";
 			}
 			cellXml += "</c>";
 			row_cells.push(cellXml);
 		}
 		if (row_cells.length > 0) {
-			let rowTag = '<row r="' + (R + 1) + '"';
-			if (ws["!rows"]?.[R]) {
-				if (ws["!rows"][R].hpt) {
-					rowTag += ' ht="' + ws["!rows"][R].hpt + '" customHeight="1"';
+			let rowTag = '<row r="' + (rowIdx + 1) + '"';
+			if (ws["!rows"]?.[rowIdx]) {
+				if (ws["!rows"][rowIdx].hpt) {
+					rowTag += ' ht="' + ws["!rows"][rowIdx].hpt + '" customHeight="1"';
 				}
-				if (ws["!rows"][R].hidden) {
+				if (ws["!rows"][rowIdx].hidden) {
 					rowTag += ' hidden="1"';
 				}
 			}
 			rowTag += ">";
-			o.push(rowTag);
-			o.push(row_cells.join(""));
-			o.push("</row>");
+			lines.push(rowTag);
+			lines.push(row_cells.join(""));
+			lines.push("</row>");
 		}
 	}
 
-	o.push("</sheetData>");
+	lines.push("</sheetData>");
 
 	// Merges
 	if (ws["!merges"] && ws["!merges"].length > 0) {
-		o.push(writeWorksheetXml_merges(ws["!merges"]));
+		lines.push(writeWorksheetXml_merges(ws["!merges"]));
 	}
 
 	// AutoFilter
 	if (ws["!autofilter"]) {
-		o.push('<autoFilter ref="' + ws["!autofilter"].ref + '"/>');
+		lines.push('<autoFilter ref="' + ws["!autofilter"].ref + '"/>');
 	}
 
 	// Margins
 	if (ws["!margins"]) {
-		const m = ws["!margins"];
-		o.push(
+		const margins = ws["!margins"];
+		lines.push(
 			writeXmlElement("pageMargins", null, {
-				left: String(m.left || 0.7),
-				right: String(m.right || 0.7),
-				top: String(m.top || 0.75),
-				bottom: String(m.bottom || 0.75),
-				header: String(m.header || 0.3),
-				footer: String(m.footer || 0.3),
+				left: String(margins.left || 0.7),
+				right: String(margins.right || 0.7),
+				top: String(margins.top || 0.75),
+				bottom: String(margins.bottom || 0.75),
+				header: String(margins.header || 0.3),
+				footer: String(margins.footer || 0.3),
 			}),
 		);
 	}
 
-	o.push("</worksheet>");
-	o[1] = o[1].replace("/>", ">");
-	return o.join("");
+	lines.push("</worksheet>");
+	lines[1] = lines[1].replace("/>", ">");
+	return lines.join("");
 }

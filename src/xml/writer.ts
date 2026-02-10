@@ -3,56 +3,56 @@ import { escapeXml } from "./escape.js";
 const wtregex = /(^\s|\s$|\n)/;
 
 /** Write an XML tag with text content */
-export function writeXmlTag(f: string, g: string): string {
-	return "<" + f + (g.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + g + "</" + f + ">";
+export function writeXmlTag(tagName: string, content: string): string {
+	return "<" + tagName + (content.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + content + "</" + tagName + ">";
 }
 
-function formatXmlAttributes(h: Record<string, string>): string {
-	return Object.keys(h)
-		.map((k) => " " + k + '="' + h[k] + '"')
+function formatXmlAttributes(attributes: Record<string, string>): string {
+	return Object.keys(attributes)
+		.map((key) => " " + key + '="' + attributes[key] + '"')
 		.join("");
 }
 
 /** Write an XML tag with optional attributes and content */
-export function writeXmlElement(f: string, g?: string | null, h?: Record<string, string> | null): string {
+export function writeXmlElement(tagName: string, content?: string | null, attributes?: Record<string, string> | null): string {
 	return (
 		"<" +
-		f +
-		(h != null ? formatXmlAttributes(h) : "") +
-		(g != null ? (g.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + g + "</" + f : "/") +
+		tagName +
+		(attributes != null ? formatXmlAttributes(attributes) : "") +
+		(content != null ? (content.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + content + "</" + tagName : "/") +
 		">"
 	);
 }
 
 /** Write a W3C datetime string from a Date */
-export function writeW3cDatetime(d: Date, t?: boolean): string {
+export function writeW3cDatetime(date: Date, throwOnError?: boolean): string {
 	try {
-		return d.toISOString().replace(/\.\d*/, "");
-	} catch (e) {
-		if (t) {
-			throw e;
+		return date.toISOString().replace(/\.\d*/, "");
+	} catch (error) {
+		if (throwOnError) {
+			throw error;
 		}
 	}
 	return "";
 }
 
 /** Write a vt: (variant type) XML element */
-export function writeVariantType(s: any, xlsx?: boolean): string {
-	switch (typeof s) {
+export function writeVariantType(value: any, xlsx?: boolean): string {
+	switch (typeof value) {
 		case "string": {
-			let o = writeXmlElement("vt:lpwstr", escapeXml(s));
+			let output = writeXmlElement("vt:lpwstr", escapeXml(value));
 			if (xlsx) {
-				o = o.replace(/&quot;/g, "_x0022_");
+				output = output.replace(/&quot;/g, "_x0022_");
 			}
-			return o;
+			return output;
 		}
 		case "number":
-			return writeXmlElement((s | 0) === s ? "vt:i4" : "vt:r8", escapeXml(String(s)));
+			return writeXmlElement((value | 0) === value ? "vt:i4" : "vt:r8", escapeXml(String(value)));
 		case "boolean":
-			return writeXmlElement("vt:bool", s ? "true" : "false");
+			return writeXmlElement("vt:bool", value ? "true" : "false");
 	}
-	if (s instanceof Date) {
-		return writeXmlElement("vt:filetime", writeW3cDatetime(s));
+	if (value instanceof Date) {
+		return writeXmlElement("vt:filetime", writeW3cDatetime(value));
 	}
-	throw new Error("Unable to serialize " + s);
+	throw new Error("Unable to serialize " + value);
 }

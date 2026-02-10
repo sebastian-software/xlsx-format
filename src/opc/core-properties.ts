@@ -26,32 +26,32 @@ const CORE_PROPS: [string, string, string?][] = [
 function xml_extract(data: string, tag: string): string | null {
 	const open = "<" + tag;
 	const close = "</" + tag + ">";
-	const si = data.indexOf(open);
-	if (si === -1) {
+	const openTagIdx = data.indexOf(open);
+	if (openTagIdx === -1) {
 		// Try with namespace prefix removed for tags like "dc:creator"
 		return null;
 	}
-	const gt = data.indexOf(">", si);
-	if (gt === -1) {
+	const closeAngleIdx = data.indexOf(">", openTagIdx);
+	if (closeAngleIdx === -1) {
 		return null;
 	}
-	const ei = data.indexOf(close, gt);
-	if (ei === -1) {
+	const closeTagIdx = data.indexOf(close, closeAngleIdx);
+	if (closeTagIdx === -1) {
 		return null;
 	}
-	return data.slice(gt + 1, ei);
+	return data.slice(closeAngleIdx + 1, closeTagIdx);
 }
 
 export function parseCoreProperties(data: string): Partial<FullProperties> {
 	const p: Record<string, any> = {};
 
-	for (const f of CORE_PROPS) {
-		const content = xml_extract(data, f[0]);
+	for (const propDef of CORE_PROPS) {
+		const content = xml_extract(data, propDef[0]);
 		if (content != null && content.length > 0) {
-			p[f[1]] = unescapeXml(content);
+			p[propDef[1]] = unescapeXml(content);
 		}
-		if (f[2] === "date" && p[f[1]]) {
-			p[f[1]] = new Date(p[f[1]]);
+		if (propDef[2] === "date" && p[propDef[1]]) {
+			p[propDef[1]] = new Date(p[propDef[1]]);
 		}
 	}
 
@@ -59,18 +59,18 @@ export function parseCoreProperties(data: string): Partial<FullProperties> {
 }
 
 function writePropertyField(
-	f: string,
-	g: string | null | undefined,
-	h: Record<string, string> | null,
+	tagName: string,
+	value: string | null | undefined,
+	attributes: Record<string, string> | null,
 	lines: string[],
-	p: Record<string, any>,
+	written: Record<string, any>,
 ): void {
-	if (p[f] != null || g == null || g === "") {
+	if (written[tagName] != null || value == null || value === "") {
 		return;
 	}
-	p[f] = g;
-	g = escapeXml(g);
-	lines.push(h ? writeXmlElement(f, g, h) : writeXmlTag(f, g));
+	written[tagName] = value;
+	value = escapeXml(value);
+	lines.push(attributes ? writeXmlElement(tagName, value, attributes) : writeXmlTag(tagName, value));
 }
 
 export function writeCoreProperties(
@@ -87,7 +87,7 @@ export function writeCoreProperties(
 			"xmlns:xsi": XMLNS.xsi,
 		}),
 	];
-	const p: Record<string, any> = {};
+	const written: Record<string, any> = {};
 	if (!cp && !opts?.Props) {
 		return lines.join("");
 	}
@@ -99,7 +99,7 @@ export function writeCoreProperties(
 				typeof cp.CreatedDate === "string" ? cp.CreatedDate : writeW3cDatetime(cp.CreatedDate, opts?.WTF),
 				{ "xsi:type": "dcterms:W3CDTF" },
 				lines,
-				p,
+				written,
 			);
 		}
 		if (cp.ModifiedDate != null) {
@@ -108,22 +108,22 @@ export function writeCoreProperties(
 				typeof cp.ModifiedDate === "string" ? cp.ModifiedDate : writeW3cDatetime(cp.ModifiedDate, opts?.WTF),
 				{ "xsi:type": "dcterms:W3CDTF" },
 				lines,
-				p,
+				written,
 			);
 		}
 	}
 
-	for (const f of CORE_PROPS) {
-		let v: any = opts?.Props?.[f[1]] != null ? opts.Props[f[1]] : cp ? (cp as any)[f[1]] : null;
-		if (v === true) {
-			v = "1";
-		} else if (v === false) {
-			v = "0";
-		} else if (typeof v === "number") {
-			v = String(v);
+	for (const propDef of CORE_PROPS) {
+		let propValue: any = opts?.Props?.[propDef[1]] != null ? opts.Props[propDef[1]] : cp ? (cp as any)[propDef[1]] : null;
+		if (propValue === true) {
+			propValue = "1";
+		} else if (propValue === false) {
+			propValue = "0";
+		} else if (typeof propValue === "number") {
+			propValue = String(propValue);
 		}
-		if (v != null) {
-			writePropertyField(f[0], v, null, lines, p);
+		if (propValue != null) {
+			writePropertyField(propDef[0], propValue, null, lines, written);
 		}
 	}
 	if (lines.length > 2) {

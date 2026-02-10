@@ -9,27 +9,27 @@ const custregex = /<[^<>]+>[^<]*/g;
 export function parseCustomProperties(data: string, opts?: { WTF?: boolean }): Record<string, any> {
 	const p: Record<string, any> = {};
 	let name = "";
-	const m = data.match(custregex);
-	if (m) {
-		for (let i = 0; i < m.length; ++i) {
-			const x = m[i];
-			const y = parseXmlTag(x);
-			switch (stripNamespace(y[0])) {
+	const matches = data.match(custregex);
+	if (matches) {
+		for (let i = 0; i < matches.length; ++i) {
+			const tagStr = matches[i];
+			const parsedTag = parseXmlTag(tagStr);
+			switch (stripNamespace(parsedTag[0])) {
 				case "<?xml":
 					break;
 				case "<Properties":
 					break;
 				case "<property":
-					name = unescapeXml(y.name);
+					name = unescapeXml(parsedTag.name);
 					break;
 				case "</property>":
 					name = "";
 					break;
 				default:
-					if (x.indexOf("<vt:") === 0) {
-						const toks = x.split(">");
-						const type = toks[0].slice(4);
-						const text = toks[1];
+					if (tagStr.indexOf("<vt:") === 0) {
+						const tokens = tagStr.split(">");
+						const type = tokens[0].slice(4);
+						const text = tokens[1];
 						switch (type) {
 							case "lpstr":
 							case "bstr":
@@ -65,7 +65,7 @@ export function parseCustomProperties(data: string, opts?: { WTF?: boolean }): R
 									break;
 								}
 								if (opts?.WTF && typeof console !== "undefined") {
-									console.warn("Unexpected", x, type, toks);
+									console.warn("Unexpected", tagStr, type, tokens);
 								}
 						}
 					}
@@ -76,7 +76,7 @@ export function parseCustomProperties(data: string, opts?: { WTF?: boolean }): R
 }
 
 export function writeCustomProperties(cp: Record<string, any> | undefined): string {
-	const o: string[] = [
+	const lines: string[] = [
 		XML_HEADER,
 		writeXmlElement("Properties", null, {
 			xmlns: XMLNS.CUST_PROPS,
@@ -84,22 +84,22 @@ export function writeCustomProperties(cp: Record<string, any> | undefined): stri
 		}),
 	];
 	if (!cp) {
-		return o.join("");
+		return lines.join("");
 	}
 	let pid = 1;
-	for (const k of Object.keys(cp)) {
+	for (const propName of Object.keys(cp)) {
 		++pid;
-		o.push(
-			writeXmlElement("property", writeVariantType(cp[k], true), {
+		lines.push(
+			writeXmlElement("property", writeVariantType(cp[propName], true), {
 				fmtid: "{D5CDD505-2E9C-101B-9397-08002B2CF9AE}",
 				pid: String(pid),
-				name: escapeXml(k),
+				name: escapeXml(propName),
 			}),
 		);
 	}
-	if (o.length > 2) {
-		o.push("</Properties>");
-		o[1] = o[1].replace("/>", ">");
+	if (lines.length > 2) {
+		lines.push("</Properties>");
+		lines[1] = lines[1].replace("/>", ">");
 	}
-	return o.join("");
+	return lines.join("");
 }

@@ -5,35 +5,35 @@ import { formatNumber } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 
 /** Add an array of arrays to an existing (or new) worksheet */
-export function addArrayToSheet(_ws: WorkSheet | null, data: any[][], opts?: AOA2SheetOpts): WorkSheet {
-	const o = opts || ({} as any);
-	const dense = _ws ? (_ws as any)["!data"] != null : !!o.dense;
-	const ws: any = _ws || (dense ? { "!data": [] } : {});
+export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts?: AOA2SheetOpts): WorkSheet {
+	const options = opts || ({} as any);
+	const dense = worksheet ? (worksheet as any)["!data"] != null : !!options.dense;
+	const ws: any = worksheet || (dense ? { "!data": [] } : {});
 	if (dense && !ws["!data"]) {
 		ws["!data"] = [];
 	}
 
-	let _R = 0,
-		_C = 0;
-	if (ws && o.origin != null) {
-		if (typeof o.origin === "number") {
-			_R = o.origin;
+	let originRow = 0,
+		originCol = 0;
+	if (ws && options.origin != null) {
+		if (typeof options.origin === "number") {
+			originRow = options.origin;
 		} else {
-			const _origin = typeof o.origin === "string" ? decodeCell(o.origin) : o.origin;
-			_R = _origin.r;
-			_C = _origin.c;
+			const parsedOrigin = typeof options.origin === "string" ? decodeCell(options.origin) : options.origin;
+			originRow = parsedOrigin.r;
+			originCol = parsedOrigin.c;
 		}
 	}
 
 	const range: Range = { s: { c: 10000000, r: 10000000 }, e: { c: 0, r: 0 } };
 	if (ws["!ref"]) {
-		const _range = safeDecodeRange(ws["!ref"]);
-		range.s.c = _range.s.c;
-		range.s.r = _range.s.r;
-		range.e.c = Math.max(range.e.c, _range.e.c);
-		range.e.r = Math.max(range.e.r, _range.e.r);
-		if (_R === -1) {
-			range.e.r = _R = ws["!ref"] ? _range.e.r + 1 : 0;
+		const existingRange = safeDecodeRange(ws["!ref"]);
+		range.s.c = existingRange.s.c;
+		range.s.r = existingRange.s.r;
+		range.e.c = Math.max(range.e.c, existingRange.e.c);
+		range.e.r = Math.max(range.e.r, existingRange.e.r);
+		if (originRow === -1) {
+			range.e.r = originRow = ws["!ref"] ? existingRange.e.r + 1 : 0;
 		}
 	} else {
 		range.s.c = range.e.c = range.s.r = range.e.r = 0;
@@ -41,60 +41,60 @@ export function addArrayToSheet(_ws: WorkSheet | null, data: any[][], opts?: AOA
 
 	let row: any[] = [];
 	let seen = false;
-	for (let R = 0; R < data.length; ++R) {
-		if (!data[R]) {
+	for (let rowIdx = 0; rowIdx < data.length; ++rowIdx) {
+		if (!data[rowIdx]) {
 			continue;
 		}
-		if (!Array.isArray(data[R])) {
+		if (!Array.isArray(data[rowIdx])) {
 			throw new Error("arrayToSheet expects an array of arrays");
 		}
-		const __R = _R + R;
+		const targetRow = originRow + rowIdx;
 		if (dense) {
-			if (!ws["!data"][__R]) {
-				ws["!data"][__R] = [];
+			if (!ws["!data"][targetRow]) {
+				ws["!data"][targetRow] = [];
 			}
-			row = ws["!data"][__R];
+			row = ws["!data"][targetRow];
 		}
-		const data_R = data[R];
-		for (let C = 0; C < data_R.length; ++C) {
-			if (typeof data_R[C] === "undefined") {
+		const rowData = data[rowIdx];
+		for (let colIdx = 0; colIdx < rowData.length; ++colIdx) {
+			if (typeof rowData[colIdx] === "undefined") {
 				continue;
 			}
-			let cell: any = { v: data_R[C], t: "" };
-			const __C = _C + C;
-			if (range.s.r > __R) {
-				range.s.r = __R;
+			let cell: any = { v: rowData[colIdx], t: "" };
+			const targetCol = originCol + colIdx;
+			if (range.s.r > targetRow) {
+				range.s.r = targetRow;
 			}
-			if (range.s.c > __C) {
-				range.s.c = __C;
+			if (range.s.c > targetCol) {
+				range.s.c = targetCol;
 			}
-			if (range.e.r < __R) {
-				range.e.r = __R;
+			if (range.e.r < targetRow) {
+				range.e.r = targetRow;
 			}
-			if (range.e.c < __C) {
-				range.e.c = __C;
+			if (range.e.c < targetCol) {
+				range.e.c = targetCol;
 			}
 			seen = true;
 
 			if (
-				data_R[C] &&
-				typeof data_R[C] === "object" &&
-				!Array.isArray(data_R[C]) &&
-				!(data_R[C] instanceof Date)
+				rowData[colIdx] &&
+				typeof rowData[colIdx] === "object" &&
+				!Array.isArray(rowData[colIdx]) &&
+				!(rowData[colIdx] instanceof Date)
 			) {
-				cell = data_R[C];
+				cell = rowData[colIdx];
 			} else {
 				if (Array.isArray(cell.v)) {
-					cell.f = data_R[C][1];
+					cell.f = rowData[colIdx][1];
 					cell.v = cell.v[0];
 				}
 				if (cell.v === null) {
 					if (cell.f) {
 						cell.t = "n";
-					} else if (o.nullError) {
+					} else if (options.nullError) {
 						cell.t = "e";
 						cell.v = 0;
-					} else if (!o.sheetStubs) {
+					} else if (!options.sheetStubs) {
 						continue;
 					} else {
 						cell.t = "z";
@@ -112,16 +112,16 @@ export function addArrayToSheet(_ws: WorkSheet | null, data: any[][], opts?: AOA
 				} else if (typeof cell.v === "boolean") {
 					cell.t = "b";
 				} else if (cell.v instanceof Date) {
-					cell.z = o.dateNF || formatTable[14];
-					if (!o.UTC) {
+					cell.z = options.dateNF || formatTable[14];
+					if (!options.UTC) {
 						cell.v = localToUtc(cell.v);
 					}
-					if (o.cellDates) {
+					if (options.cellDates) {
 						cell.t = "d";
-						cell.w = formatNumber(cell.z, dateToSerialNumber(cell.v, o.date1904));
+						cell.w = formatNumber(cell.z, dateToSerialNumber(cell.v, options.date1904));
 					} else {
 						cell.t = "n";
-						cell.v = dateToSerialNumber(cell.v, o.date1904);
+						cell.v = dateToSerialNumber(cell.v, options.date1904);
 						cell.w = formatNumber(cell.z, cell.v);
 					}
 				} else {
@@ -130,12 +130,12 @@ export function addArrayToSheet(_ws: WorkSheet | null, data: any[][], opts?: AOA
 			}
 
 			if (dense) {
-				if (row[__C] && row[__C].z) {
-					cell.z = row[__C].z;
+				if (row[targetCol] && row[targetCol].z) {
+					cell.z = row[targetCol].z;
 				}
-				row[__C] = cell;
+				row[targetCol] = cell;
 			} else {
-				const cell_ref = encodeCol(__C) + (__R + 1);
+				const cell_ref = encodeCol(targetCol) + (targetRow + 1);
 				if (ws[cell_ref] && ws[cell_ref].z) {
 					cell.z = ws[cell_ref].z;
 				}

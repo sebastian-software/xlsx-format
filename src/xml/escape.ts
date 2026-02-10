@@ -21,10 +21,10 @@ const decregex = /[&<>'"]/g;
 const charegex = /[\u0000-\u0008\u000b-\u001f\uFFFE-\uFFFF]/g;
 
 function rawUnescapeXml(text: string): string {
-	const s = text;
-	const i = s.indexOf("<![CDATA[");
+	const str = text;
+	const i = str.indexOf("<![CDATA[");
 	if (i === -1) {
-		return s
+		return str
 			.replace(encregex, ($$, $1) => {
 				return encodings[$$] || String.fromCharCode(parseInt($1, $$.indexOf("x") > -1 ? 16 : 10)) || $$;
 			})
@@ -32,8 +32,8 @@ function rawUnescapeXml(text: string): string {
 				return String.fromCharCode(parseInt(c, 16));
 			});
 	}
-	const j = s.indexOf("]]>");
-	return rawUnescapeXml(s.slice(0, i)) + s.slice(i + 9, j) + rawUnescapeXml(s.slice(j + 3));
+	const cdataEndIdx = str.indexOf("]]>");
+	return rawUnescapeXml(str.slice(0, i)) + str.slice(i + 9, cdataEndIdx) + rawUnescapeXml(str.slice(cdataEndIdx + 3));
 }
 
 /** Unescape XML entities. When xlsx=true, normalize \r\n -> \n */
@@ -44,10 +44,10 @@ export function unescapeXml(text: string, xlsx?: boolean): string {
 
 /** Escape a string for XML text content */
 export function escapeXml(text: string): string {
-	const s = text;
-	return s
-		.replace(decregex, (y) => XML_ESCAPE_MAP[y])
-		.replace(charegex, (s) => "_x" + ("000" + s.charCodeAt(0).toString(16)).slice(-4) + "_");
+	const str = text;
+	return str
+		.replace(decregex, (char) => XML_ESCAPE_MAP[char])
+		.replace(charegex, (char) => "_x" + ("000" + char.charCodeAt(0).toString(16)).slice(-4) + "_");
 }
 
 /** Escape a string for XML tag names (spaces -> _x0020_) */
@@ -60,11 +60,11 @@ const htmlcharegex = /[\u0000-\u001f]/g;
 
 /** Escape a string for HTML output */
 export function escapeHtml(text: string): string {
-	const s = text;
-	return s
-		.replace(decregex, (y) => XML_ESCAPE_MAP[y])
+	const str = text;
+	return str
+		.replace(decregex, (char) => XML_ESCAPE_MAP[char])
 		.replace(/\n/g, "<br/>")
-		.replace(htmlcharegex, (s) => "&#x" + ("000" + s.charCodeAt(0).toString(16)).slice(-4) + ";");
+		.replace(htmlcharegex, (char) => "&#x" + ("000" + char.charCodeAt(0).toString(16)).slice(-4) + ";");
 }
 
 const entities: [RegExp, string][] = [
@@ -79,7 +79,7 @@ const entities: [RegExp, string][] = [
 
 /** Decode HTML entities */
 export function htmlDecode(str: string): string {
-	let o = str
+	let result = str
 		.replace(/^[\t\n\r ]+/, "")
 		.replace(/(^|[^\t\n\r ])[\t\n\r ]+$/, "$1")
 		.replace(/>\s+/g, ">")
@@ -88,7 +88,7 @@ export function htmlDecode(str: string): string {
 		.replace(/<\s*[bB][rR]\s*\/?>/g, "\n")
 		.replace(/<[^<>]*>/g, "");
 	for (let i = 0; i < entities.length; ++i) {
-		o = o.replace(entities[i][0], entities[i][1]);
+		result = result.replace(entities[i][0], entities[i][1]);
 	}
-	return o;
+	return result;
 }

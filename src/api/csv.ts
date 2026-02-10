@@ -6,40 +6,40 @@ const qreg = /"/g;
 
 function buildCsvRow(
 	sheet: WorkSheet,
-	r: Range,
-	R: number,
+	range: Range,
+	rowIndex: number,
 	cols: string[],
 	fieldSepCode: number,
 	recordSepCode: number,
-	FS: string,
+	fieldSeparator: string,
 	rowCount: number,
-	o: any,
+	options: any,
 ): string | null {
 	let isempty = true;
 	const row: string[] = [];
-	const rr = encodeRow(R);
+	const encodedRow = encodeRow(rowIndex);
 	const dense = (sheet as any)["!data"] != null;
-	const datarow = dense ? (sheet as any)["!data"][R] || [] : [];
+	const datarow = dense ? (sheet as any)["!data"][rowIndex] || [] : [];
 
-	for (let C = r.s.c; C <= r.e.c; ++C) {
-		if (!cols[C]) {
+	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
+		if (!cols[colIdx]) {
 			continue;
 		}
-		const val = dense ? datarow[C] : (sheet as any)[cols[C] + rr];
+		const val = dense ? datarow[colIdx] : (sheet as any)[cols[colIdx] + encodedRow];
 		let txt = "";
 		if (val == null) {
 			txt = "";
 		} else if (val.v != null) {
 			isempty = false;
-			txt = "" + (o.rawNumbers && val.t === "n" ? val.v : formatCell(val, null, o));
-			for (let i = 0, cc = 0; i !== txt.length; ++i) {
+			txt = "" + (options.rawNumbers && val.t === "n" ? val.v : formatCell(val, null, options));
+			for (let i = 0, charCode = 0; i !== txt.length; ++i) {
 				if (
-					(cc = txt.charCodeAt(i)) === fieldSepCode ||
-					cc === recordSepCode ||
-					cc === 10 ||
-					cc === 13 ||
-					cc === 34 ||
-					o.forceQuotes
+					(charCode = txt.charCodeAt(i)) === fieldSepCode ||
+					charCode === recordSepCode ||
+					charCode === 10 ||
+					charCode === 13 ||
+					charCode === 34 ||
+					options.forceQuotes
 				) {
 					txt = '"' + txt.replace(qreg, '""') + '"';
 					break;
@@ -59,50 +59,50 @@ function buildCsvRow(
 		}
 		row.push(txt);
 	}
-	if (o.strip) {
+	if (options.strip) {
 		while (row[row.length - 1] === "") {
 			--row.length;
 		}
 	}
-	if (o.blankrows === false && isempty) {
+	if (options.blankrows === false && isempty) {
 		return null;
 	}
-	return row.join(FS);
+	return row.join(fieldSeparator);
 }
 
 /** Convert a worksheet to CSV string */
 export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 	const out: string[] = [];
-	const o: any = opts == null ? {} : opts;
+	const options: any = opts == null ? {} : opts;
 	if (sheet == null || sheet["!ref"] == null) {
 		return "";
 	}
-	const r = safeDecodeRange(sheet["!ref"]);
-	const FS = o.FS !== undefined ? o.FS : ",";
-	const fieldSepCode = FS.charCodeAt(0);
-	const RS = o.RS !== undefined ? o.RS : "\n";
-	const recordSepCode = RS.charCodeAt(0);
+	const range = safeDecodeRange(sheet["!ref"]);
+	const fieldSeparator = options.FS !== undefined ? options.FS : ",";
+	const fieldSepCode = fieldSeparator.charCodeAt(0);
+	const recordSeparator = options.RS !== undefined ? options.RS : "\n";
+	const recordSepCode = recordSeparator.charCodeAt(0);
 	const cols: string[] = [];
-	const colinfo: any[] = (o.skipHidden && sheet["!cols"]) || [];
-	const rowinfo: any[] = (o.skipHidden && sheet["!rows"]) || [];
+	const colinfo: any[] = (options.skipHidden && sheet["!cols"]) || [];
+	const rowinfo: any[] = (options.skipHidden && sheet["!rows"]) || [];
 
-	for (let C = r.s.c; C <= r.e.c; ++C) {
-		if (!(colinfo[C] || {}).hidden) {
-			cols[C] = encodeCol(C);
+	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
+		if (!(colinfo[colIdx] || {}).hidden) {
+			cols[colIdx] = encodeCol(colIdx);
 		}
 	}
 
 	let rowCount = 0;
-	for (let R = r.s.r; R <= r.e.r; ++R) {
-		if ((rowinfo[R] || {}).hidden) {
+	for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
+		if ((rowinfo[rowIdx] || {}).hidden) {
 			continue;
 		}
-		const row = buildCsvRow(sheet, r, R, cols, fieldSepCode, recordSepCode, FS, rowCount, o);
+		const row = buildCsvRow(sheet, range, rowIdx, cols, fieldSepCode, recordSepCode, fieldSeparator, rowCount, options);
 		if (row == null) {
 			continue;
 		}
-		if (row || o.blankrows !== false) {
-			out.push((rowCount++ ? RS : "") + row);
+		if (row || options.blankrows !== false) {
+			out.push((rowCount++ ? recordSeparator : "") + row);
 		}
 	}
 	return out.join("");
@@ -110,8 +110,8 @@ export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 
 /** Convert a worksheet to tab-separated text */
 export function sheetToTxt(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
-	const o: any = opts || {};
-	o.FS = "\t";
-	o.RS = "\n";
-	return sheetToCsv(sheet, o);
+	const options: any = opts || {};
+	options.FS = "\t";
+	options.RS = "\n";
+	return sheetToCsv(sheet, options);
 }

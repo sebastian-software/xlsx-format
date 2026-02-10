@@ -7,51 +7,51 @@ import { formatCell } from "./format.js";
 
 function buildJsonRow(
 	sheet: WorkSheet,
-	r: Range,
-	R: number,
+	range: Range,
+	rowIndex: number,
 	cols: string[],
 	header: number,
 	headers: any[],
-	o: any,
+	options: any,
 ): { row: any; isempty: boolean } {
-	const encodedRow = encodeRow(R);
-	const defval = o.defval;
-	const raw = o.raw || !Object.hasOwn(o, "raw");
+	const encodedRow = encodeRow(rowIndex);
+	const defval = options.defval;
+	const raw = options.raw || !Object.hasOwn(options, "raw");
 	let isempty = true;
 	const dense = (sheet as any)["!data"] != null;
 	const row: any = header === 1 ? [] : {};
 
 	if (header !== 1) {
 		try {
-			Object.defineProperty(row, "__rowNum__", { value: R, enumerable: false });
+			Object.defineProperty(row, "__rowNum__", { value: rowIndex, enumerable: false });
 		} catch {
-			row.__rowNum__ = R;
+			row.__rowNum__ = rowIndex;
 		}
 	}
 
-	if (!dense || (sheet as any)["!data"][R]) {
-		for (let C = r.s.c; C <= r.e.c; ++C) {
+	if (!dense || (sheet as any)["!data"][rowIndex]) {
+		for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
 			const val: CellObject | undefined = dense
-				? ((sheet as any)["!data"][R] || [])[C]
-				: (sheet as any)[cols[C] + encodedRow];
+				? ((sheet as any)["!data"][rowIndex] || [])[colIdx]
+				: (sheet as any)[cols[colIdx] + encodedRow];
 			if (val == null || val.t === undefined) {
 				if (defval === undefined) {
 					continue;
 				}
-				if (headers[C] != null) {
-					row[headers[C]] = defval;
+				if (headers[colIdx] != null) {
+					row[headers[colIdx]] = defval;
 				}
 				continue;
 			}
-			let v: any = val.v;
+			let cellValue: any = val.v;
 			switch (val.t) {
 				case "z":
-					if (v == null) {
+					if (cellValue == null) {
 						break;
 					}
 					continue;
 				case "e":
-					v = v === 0 ? null : undefined;
+					cellValue = cellValue === 0 ? null : undefined;
 					break;
 				case "s":
 				case "b":
@@ -60,36 +60,36 @@ function buildJsonRow(
 					if (!val.z || !isDateFormat(String(val.z))) {
 						break;
 					}
-					v = serialNumberToDate(v as number);
-					if (typeof v === "number") {
+					cellValue = serialNumberToDate(cellValue as number);
+					if (typeof cellValue === "number") {
 						break;
 					}
 				/* falls through */
 				case "d":
-					if (!(o && (o.UTC || o.raw === false))) {
-						v = utcToLocal(new Date(v));
+					if (!(options && (options.UTC || options.raw === false))) {
+						cellValue = utcToLocal(new Date(cellValue));
 					}
 					break;
 				default:
 					throw new Error("unrecognized type " + val.t);
 			}
-			if (headers[C] != null) {
-				if (v == null) {
-					if (val.t === "e" && v === null) {
-						row[headers[C]] = null;
+			if (headers[colIdx] != null) {
+				if (cellValue == null) {
+					if (val.t === "e" && cellValue === null) {
+						row[headers[colIdx]] = null;
 					} else if (defval !== undefined) {
-						row[headers[C]] = defval;
-					} else if (raw && v === null) {
-						row[headers[C]] = null;
+						row[headers[colIdx]] = defval;
+					} else if (raw && cellValue === null) {
+						row[headers[colIdx]] = null;
 					} else {
 						continue;
 					}
 				} else {
-					row[headers[C]] = (val.t === "n" && typeof o.rawNumbers === "boolean" ? o.rawNumbers : raw)
-						? v
-						: formatCell(val, v, o);
+					row[headers[colIdx]] = (val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw)
+						? cellValue
+						: formatCell(val, cellValue, options);
 				}
-				if (v != null) {
+				if (cellValue != null) {
 					isempty = false;
 				}
 			}
@@ -106,220 +106,220 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 	let header = 0,
 		offset = 1;
 	const headers: any[] = [];
-	const o: any = opts || {};
-	const range = o.range != null ? o.range : sheet["!ref"];
+	const options: any = opts || {};
+	const range = options.range != null ? options.range : sheet["!ref"];
 
-	if (o.header === 1) {
+	if (options.header === 1) {
 		header = 1;
-	} else if (o.header === "A") {
+	} else if (options.header === "A") {
 		header = 2;
-	} else if (Array.isArray(o.header)) {
+	} else if (Array.isArray(options.header)) {
 		header = 3;
-	} else if (o.header == null) {
+	} else if (options.header == null) {
 		header = 0;
 	}
 
-	let r: Range;
+	let decodedRange: Range;
 	switch (typeof range) {
 		case "string":
-			r = safeDecodeRange(range);
+			decodedRange = safeDecodeRange(range);
 			break;
 		case "number":
-			r = safeDecodeRange(sheet["!ref"]);
-			r.s.r = range;
+			decodedRange = safeDecodeRange(sheet["!ref"]);
+			decodedRange.s.r = range;
 			break;
 		default:
-			r = range;
+			decodedRange = range;
 	}
 	if (header > 0) {
 		offset = 0;
 	}
 
-	const encodedRow = encodeRow(r.s.r);
+	const encodedRow = encodeRow(decodedRange.s.r);
 	const cols: string[] = [];
 	const out: any[] = [];
-	let outi = 0;
+	let outputIndex = 0;
 	const dense = (sheet as any)["!data"] != null;
-	let R = r.s.r;
+	let rowIdx = decodedRange.s.r;
 	const header_cnt: Record<string, number> = {};
-	if (dense && !(sheet as any)["!data"][R]) {
-		(sheet as any)["!data"][R] = [];
+	if (dense && !(sheet as any)["!data"][rowIdx]) {
+		(sheet as any)["!data"][rowIdx] = [];
 	}
-	const colinfo: any[] = (o.skipHidden && sheet["!cols"]) || [];
-	const rowinfo: any[] = (o.skipHidden && sheet["!rows"]) || [];
+	const colinfo: any[] = (options.skipHidden && sheet["!cols"]) || [];
+	const rowinfo: any[] = (options.skipHidden && sheet["!rows"]) || [];
 
-	for (let C = r.s.c; C <= r.e.c; ++C) {
-		if ((colinfo[C] || {}).hidden) {
+	for (let colIdx = decodedRange.s.c; colIdx <= decodedRange.e.c; ++colIdx) {
+		if ((colinfo[colIdx] || {}).hidden) {
 			continue;
 		}
-		cols[C] = encodeCol(C);
-		const val: CellObject | undefined = dense ? (sheet as any)["!data"][R][C] : (sheet as any)[cols[C] + encodedRow];
-		let v: any, vv: any;
+		cols[colIdx] = encodeCol(colIdx);
+		const val: CellObject | undefined = dense ? (sheet as any)["!data"][rowIdx][colIdx] : (sheet as any)[cols[colIdx] + encodedRow];
+		let cellValue: any, headerLabel: any;
 		switch (header) {
 			case 1:
-				headers[C] = C - r.s.c;
+				headers[colIdx] = colIdx - decodedRange.s.c;
 				break;
 			case 2:
-				headers[C] = cols[C];
+				headers[colIdx] = cols[colIdx];
 				break;
 			case 3:
-				headers[C] = (o.header as string[])[C - r.s.c];
+				headers[colIdx] = (options.header as string[])[colIdx - decodedRange.s.c];
 				break;
 			default: {
 				const _val = val == null ? { w: "__EMPTY", t: "s" } : val;
-				vv = v = formatCell(_val as CellObject, null, o);
-				let counter = header_cnt[v] || 0;
+				headerLabel = cellValue = formatCell(_val as CellObject, null, options);
+				let counter = header_cnt[cellValue] || 0;
 				if (!counter) {
-					header_cnt[v] = 1;
+					header_cnt[cellValue] = 1;
 				} else {
 					do {
-						vv = v + "_" + counter++;
-					} while (header_cnt[vv]);
-					header_cnt[v] = counter;
-					header_cnt[vv] = 1;
+						headerLabel = cellValue + "_" + counter++;
+					} while (header_cnt[headerLabel]);
+					header_cnt[cellValue] = counter;
+					header_cnt[headerLabel] = 1;
 				}
-				headers[C] = vv;
+				headers[colIdx] = headerLabel;
 			}
 		}
 	}
 
-	for (R = r.s.r + offset; R <= r.e.r; ++R) {
-		if ((rowinfo[R] || {}).hidden) {
+	for (rowIdx = decodedRange.s.r + offset; rowIdx <= decodedRange.e.r; ++rowIdx) {
+		if ((rowinfo[rowIdx] || {}).hidden) {
 			continue;
 		}
-		const row = buildJsonRow(sheet, r, R, cols, header, headers, o);
-		if (!row.isempty || (header === 1 ? o.blankrows !== false : !!o.blankrows)) {
-			out[outi++] = row.row;
+		const row = buildJsonRow(sheet, decodedRange, rowIdx, cols, header, headers, options);
+		if (!row.isempty || (header === 1 ? options.blankrows !== false : !!options.blankrows)) {
+			out[outputIndex++] = row.row;
 		}
 	}
-	out.length = outi;
+	out.length = outputIndex;
 	return out;
 }
 
 /** Add JSON data to a worksheet */
-export function addJsonToSheet(_ws: WorkSheet | null, js: any[], opts?: JSON2SheetOpts): WorkSheet {
-	const o: any = opts || {};
-	const dense = _ws ? (_ws as any)["!data"] != null : !!o.dense;
-	const offset = +!o.skipHeader;
-	const ws: any = _ws || {};
-	if (!_ws && dense) {
-		ws["!data"] = [];
+export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[], opts?: JSON2SheetOpts): WorkSheet {
+	const options: any = opts || {};
+	const dense = existingSheet ? (existingSheet as any)["!data"] != null : !!options.dense;
+	const offset = +!options.skipHeader;
+	const worksheet: any = existingSheet || {};
+	if (!existingSheet && dense) {
+		worksheet["!data"] = [];
 	}
 
-	let _R = 0,
-		_C = 0;
-	if (ws && o.origin != null) {
-		if (typeof o.origin === "number") {
-			_R = o.origin;
+	let originRow = 0,
+		originCol = 0;
+	if (worksheet && options.origin != null) {
+		if (typeof options.origin === "number") {
+			originRow = options.origin;
 		} else {
-			const _origin = typeof o.origin === "string" ? decodeCell(o.origin) : o.origin;
-			_R = _origin.r;
-			_C = _origin.c;
+			const parsedOrigin = typeof options.origin === "string" ? decodeCell(options.origin) : options.origin;
+			originRow = parsedOrigin.r;
+			originCol = parsedOrigin.c;
 		}
 	}
 
-	const range: Range = { s: { c: 0, r: 0 }, e: { c: _C, r: _R + js.length - 1 + offset } };
-	if (ws["!ref"]) {
-		const _range = safeDecodeRange(ws["!ref"]);
-		range.e.c = Math.max(range.e.c, _range.e.c);
-		range.e.r = Math.max(range.e.r, _range.e.r);
-		if (_R === -1) {
-			_R = _range.e.r + 1;
-			range.e.r = _R + js.length - 1 + offset;
+	const range: Range = { s: { c: 0, r: 0 }, e: { c: originCol, r: originRow + jsonData.length - 1 + offset } };
+	if (worksheet["!ref"]) {
+		const existingRange = safeDecodeRange(worksheet["!ref"]);
+		range.e.c = Math.max(range.e.c, existingRange.e.c);
+		range.e.r = Math.max(range.e.r, existingRange.e.r);
+		if (originRow === -1) {
+			originRow = existingRange.e.r + 1;
+			range.e.r = originRow + jsonData.length - 1 + offset;
 		}
 	} else {
-		if (_R === -1) {
-			_R = 0;
-			range.e.r = js.length - 1 + offset;
+		if (originRow === -1) {
+			originRow = 0;
+			range.e.r = jsonData.length - 1 + offset;
 		}
 	}
 
-	const headers: string[] = o.header || [];
-	let C = 0;
-	js.forEach((JS, R) => {
-		if (dense && !ws["!data"][_R + R + offset]) {
-			ws["!data"][_R + R + offset] = [];
+	const headers: string[] = options.header || [];
+	let colIdx = 0;
+	jsonData.forEach((rowObj, rowIdx) => {
+		if (dense && !worksheet["!data"][originRow + rowIdx + offset]) {
+			worksheet["!data"][originRow + rowIdx + offset] = [];
 		}
-		const ROW = dense ? ws["!data"][_R + R + offset] : null;
-		Object.keys(JS).forEach((k: string) => {
-			if ((C = headers.indexOf(k)) === -1) {
-				headers[(C = headers.length)] = k;
+		const denseRow = dense ? worksheet["!data"][originRow + rowIdx + offset] : null;
+		Object.keys(rowObj).forEach((key: string) => {
+			if ((colIdx = headers.indexOf(key)) === -1) {
+				headers[(colIdx = headers.length)] = key;
 			}
-			let v = JS[k];
-			let t = "z";
-			let z = "";
-			const ref = dense ? "" : encodeCol(_C + C) + encodeRow(_R + R + offset);
-			const cell: any = dense ? ROW[_C + C] : ws[ref];
+			let value = rowObj[key];
+			let cellType = "z";
+			let dateFormat = "";
+			const ref = dense ? "" : encodeCol(originCol + colIdx) + encodeRow(originRow + rowIdx + offset);
+			const cell: any = dense ? denseRow[originCol + colIdx] : worksheet[ref];
 
-			if (v && typeof v === "object" && !(v instanceof Date)) {
+			if (value && typeof value === "object" && !(value instanceof Date)) {
 				if (dense) {
-					ROW[_C + C] = v;
+					denseRow[originCol + colIdx] = value;
 				} else {
-					ws[ref] = v;
+					worksheet[ref] = value;
 				}
 			} else {
-				if (typeof v === "number") {
-					t = "n";
-				} else if (typeof v === "boolean") {
-					t = "b";
-				} else if (typeof v === "string") {
-					t = "s";
-				} else if (v instanceof Date) {
-					t = "d";
-					if (!o.UTC) {
-						v = localToUtc(v);
+				if (typeof value === "number") {
+					cellType = "n";
+				} else if (typeof value === "boolean") {
+					cellType = "b";
+				} else if (typeof value === "string") {
+					cellType = "s";
+				} else if (value instanceof Date) {
+					cellType = "d";
+					if (!options.UTC) {
+						value = localToUtc(value);
 					}
-					if (!o.cellDates) {
-						t = "n";
-						v = dateToSerialNumber(v);
+					if (!options.cellDates) {
+						cellType = "n";
+						value = dateToSerialNumber(value);
 					}
-					z =
+					dateFormat =
 						cell != null && cell.z && isDateFormat(String(cell.z))
 							? String(cell.z)
-							: o.dateNF || formatTable[14];
-				} else if (v === null && o.nullError) {
-					t = "e";
-					v = 0;
+							: options.dateNF || formatTable[14];
+				} else if (value === null && options.nullError) {
+					cellType = "e";
+					value = 0;
 				}
 
 				if (!cell) {
-					const newCell: any = { t, v };
-					if (z) {
-						newCell.z = z;
+					const newCell: any = { t: cellType, v: value };
+					if (dateFormat) {
+						newCell.z = dateFormat;
 					}
 					if (dense) {
-						ROW[_C + C] = newCell;
+						denseRow[originCol + colIdx] = newCell;
 					} else {
-						ws[ref] = newCell;
+						worksheet[ref] = newCell;
 					}
 				} else {
-					cell.t = t;
-					cell.v = v;
+					cell.t = cellType;
+					cell.v = value;
 					delete cell.w;
-					if (z) {
-						cell.z = z;
+					if (dateFormat) {
+						cell.z = dateFormat;
 					}
 				}
 			}
 		});
 	});
 
-	range.e.c = Math.max(range.e.c, _C + headers.length - 1);
-	const __R = encodeRow(_R);
-	if (dense && !ws["!data"][_R]) {
-		ws["!data"][_R] = [];
+	range.e.c = Math.max(range.e.c, originCol + headers.length - 1);
+	const encodedOriginRow = encodeRow(originRow);
+	if (dense && !worksheet["!data"][originRow]) {
+		worksheet["!data"][originRow] = [];
 	}
 	if (offset) {
-		for (C = 0; C < headers.length; ++C) {
+		for (colIdx = 0; colIdx < headers.length; ++colIdx) {
 			if (dense) {
-				ws["!data"][_R][C + _C] = { t: "s", v: headers[C] };
+				worksheet["!data"][originRow][colIdx + originCol] = { t: "s", v: headers[colIdx] };
 			} else {
-				ws[encodeCol(C + _C) + __R] = { t: "s", v: headers[C] };
+				worksheet[encodeCol(colIdx + originCol) + encodedOriginRow] = { t: "s", v: headers[colIdx] };
 			}
 		}
 	}
-	ws["!ref"] = encodeRange(range);
-	return ws as WorkSheet;
+	worksheet["!ref"] = encodeRange(range);
+	return worksheet as WorkSheet;
 }
 
 /** Create a new worksheet from JSON data */

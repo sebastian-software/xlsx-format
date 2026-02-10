@@ -54,17 +54,17 @@ function detect_type(data: any): ReadOptions["type"] {
  */
 export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 	resetFormatTable();
-	const o: any = opts ? { ...opts } : {};
-	if (!o.type) {
-		o.type = detect_type(data);
+	const options: any = opts ? { ...opts } : {};
+	if (!options.type) {
+		options.type = detect_type(data);
 	}
 
-	const u8 = to_uint8array(data, o);
+	const u8 = to_uint8array(data, options);
 
 	// Check first bytes - must be PK (ZIP)
 	if (u8[0] === 0x50 && u8[1] === 0x4b) {
 		const zip = await zipRead(u8);
-		return parseZip(zip, o);
+		return parseZip(zip, options);
 	}
 
 	// Check for PDF

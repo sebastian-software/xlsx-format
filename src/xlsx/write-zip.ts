@@ -37,7 +37,7 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 
 	const ct = createContentTypes();
 	const zip = zipCreate();
-	let f = "";
+	let filePath = "";
 
 	opts.cellXfs = [];
 
@@ -46,37 +46,37 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 	}
 
 	// Core properties
-	f = "docProps/core.xml";
-	zipAddString(zip, f, writeCoreProperties(wb.Props, opts));
-	ct.coreprops.push(f);
-	addRelationship(opts.rels, 2, f, RELTYPE.CORE_PROPS);
+	filePath = "docProps/core.xml";
+	zipAddString(zip, filePath, writeCoreProperties(wb.Props, opts));
+	ct.coreprops.push(filePath);
+	addRelationship(opts.rels, 2, filePath, RELTYPE.CORE_PROPS);
 
 	// Extended properties
-	f = "docProps/app.xml";
+	filePath = "docProps/app.xml";
 	if (wb.Props && (wb.Props as any).SheetNames) {
 		/* already set */
 	} else if (!wb.Workbook || !wb.Workbook.Sheets) {
 		(wb.Props as any).SheetNames = wb.SheetNames;
 	} else {
-		const _sn: string[] = [];
-		for (let _i = 0; _i < wb.SheetNames.length; ++_i) {
-			if ((wb.Workbook.Sheets[_i] || ({} as any)).Hidden !== 2) {
-				_sn.push(wb.SheetNames[_i]);
+		const visibleSheetNames: string[] = [];
+		for (let sheetIdx = 0; sheetIdx < wb.SheetNames.length; ++sheetIdx) {
+			if ((wb.Workbook.Sheets[sheetIdx] || ({} as any)).Hidden !== 2) {
+				visibleSheetNames.push(wb.SheetNames[sheetIdx]);
 			}
 		}
-		(wb.Props as any).SheetNames = _sn;
+		(wb.Props as any).SheetNames = visibleSheetNames;
 	}
 	(wb.Props as any).Worksheets = (wb.Props as any).SheetNames.length;
-	zipAddString(zip, f, writeExtendedProperties(wb.Props));
-	ct.extprops.push(f);
-	addRelationship(opts.rels, 3, f, RELTYPE.EXT_PROPS);
+	zipAddString(zip, filePath, writeExtendedProperties(wb.Props));
+	ct.extprops.push(filePath);
+	addRelationship(opts.rels, 3, filePath, RELTYPE.EXT_PROPS);
 
 	// Custom properties
 	if (wb.Custprops !== wb.Props && Object.keys(wb.Custprops || {}).length > 0) {
-		f = "docProps/custom.xml";
-		zipAddString(zip, f, writeCustomProperties(wb.Custprops));
-		ct.custprops.push(f);
-		addRelationship(opts.rels, 4, f, RELTYPE.CUST_PROPS);
+		filePath = "docProps/custom.xml";
+		zipAddString(zip, filePath, writeCustomProperties(wb.Custprops));
+		ct.custprops.push(filePath);
+		addRelationship(opts.rels, 4, filePath, RELTYPE.CUST_PROPS);
 	}
 
 	const people: string[] = ["SheetJ5"];
@@ -87,9 +87,9 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 		const wsrels: Relationships = { "!id": {} } as any;
 		const ws = wb.Sheets[wb.SheetNames[rId - 1]];
 
-		f = "xl/worksheets/sheet" + rId + ".xml";
-		zipAddString(zip, f, writeWorksheetXml(ws || ({} as any), opts, rId - 1, wsrels, wb));
-		ct.sheets.push(f);
+		filePath = "xl/worksheets/sheet" + rId + ".xml";
+		zipAddString(zip, filePath, writeWorksheetXml(ws || ({} as any), opts, rId - 1, wsrels, wb));
+		ct.sheets.push(filePath);
 		addRelationship(opts.wbrels, -1, "worksheets/sheet" + rId + ".xml", RELTYPE.SHEET);
 
 		if (ws) {
@@ -131,47 +131,47 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 		}
 
 		if ((wsrels["!id"] as any).rId1) {
-			zipAddString(zip, getRelsPath(f), writeRelationships(wsrels));
+			zipAddString(zip, getRelsPath(filePath), writeRelationships(wsrels));
 		}
 	}
 
 	// Shared strings
 	if (opts.Strings != null && opts.Strings.length > 0) {
-		f = "xl/sharedStrings.xml";
-		zipAddString(zip, f, writeSstXml(opts.Strings, opts));
-		ct.strs.push(f);
+		filePath = "xl/sharedStrings.xml";
+		zipAddString(zip, filePath, writeSstXml(opts.Strings, opts));
+		ct.strs.push(filePath);
 		addRelationship(opts.wbrels, -1, "sharedStrings.xml", RELTYPE.SST);
 	}
 
 	// Workbook
-	f = "xl/workbook.xml";
-	zipAddString(zip, f, writeWorkbookXml(wb));
-	ct.workbooks.push(f);
-	addRelationship(opts.rels, 1, f, RELTYPE.WB);
+	filePath = "xl/workbook.xml";
+	zipAddString(zip, filePath, writeWorkbookXml(wb));
+	ct.workbooks.push(filePath);
+	addRelationship(opts.rels, 1, filePath, RELTYPE.WB);
 
 	// Theme
-	f = "xl/theme/theme1.xml";
-	zipAddString(zip, f, write_theme_xml());
-	ct.themes.push(f);
+	filePath = "xl/theme/theme1.xml";
+	zipAddString(zip, filePath, write_theme_xml());
+	ct.themes.push(filePath);
 	addRelationship(opts.wbrels, -1, "theme/theme1.xml", RELTYPE.THEME);
 
 	// Styles
-	f = "xl/styles.xml";
-	zipAddString(zip, f, writeStylesXml(wb, opts));
-	ct.styles.push(f);
+	filePath = "xl/styles.xml";
+	zipAddString(zip, filePath, writeStylesXml(wb, opts));
+	ct.styles.push(filePath);
 	addRelationship(opts.wbrels, -1, "styles.xml", RELTYPE.STY);
 
 	// Metadata
-	f = "xl/metadata.xml";
-	zipAddString(zip, f, writeMetadataXml());
-	ct.metadata.push(f);
+	filePath = "xl/metadata.xml";
+	zipAddString(zip, filePath, writeMetadataXml());
+	ct.metadata.push(filePath);
 	addRelationship(opts.wbrels, -1, "metadata.xml", RELTYPE.META);
 
 	// People (threaded comments)
 	if (people.length > 1) {
-		f = "xl/persons/person.xml";
-		zipAddString(zip, f, writePeopleXml(people));
-		ct.people.push(f);
+		filePath = "xl/persons/person.xml";
+		zipAddString(zip, filePath, writePeopleXml(people));
+		ct.people.push(filePath);
 		addRelationship(opts.wbrels, -1, "persons/person.xml", RELTYPE.PEOPLE);
 	}
 

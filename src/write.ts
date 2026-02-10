@@ -18,16 +18,16 @@ export async function write(wb: WorkBook, opts?: WriteOptions): Promise<any> {
 	if (!opts || !(opts as any).unsafe) {
 		validateWorkbook(wb);
 	}
-	const o: any = { ...(opts || {}) };
-	if (o.cellStyles) {
-		o.cellNF = true;
-		o.sheetStubs = true;
+	const options: any = { ...(opts || {}) };
+	if (options.cellStyles) {
+		options.cellNF = true;
+		options.sheetStubs = true;
 	}
 
-	const zip = writeZipXlsx(wb, o);
-	const compressed = await zipWrite(zip, !!o.compression);
+	const zip = writeZipXlsx(wb, options);
+	const compressed = await zipWrite(zip, !!options.compression);
 
-	switch (o.type) {
+	switch (options.type) {
 		case "base64":
 			return base64encode_u8(compressed);
 		case "buffer":
@@ -55,8 +55,8 @@ function base64encode_u8(data: Uint8Array): string {
  * @returns Promise that resolves when the file has been written
  */
 export async function writeFile(wb: WorkBook, filename: string, opts?: WriteOptions): Promise<void> {
-	const o: any = opts ? { ...opts } : {};
-	o.type = "buffer";
-	const data = await write(wb, o);
+	const options: any = opts ? { ...opts } : {};
+	options.type = "buffer";
+	const data = await write(wb, options);
 	fs.writeFileSync(filename, data instanceof Uint8Array ? Buffer.from(data) : data);
 }

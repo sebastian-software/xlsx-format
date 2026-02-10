@@ -8,35 +8,35 @@ import { formatCell } from "./format.js";
 const HTML_BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
 const HTML_END = "</body></html>";
 
-function buildHtmlRow(ws: WorkSheet, r: Range, R: number, o: Sheet2HTMLOpts): string {
-	const M = ws["!merges"] || [];
+function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sheet2HTMLOpts): string {
+	const merges = ws["!merges"] || [];
 	const cells: string[] = [];
 	const dense = (ws as any)["!data"] != null;
 
-	for (let C = r.s.c; C <= r.e.c; ++C) {
-		let RS = 0,
-			CS = 0;
-		for (let j = 0; j < M.length; ++j) {
-			if (M[j].s.r > R || M[j].s.c > C) {
+	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
+		let rowSpan = 0,
+			colSpan = 0;
+		for (let j = 0; j < merges.length; ++j) {
+			if (merges[j].s.r > rowIndex || merges[j].s.c > colIdx) {
 				continue;
 			}
-			if (M[j].e.r < R || M[j].e.c < C) {
+			if (merges[j].e.r < rowIndex || merges[j].e.c < colIdx) {
 				continue;
 			}
-			if (M[j].s.r < R || M[j].s.c < C) {
-				RS = -1;
+			if (merges[j].s.r < rowIndex || merges[j].s.c < colIdx) {
+				rowSpan = -1;
 				break;
 			}
-			RS = M[j].e.r - M[j].s.r + 1;
-			CS = M[j].e.c - M[j].s.c + 1;
+			rowSpan = merges[j].e.r - merges[j].s.r + 1;
+			colSpan = merges[j].e.c - merges[j].s.c + 1;
 			break;
 		}
-		if (RS < 0) {
+		if (rowSpan < 0) {
 			continue;
 		}
 
-		const coord = encodeCol(C) + encodeRow(R);
-		let cell: any = dense ? ((ws as any)["!data"][R] || [])[C] : (ws as any)[coord];
+		const coord = encodeCol(colIdx) + encodeRow(rowIndex);
+		let cell: any = dense ? ((ws as any)["!data"][rowIndex] || [])[colIdx] : (ws as any)[coord];
 
 		if (cell && cell.t === "n" && cell.v != null && !isFinite(cell.v)) {
 			if (isNaN(cell.v)) {
@@ -49,14 +49,14 @@ function buildHtmlRow(ws: WorkSheet, r: Range, R: number, o: Sheet2HTMLOpts): st
 		let cellContent = (cell && cell.v != null && (cell.h || escapeHtml(cell.w || (formatCell(cell), cell.w) || ""))) || "";
 
 		const cellAttrs: Record<string, any> = {};
-		if (RS > 1) {
-			cellAttrs.rowspan = String(RS);
+		if (rowSpan > 1) {
+			cellAttrs.rowspan = String(rowSpan);
 		}
-		if (CS > 1) {
-			cellAttrs.colspan = String(CS);
+		if (colSpan > 1) {
+			cellAttrs.colspan = String(colSpan);
 		}
 
-		if (o.editable) {
+		if (options.editable) {
 			cellContent = '<span contenteditable="true">' + cellContent + "</span>";
 		} else if (cell) {
 			cellAttrs["data-t"] = (cell && cell.t) || "z";
@@ -72,33 +72,33 @@ function buildHtmlRow(ws: WorkSheet, r: Range, R: number, o: Sheet2HTMLOpts): st
 			if (
 				cell.l &&
 				(cell.l.Target || "#").charAt(0) !== "#" &&
-				(!o.sanitizeLinks || (cell.l.Target || "").slice(0, 11).toLowerCase() !== "javascript:")
+				(!options.sanitizeLinks || (cell.l.Target || "").slice(0, 11).toLowerCase() !== "javascript:")
 			) {
 				cellContent = '<a href="' + escapeHtml(cell.l.Target) + '">' + cellContent + "</a>";
 			}
 		}
-		cellAttrs.id = (o.id || "sjs") + "-" + coord;
+		cellAttrs.id = (options.id || "sjs") + "-" + coord;
 		cells.push(writeXmlElement("td", cellContent, cellAttrs));
 	}
 
 	return "<tr>" + cells.join("") + "</tr>";
 }
 
-function make_html_preamble(_ws: WorkSheet, _r: Range, o: Sheet2HTMLOpts): string {
-	return "<table" + (o && o.id ? ' id="' + o.id + '"' : "") + ">";
+function make_html_preamble(_sheet: WorkSheet, _range: Range, options: Sheet2HTMLOpts): string {
+	return "<table" + (options && options.id ? ' id="' + options.id + '"' : "") + ">";
 }
 
 /** Convert a worksheet to an HTML table string */
 export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
-	const o: Sheet2HTMLOpts = opts || {};
-	const header = o.header != null ? o.header : HTML_BEGIN;
-	const footer = o.footer != null ? o.footer : HTML_END;
+	const options: Sheet2HTMLOpts = opts || {};
+	const header = options.header != null ? options.header : HTML_BEGIN;
+	const footer = options.footer != null ? options.footer : HTML_END;
 	const out: string[] = [header];
-	const r = decodeRange(ws["!ref"] || "A1");
-	out.push(make_html_preamble(ws, r, o));
+	const range = decodeRange(ws["!ref"] || "A1");
+	out.push(make_html_preamble(ws, range, options));
 	if (ws["!ref"]) {
-		for (let R = r.s.r; R <= r.e.r; ++R) {
-			out.push(buildHtmlRow(ws, r, R, o));
+		for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
+			out.push(buildHtmlRow(ws, range, rowIdx, options));
 		}
 	}
 	out.push("</table>" + footer);

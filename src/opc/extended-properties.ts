@@ -24,21 +24,21 @@ function xml_extract_ns(data: string, tag: string): string | null {
 	return m ? m[1] : null;
 }
 
-export function parseExtendedProperties(data: string, p?: Partial<FullProperties>): Partial<FullProperties> {
-	if (!p) {
-		p = {};
+export function parseExtendedProperties(data: string, props?: Partial<FullProperties>): Partial<FullProperties> {
+	if (!props) {
+		props = {};
 	}
 
-	for (const f of EXT_PROPS) {
-		const xml = xml_extract_ns(data, f[0]);
-		switch (f[2]) {
+	for (const propDef of EXT_PROPS) {
+		const xml = xml_extract_ns(data, propDef[0]);
+		switch (propDef[2]) {
 			case "string":
 				if (xml) {
-					(p as any)[f[1]] = unescapeXml(xml);
+					(props as any)[propDef[1]] = unescapeXml(xml);
 				}
 				break;
 			case "bool":
-				(p as any)[f[1]] = xml === "true";
+				(props as any)[propDef[1]] = xml === "true";
 				break;
 		}
 	}
@@ -49,81 +49,81 @@ export function parseExtendedProperties(data: string, p?: Partial<FullProperties
 	if (hpMatch && topMatch) {
 		const lpstrs = topMatch[1].match(/<vt:lpstr>([\s\S]*?)<\/vt:lpstr>/g);
 		if (lpstrs) {
-			const parts = lpstrs.map((s) => {
-				const m = s.match(/<vt:lpstr>([\s\S]*?)<\/vt:lpstr>/);
-				return m ? unescapeXml(m[1]) : "";
+			const parts = lpstrs.map((lpstr) => {
+				const match = lpstr.match(/<vt:lpstr>([\s\S]*?)<\/vt:lpstr>/);
+				return match ? unescapeXml(match[1]) : "";
 			});
 			// Try to extract Worksheets count from HeadingPairs
 			const i4match = hpMatch[1].match(/<vt:i4>(\d+)<\/vt:i4>/);
 			if (i4match) {
-				(p as any).Worksheets = parseInt(i4match[1], 10);
-				(p as any).SheetNames = parts.slice(0, (p as any).Worksheets);
+				(props as any).Worksheets = parseInt(i4match[1], 10);
+				(props as any).SheetNames = parts.slice(0, (props as any).Worksheets);
 			}
 		}
 	}
 
-	return p;
+	return props;
 }
 
 export function writeExtendedProperties(cp: Record<string, any> | undefined): string {
-	const o: string[] = [];
-	const W = writeXmlElement;
+	const lines: string[] = [];
+	const writeElement = writeXmlElement;
 	if (!cp) {
 		cp = {};
 	}
 	cp.Application = "xlsx-format";
 
-	o.push(XML_HEADER);
-	o.push(
+	lines.push(XML_HEADER);
+	lines.push(
 		writeXmlElement("Properties", null, {
 			xmlns: XMLNS.EXT_PROPS,
 			"xmlns:vt": XMLNS.vt,
 		}),
 	);
 
-	for (const f of EXT_PROPS) {
-		if (cp[f[1]] === undefined) {
+	for (const propDef of EXT_PROPS) {
+		if (cp[propDef[1]] === undefined) {
 			continue;
 		}
-		let v: string | undefined;
-		switch (f[2]) {
+		let propValue: string | undefined;
+		switch (propDef[2]) {
 			case "string":
-				v = escapeXml(String(cp[f[1]]));
+				propValue = escapeXml(String(cp[propDef[1]]));
 				break;
 			case "bool":
-				v = cp[f[1]] ? "true" : "false";
+				propValue = cp[propDef[1]] ? "true" : "false";
 				break;
 		}
-		if (v !== undefined) {
-			o.push(W(f[0], v));
+		if (propValue !== undefined) {
+			lines.push(writeElement(propDef[0], propValue));
 		}
 	}
 
-	o.push(
-		W(
+	lines.push(
+		writeElement(
 			"HeadingPairs",
-			W(
+			writeElement(
 				"vt:vector",
-				W("vt:variant", "<vt:lpstr>Worksheets</vt:lpstr>") + W("vt:variant", W("vt:i4", String(cp.Worksheets))),
+				writeElement("vt:variant", "<vt:lpstr>Worksheets</vt:lpstr>") + writeElement("vt:variant", writeElement("vt:i4", String(cp.Worksheets))),
 				{ size: "2", baseType: "variant" },
 			),
 		),
 	);
 
-	o.push(
-		W(
+	lines.push(
+		writeElement(
 			"TitlesOfParts",
-			W(
+			writeElement(
 				"vt:vector",
-				(cp.SheetNames as string[]).map((s: string) => "<vt:lpstr>" + escapeXml(s) + "</vt:lpstr>").join(""),
+				(cp.SheetNames as string[]).map((sheetName: string) => "<vt:lpstr>" + escapeXml(sheetName) + "</vt:lpstr>").join(""),
 				{ size: String(cp.Worksheets), baseType: "lpstr" },
 			),
 		),
 	);
 
-	if (o.length > 2) {
-		o.push("</Properties>");
-		o[1] = o[1].replace("/>", ">");
+	if (lines.length > 2) {
+		lines.push("</Properties>");
+		lines[1] = lines[1].replace("/>", ">");
 	}
-	return o.join("");
+	return lines.join("");
 }
