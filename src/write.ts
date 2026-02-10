@@ -11,9 +11,9 @@ import * as fs from "node:fs";
  *
  * @param wb - WorkBook object to write
  * @param opts - Write options
- * @returns File contents as Uint8Array, base64 string, or Buffer depending on opts.type
+ * @returns Promise resolving to file contents as Uint8Array, base64 string, or Buffer depending on opts.type
  */
-export function write(wb: WorkBook, opts?: WriteOptions): any {
+export async function write(wb: WorkBook, opts?: WriteOptions): Promise<any> {
 	resetFormatTable();
 	if (!opts || !(opts as any).unsafe) {
 		validateWorkbook(wb);
@@ -25,7 +25,7 @@ export function write(wb: WorkBook, opts?: WriteOptions): any {
 	}
 
 	const zip = writeZipXlsx(wb, o);
-	const compressed = zipWrite(zip, !!o.compression);
+	const compressed = await zipWrite(zip, !!o.compression);
 
 	switch (o.type) {
 		case "base64":
@@ -52,10 +52,11 @@ function base64encode_u8(data: Uint8Array): string {
  * @param wb - WorkBook object to write
  * @param filename - Output file path
  * @param opts - Write options
+ * @returns Promise that resolves when the file has been written
  */
-export function writeFile(wb: WorkBook, filename: string, opts?: WriteOptions): void {
+export async function writeFile(wb: WorkBook, filename: string, opts?: WriteOptions): Promise<void> {
 	const o: any = opts ? { ...opts } : {};
 	o.type = "buffer";
-	const data = write(wb, o);
+	const data = await write(wb, o);
 	fs.writeFileSync(filename, data instanceof Uint8Array ? Buffer.from(data) : data);
 }

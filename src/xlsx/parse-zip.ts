@@ -6,7 +6,7 @@ import type { SST } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
 import type { ThemeData } from "./theme.js";
 import type { WorkbookFile, SheetEntry } from "./workbook.js";
-import { zipReadString, zipReadBinary, zipHas } from "../zip/index.js";
+import { zipReadString, zipHas } from "../zip/index.js";
 import { parseContentTypes } from "../opc/content-types.js";
 import { parseRelationships, getRelsPath } from "../opc/relationships.js";
 import { parseCoreProperties } from "../opc/core-properties.js";

@@ -50,9 +50,9 @@ function detect_type(data: any): ReadOptions["type"] {
  *
  * @param data - File contents as Uint8Array, ArrayBuffer, Buffer, base64 string, or binary string
  * @param opts - Read options
- * @returns Parsed WorkBook object
+ * @returns Promise resolving to a parsed WorkBook object
  */
-export function read(data: any, opts?: ReadOptions): WorkBook {
+export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 	resetFormatTable();
 	const o: any = opts ? { ...opts } : {};
 	if (!o.type) {
@@ -63,7 +63,7 @@ export function read(data: any, opts?: ReadOptions): WorkBook {
 
 	// Check first bytes - must be PK (ZIP)
 	if (u8[0] === 0x50 && u8[1] === 0x4b) {
-		const zip = zipRead(u8);
+		const zip = await zipRead(u8);
 		return parseZip(zip, o);
 	}
 
@@ -85,9 +85,9 @@ export function read(data: any, opts?: ReadOptions): WorkBook {
  *
  * @param filename - Path to the XLSX file
  * @param opts - Read options
- * @returns Parsed WorkBook object
+ * @returns Promise resolving to a parsed WorkBook object
  */
-export function readFile(filename: string, opts?: ReadOptions): WorkBook {
+export async function readFile(filename: string, opts?: ReadOptions): Promise<WorkBook> {
 	const data = fs.readFileSync(filename);
 	return read(new Uint8Array(data), opts);
 }
