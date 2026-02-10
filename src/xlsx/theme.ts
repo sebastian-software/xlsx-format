@@ -1,11 +1,21 @@
-/** Parse a theme XML file, extracting color scheme */
+/**
+ * Parse a theme XML file, extracting the color scheme.
+ *
+ * The color scheme defines the 12 standard theme colors used by Excel:
+ * dk1, lt1, dk2, lt2, accent1-6, hlink, folHlink. Colors are extracted
+ * from either <a:sysClr> (system colors with lastClr) or <a:srgbClr> elements.
+ *
+ * @param data - Raw XML string of the theme file (e.g. theme1.xml)
+ * @returns Parsed theme data with color scheme array
+ */
 export function parse_theme_xml(data: string): ThemeData {
 	const theme: ThemeData = { themeElements: { clrScheme: [] } };
 
-	// Extract color scheme colors
+	// Extract color values from the <a:clrScheme> section
 	const colors: string[] = [];
 	const clrMatch = data.match(/<a:clrScheme[^>]*>([\s\S]*?)<\/a:clrScheme>/);
 	if (clrMatch) {
+		// Match both sysClr (val/lastClr) and srgbClr (val) elements, extracting the 6-digit hex color
 		const valRegex = /<a:(?:sysClr|srgbClr)[^>]*(?:val|lastClr)="([0-9A-Fa-f]{6})"/g;
 		let m: RegExpExecArray | null;
 		while ((m = valRegex.exec(clrMatch[1]))) {
@@ -17,13 +27,22 @@ export function parse_theme_xml(data: string): ThemeData {
 	return theme;
 }
 
+/** Parsed theme data structure */
 export interface ThemeData {
 	themeElements: {
+		/** Array of 6-digit hex color strings from the theme color scheme */
 		clrScheme: string[];
 	};
 }
 
-/** Default XLSX theme XML */
+/**
+ * Write a default XLSX theme XML based on the Office default theme.
+ *
+ * Includes the standard Office color scheme, Calibri/Calibri Light fonts,
+ * and minimal format/fill/line/effect style definitions.
+ *
+ * @returns Complete theme1.xml string
+ */
 export function write_theme_xml(): string {
 	// Minimal theme - based on Office default
 	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

@@ -1,3 +1,7 @@
+/**
+ * Standard XML namespace URIs used in OPC (Open Packaging Conventions) and OOXML documents.
+ * Keys are short identifiers used throughout the codebase; values are the full namespace URIs.
+ */
 export const XMLNS: Record<string, string> = {
 	CORE_PROPS: "http://schemas.openxmlformats.org/package/2006/metadata/core-properties",
 	CUST_PROPS: "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties",
@@ -16,6 +20,11 @@ export const XMLNS: Record<string, string> = {
 	xsd: "http://www.w3.org/2001/XMLSchema",
 };
 
+/**
+ * Recognized namespace URIs for the SpreadsheetML main namespace.
+ * Multiple URIs exist because OOXML has both ECMA-376 and transitional/strict variants,
+ * plus Microsoft-specific extensions.
+ */
 export const XMLNS_main = [
 	"http://schemas.openxmlformats.org/spreadsheetml/2006/main",
 	"http://purl.oclc.org/ooxml/spreadsheetml/main",
@@ -23,6 +32,11 @@ export const XMLNS_main = [
 	"http://schemas.microsoft.com/office/excel/2006/2",
 ];
 
+/**
+ * OPC relationship type URIs.
+ * Each key is a short identifier; each value is the full relationship type URI
+ * used in .rels files to link package parts together.
+ */
 export const RELS = {
 	WB: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument",
 	SHEET: "http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",

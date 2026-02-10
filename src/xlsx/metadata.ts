@@ -1,12 +1,28 @@
 import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace } from "../xml/parser.js";
 
+/** Parsed metadata structure from metadata.xml */
 export interface XLMeta {
+	/** Registered metadata type definitions */
 	Types: { name: string; offsets?: number[] }[];
+	/** Cell-level metadata references (metatype=1) */
 	Cell: { type: string; index: number }[];
+	/** Value-level metadata references (metatype=0) */
 	Value: { type: string; index: number }[];
 }
 
-/** Parse metadata XML */
+/**
+ * Parse metadata XML (ECMA-376 18.9 / MS-XLSX extensions).
+ *
+ * Metadata provides additional cell-level information such as dynamic array
+ * properties (XLDAPR) and rich data types. The XML contains:
+ * - metadataTypes: type definitions
+ * - futureMetadata: type-specific data (e.g. rich value offsets)
+ * - cellMetadata / valueMetadata: per-cell type+index references
+ *
+ * @param data - Raw XML string of metadata.xml
+ * @param opts - Parsing options
+ * @returns Parsed metadata structure
+ */
 export function parseMetadataXml(data: string, opts?: any): XLMeta {
 	const out: XLMeta = { Types: [], Cell: [], Value: [] };
 	if (!data) {
@@ -14,6 +30,7 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 	}
 
 	let pass = false;
+	// metatype tracks which section we're in: 2=none, 1=cellMetadata, 0=valueMetadata
 	let metatype = 2;
 	let lastmeta: any;
 
@@ -34,6 +51,7 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 			case "</metadataType>":
 				break;
 			case "<futureMetadata":
+				// Associate future metadata with its type definition by name
 				for (let j = 0; j < out.Types.length; ++j) {
 					if (out.Types[j].name === y.name) {
 						lastmeta = out.Types[j];
@@ -46,6 +64,7 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 			case "</bk>":
 				break;
 			case "<rc":
+				// <rc t="N" v="M"> references type index N (1-based) and value index M
 				if (metatype === 1) {
 					out.Cell.push({ type: out.Types[y.t - 1].name, index: +y.v });
 				} else if (metatype === 0) {
@@ -66,6 +85,7 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 			case "</valueMetadata>":
 				metatype = 2;
 				break;
+			// Skip extension lists
 			case "<extLst":
 			case "<extLst>":
 			case "</extLst>":
@@ -78,6 +98,7 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 				pass = false;
 				break;
 			case "<rvb":
+				// Rich value block offset: records the index into the rich data store
 				if (!lastmeta) {
 					break;
 				}
@@ -94,7 +115,15 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 	return out;
 }
 
-/** Write minimal metadata XML for dynamic arrays */
+/**
+ * Write minimal metadata XML for dynamic array support.
+ *
+ * Generates the XLDAPR (Dynamic Array Properties) metadata type that Excel
+ * requires for spill-range formulas. The metadata declares a single type
+ * and a single cell metadata entry referencing it.
+ *
+ * @returns Complete metadata.xml string
+ */
 export function writeMetadataXml(): string {
 	const o: string[] = [XML_HEADER];
 	o.push(

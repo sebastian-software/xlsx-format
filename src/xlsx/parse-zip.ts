@@ -25,10 +25,15 @@ import { resetFormatTable, formatTable } from "../ssf/table.js";
 import { utf8read } from "../utils/buffer.js";
 import { RELS as RELTYPE } from "../xml/namespaces.js";
 
+/** Strip a leading "/" from a path (ZIP entries don't use leading slashes) */
 function stripLeadingSlash(x: string): string {
 	return x.charAt(0) === "/" ? x.slice(1) : x;
 }
 
+/**
+ * Resolve a relative path against a base path.
+ * Handles ".." segments for paths like "../comments1.xml" relative to "xl/worksheets/sheet1.xml".
+ */
 function resolve_path(target: string, basePath: string): string {
 	if (target.charAt(0) === "/") {
 		return target;
@@ -46,6 +51,10 @@ function resolve_path(target: string, basePath: string): string {
 	return resolved.join("/");
 }
 
+/**
+ * Read a file from the ZIP as a string.
+ * Throws if the file is not found and safe is not set.
+ */
 function getZipString(zip: ZipArchive, path: string, safe?: boolean): string | null {
 	const p = zipReadString(zip, path);
 	if (p == null && !safe) {
@@ -54,16 +63,18 @@ function getZipString(zip: ZipArchive, path: string, safe?: boolean): string | n
 	return p;
 }
 
+/** Read ZIP entry data as string (alias for XML-based files) */
 function getZipData(zip: ZipArchive, path: string, safe?: boolean): string | null {
-	// For XML-based files we just read as string
 	return getZipString(zip, path, safe);
 }
 
+/** Recognized relationship types for worksheets (standard and transitional) */
 const RELS_WS = [
 	"http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet",
 	"http://purl.oclc.org/ooxml/officeDocument/relationships/worksheet",
 ];
 
+/** Determine the sheet type from a relationship type URI */
 function get_sheet_type(n: string): string {
 	if (RELS_WS.indexOf(n) > -1) {
 		return "sheet";
@@ -71,6 +82,10 @@ function get_sheet_type(n: string): string {
 	return n && n.length ? n : "sheet";
 }
 
+/**
+ * Safely map workbook sheet entries to their target paths and types using
+ * the workbook relationships. Returns null if mapping fails.
+ */
 function safe_parse_wbrels(wbrels: Relationships, sheets: SheetEntry[]): [string, string, string][] | null {
 	if (!wbrels) {
 		return null;
@@ -78,6 +93,7 @@ function safe_parse_wbrels(wbrels: Relationships, sheets: SheetEntry[]): [string
 	try {
 		const result: [string, string, string][] = sheets.map((sheetEntry) => {
 			const id = (sheetEntry as any).id || (sheetEntry as any).strRelID;
+			// [name, target path, sheet type]
 			return [sheetEntry.name, wbrels["!id"][id].Target, get_sheet_type(wbrels["!id"][id].Type)];
 		});
 		return result.length === 0 ? null : result;
@@ -86,6 +102,10 @@ function safe_parse_wbrels(wbrels: Relationships, sheets: SheetEntry[]): [string
 	}
 }
 
+/**
+ * Safely parse a single sheet from the ZIP, including its relationships,
+ * comments, threaded comments, and VML drawings.
+ */
 function safe_parse_sheet(
 	zip: ZipArchive,
 	path: string,
@@ -120,16 +140,17 @@ function safe_parse_sheet(
 			return;
 		}
 
-		// Resolve shared string references
+		// Replace SST index placeholders with actual string values
 		resolveSharedStrings(_ws, strs, opts);
 
 		sheets[sheetName] = _ws;
 
-		// Scan rels for comments and threaded comments
+		// Scan sheet relationships for comments and threaded comments
 		const comments: any[] = [];
 		let tcomments: any[] = [];
 		if (sheetRels[sheetName]) {
 			for (const n of Object.keys(sheetRels[sheetName])) {
+				// Skip internal keys
 				if (n === "!id" || n === "!idx") {
 					continue;
 				}
@@ -138,6 +159,7 @@ function safe_parse_sheet(
 					continue;
 				}
 
+				// Parse legacy comments (ECMA-376 18.7)
 				if (rel.Type === RELTYPE.CMNT) {
 					const dfile = resolve_path(rel.Target, path);
 					const cmntData = getZipData(zip, dfile, true);
@@ -148,6 +170,7 @@ function safe_parse_sheet(
 						}
 					}
 				}
+				// Parse threaded comments (MS-XLSX extension)
 				if (rel.Type === RELTYPE.TCMNT) {
 					const dfile = resolve_path(rel.Target, path);
 					const tcData = getZipData(zip, dfile, true);
@@ -161,7 +184,7 @@ function safe_parse_sheet(
 			insertCommentsIntoSheet(_ws, tcomments, true, opts.people || []);
 		}
 
-		// Parse legacy drawings (VML for comment boxes)
+		// Parse legacy VML drawings (comment anchor shapes)
 		if ((_ws as any)["!legdrawel"] && sheetRels[sheetName]) {
 			const dfile = resolve_path((_ws as any)["!legdrawel"].Target, path);
 			const draw = getZipString(zip, dfile, true);
@@ -176,7 +199,18 @@ function safe_parse_sheet(
 	}
 }
 
-/** Parse an XLSX ZIP archive into a WorkBook */
+/**
+ * Parse an XLSX ZIP archive into a WorkBook object.
+ *
+ * Orchestrates reading of all XLSX parts: content types, relationships,
+ * shared strings, themes, styles, workbook, properties, metadata, people,
+ * and individual worksheets with their comments and VML drawings.
+ *
+ * @param zip - ZipArchive containing the XLSX file parts
+ * @param opts - Read options controlling parsing behavior
+ * @returns Parsed WorkBook with sheets, properties, and metadata
+ * @throws Error if the ZIP is not a valid XLSX file or the workbook is missing
+ */
 export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	resetFormatTable();
 	const options: any = opts || {};
@@ -187,6 +221,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 	const dir: ContentTypes = parseContentTypes(getZipString(zip, "[Content_Types].xml"));
 
+	// Fallback: if no workbook found in content types, try the default path
 	if (dir.workbooks.length === 0) {
 		const binname = "xl/workbook.xml";
 		if (getZipData(zip, binname, true)) {
@@ -201,7 +236,9 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	let styles: StylesData = { NumberFmt: {}, CellXf: [], Fonts: [], Fills: [], Borders: [] };
 	let strs: SST = [] as any;
 
+	// Parse shared resources unless only sheet names or properties are requested
 	if (!options.bookSheets && !options.bookProps) {
+		// Shared String Table
 		if (dir.sst) {
 			try {
 				const sstData = getZipData(zip, stripLeadingSlash(dir.sst));
@@ -215,6 +252,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 			}
 		}
 
+		// Theme (color scheme for styled cells)
 		if (dir.themes.length) {
 			const themeData = getZipString(zip, dir.themes[0].replace(/^\//, ""), true);
 			if (themeData) {
@@ -223,6 +261,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 			}
 		}
 
+		// Styles (number formats, cell xf entries)
 		if (dir.style) {
 			const styData = getZipData(zip, stripLeadingSlash(dir.style));
 			if (styData) {
@@ -231,8 +270,10 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		}
 	}
 
+	// Parse the workbook XML (sheet list, defined names, properties)
 	const wb: WorkbookFile = parseWorkbookXml(getZipData(zip, stripLeadingSlash(dir.workbooks[0]))!, options);
 
+	// Parse document properties
 	const props: any = {};
 	if (dir.coreprops.length) {
 		const propdata = getZipData(zip, stripLeadingSlash(dir.coreprops[0]), true);
@@ -247,6 +288,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		}
 	}
 
+	// Parse custom properties
 	let custprops: Record<string, any> = {};
 	if (!options.bookSheets || options.bookProps) {
 		if (dir.custprops.length) {
@@ -257,6 +299,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		}
 	}
 
+	// Early return for bookSheets/bookProps-only mode
 	const out: any = {};
 	if (options.bookSheets || options.bookProps) {
 		let sheets: string[] | undefined;
@@ -279,10 +322,12 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 	const sheets: Record<string, WorkSheet> = {};
 
+	// Calculation chain (dependency order for formula recalc)
 	if (options.bookDeps && dir.calcchain) {
 		parseCalcChainXml(getZipData(zip, stripLeadingSlash(dir.calcchain), true) || "");
 	}
 
+	// Build the sheet name list from the workbook
 	const sheetRels: Record<string, Relationships> = {};
 	const wbsheets = wb.Sheets;
 	props.Worksheets = wbsheets.length;
@@ -291,6 +336,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		props.SheetNames[j] = wbsheets[j].name;
 	}
 
+	// Locate the workbook relationships file
 	const wbrelsi = dir.workbooks[0].lastIndexOf("/");
 	let wbrelsfile = (
 		dir.workbooks[0].slice(0, wbrelsi + 1) +
@@ -303,24 +349,27 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	}
 	const wbrels = parseRelationships(getZipString(zip, wbrelsfile, true), wbrelsfile.replace(/_rels.*/, "s5s"));
 
-	// Parse metadata
+	// Parse cell metadata (for dynamic arrays, rich data, etc.)
 	if ((dir.metadata || []).length >= 1) {
 		options.xlmeta = parseMetadataXml(getZipData(zip, stripLeadingSlash(dir.metadata[0]), true) || "", options);
 	}
 
-	// Parse people (for threaded comments)
+	// Parse people list (for threaded comment author resolution)
 	if ((dir.people || []).length >= 1) {
 		options.people = parsePeopleXml(getZipData(zip, stripLeadingSlash(dir.people[0]), true) || "");
 	}
 
+	// Map sheet entries to their ZIP paths via workbook relationships
 	const wbrelsArr = wbrels ? safe_parse_wbrels(wbrels, wb.Sheets) : null;
 
+	// Detect legacy naming: some files use "sheet.xml" instead of "sheet1.xml"
 	const nmode = getZipData(zip, "xl/worksheets/sheet.xml", true) ? 1 : 0;
 
 	for (let i = 0; i < props.Worksheets; ++i) {
 		let stype = "sheet";
 		let path: string;
 		if (wbrelsArr && wbrelsArr[i]) {
+			// Resolve the sheet path from relationships, trying multiple fallback locations
 			path = "xl/" + wbrelsArr[i][1].replace(/[/]?xl\//, "");
 			if (!zipHas(zip, path)) {
 				path = wbrelsArr[i][1];
@@ -330,11 +379,12 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 			}
 			stype = wbrelsArr[i][2];
 		} else {
+			// Fallback: construct path from sheet index
 			path = "xl/worksheets/sheet" + (i + 1 - nmode) + ".xml";
 			path = path.replace(/sheet0\./, "sheet.");
 		}
 
-		// Check sheet filter
+		// Apply sheet filter (by index, name, or array of indices/names)
 		if (options.sheets != null) {
 			if (typeof options.sheets === "number" && i !== options.sheets) {
 				continue;
@@ -358,6 +408,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 			}
 		}
 
+		// Derive the per-sheet .rels path from the sheet path
 		const relsPath = path.replace(/^(.*)(\/)([^/]*)$/, "$1/_rels/$3.rels");
 		safe_parse_sheet(
 			zip,
@@ -384,6 +435,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		bookType: "xlsx",
 	};
 
+	// Attach workbook-level metadata (properties, sheet visibility, defined names)
 	if (wb.WBProps) {
 		result.Workbook = {
 			WBProps: wb.WBProps,

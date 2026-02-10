@@ -1,5 +1,7 @@
 /**
  * Read all chunks from a {@link ReadableStream} and concatenate them into a single {@link Uint8Array}.
+ *
+ * Collects chunks incrementally, then copies them into a contiguous buffer.
  */
 async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint8Array> {
 	const reader = readable.getReader();
@@ -23,6 +25,9 @@ async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint
 /**
  * Decompress raw DEFLATE data using the built-in {@link DecompressionStream} API.
  *
+ * Uses "deflate-raw" format (no zlib header or gzip wrapper), which matches
+ * the compression used inside ZIP archives (method 8).
+ *
  * @param data - Compressed bytes (raw deflate, no zlib/gzip wrapper)
  * @returns Decompressed bytes
  */
@@ -36,6 +41,9 @@ export async function inflate(data: Uint8Array): Promise<Uint8Array> {
 
 /**
  * Compress data using raw DEFLATE via the built-in {@link CompressionStream} API.
+ *
+ * Uses "deflate-raw" format (no zlib header or gzip wrapper), which matches
+ * the compression expected inside ZIP archives (method 8).
  *
  * @param data - Uncompressed bytes
  * @returns Compressed bytes (raw deflate, no zlib/gzip wrapper)

@@ -5,6 +5,14 @@ import { isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { formatCell } from "./format.js";
 
+/**
+ * Build a single JSON row object (or array) from a worksheet row.
+ *
+ * Reads each cell in the row, converts its value based on type (handling dates,
+ * errors, booleans, etc.), and populates the output row keyed by column headers.
+ *
+ * @returns An object containing the built `row` and an `isempty` flag
+ */
 function buildJsonRow(
 	sheet: WorkSheet,
 	range: Range,
@@ -16,8 +24,11 @@ function buildJsonRow(
 	const defval = options.defval;
 	const raw = options.raw || !Object.hasOwn(options, "raw");
 	let isempty = true;
+	// header===1 means output as arrays (numeric indices), otherwise as objects
 	const row: any = header === 1 ? [] : {};
 
+	// Attach a non-enumerable __rowNum__ property for object rows so callers
+	// can identify the source row without it polluting serialisation
 	if (header !== 1) {
 		try {
 			Object.defineProperty(row, "__rowNum__", { value: rowIndex, enumerable: false });
@@ -29,6 +40,7 @@ function buildJsonRow(
 	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
 		const val = getCell(sheet, rowIndex, colIdx);
 		if (val == null || val.t === undefined) {
+			// No cell: use default value if provided, otherwise skip
 			if (defval === undefined) {
 				continue;
 			}
@@ -39,27 +51,29 @@ function buildJsonRow(
 		}
 		let cellValue: any = val.v;
 		switch (val.t) {
-			case "z":
+			case "z": // stub/blank cell
 				if (cellValue == null) {
 					break;
 				}
 				continue;
-			case "e":
+			case "e": // error cell
+				// Error code 0 (#NULL!) maps to null; other codes to undefined
 				cellValue = cellValue === 0 ? null : undefined;
 				break;
-			case "s":
-			case "b":
+			case "s": // string
+			case "b": // boolean
 				break;
-			case "n":
+			case "n": // number — may actually represent a date if the format is date-like
 				if (!val.z || !isDateFormat(String(val.z))) {
 					break;
 				}
+				// Number format indicates a date; convert serial number to JS Date
 				cellValue = serialNumberToDate(cellValue as number);
 				if (typeof cellValue === "number") {
 					break;
 				}
 			/* falls through */
-			case "d":
+			case "d": // date
 				if (!(options && (options.UTC || options.raw === false))) {
 					cellValue = utcToLocal(new Date(cellValue));
 				}
@@ -79,6 +93,7 @@ function buildJsonRow(
 					continue;
 				}
 			} else {
+				// Use raw value when rawNumbers/raw is set, otherwise format for display
 				row[headers[colIdx]] = (val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw)
 					? cellValue
 					: formatCell(val, cellValue, options);
@@ -91,7 +106,17 @@ function buildJsonRow(
 	return { row, isempty };
 }
 
-/** Convert a worksheet to an array of JSON objects */
+/**
+ * Convert a worksheet to an array of JSON objects (or arrays).
+ *
+ * The first row is used as header keys by default. Supports multiple header
+ * modes (raw arrays, column-letter keys, custom headers), range overrides,
+ * hidden row/column skipping, blank-row handling, and date conversion.
+ *
+ * @param sheet - The worksheet to convert
+ * @param opts - Optional conversion options (header, range, raw, rawNumbers, defval, blankrows, skipHidden, dateNF, UTC)
+ * @returns An array of row objects (or arrays when `header: 1`)
+ */
 export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T[] {
 	if (sheet == null || sheet["!ref"] == null) {
 		return [];
@@ -102,6 +127,11 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 	const options: any = opts || {};
 	const range = options.range != null ? options.range : sheet["!ref"];
 
+	// Determine header mode:
+	//   0 = use first row values as keys (default)
+	//   1 = raw array output (numeric indices)
+	//   2 = column letters as keys ("A", "B", ...)
+	//   3 = caller-supplied header array
 	if (options.header === 1) {
 		header = 1;
 	} else if (options.header === "A") {
@@ -118,12 +148,14 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 			decodedRange = safeDecodeRange(range);
 			break;
 		case "number":
+			// Numeric range means "start from this row"
 			decodedRange = safeDecodeRange(sheet["!ref"]);
 			decodedRange.s.r = range;
 			break;
 		default:
 			decodedRange = range;
 	}
+	// When headers are explicitly provided, data starts at the first row (no offset)
 	if (header > 0) {
 		offset = 0;
 	}
@@ -135,6 +167,7 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 	const colinfo: any[] = (options.skipHidden && sheet["!cols"]) || [];
 	const rowinfo: any[] = (options.skipHidden && sheet["!rows"]) || [];
 
+	// Build header labels from the first row (or from explicit options)
 	for (let colIdx = decodedRange.s.c; colIdx <= decodedRange.e.c; ++colIdx) {
 		if ((colinfo[colIdx] || {}).hidden) {
 			continue;
@@ -142,18 +175,20 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		const val = getCell(sheet, rowIdx, colIdx);
 		let cellValue: any, headerLabel: any;
 		switch (header) {
-			case 1:
+			case 1: // Raw array: use zero-based column offset as index
 				headers[colIdx] = colIdx - decodedRange.s.c;
 				break;
-			case 2:
+			case 2: // Column-letter keys
 				headers[colIdx] = encodeCol(colIdx);
 				break;
-			case 3:
+			case 3: // Caller-supplied headers
 				headers[colIdx] = (options.header as string[])[colIdx - decodedRange.s.c];
 				break;
 			default: {
+				// Derive key from the header row cell value; use "__EMPTY" for blank headers
 				const _val = val == null ? { w: "__EMPTY", t: "s" } : val;
 				headerLabel = cellValue = formatCell(_val as CellObject, null, options);
+				// Deduplicate by appending "_1", "_2", ... for repeated header labels
 				let counter = header_cnt[cellValue] || 0;
 				if (!counter) {
 					header_cnt[cellValue] = 1;
@@ -169,6 +204,7 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		}
 	}
 
+	// Build data rows starting after the header row (unless offset is 0)
 	for (rowIdx = decodedRange.s.r + offset; rowIdx <= decodedRange.e.r; ++rowIdx) {
 		if ((rowinfo[rowIdx] || {}).hidden) {
 			continue;
@@ -182,10 +218,22 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 	return out;
 }
 
-/** Add JSON data to a worksheet */
+/**
+ * Add an array of JSON objects to an existing worksheet, or create a new one.
+ *
+ * Object keys become column headers (written in the first row unless
+ * `skipHeader` is set). Supports dense and sparse storage, origin offsets,
+ * date handling, and automatic type detection.
+ *
+ * @param existingSheet - An existing worksheet to append to, or `null` to create a new one
+ * @param jsonData - Array of plain objects whose keys map to column headers
+ * @param opts - Optional settings (header, origin, dense, skipHeader, cellDates, UTC, dateNF, nullError)
+ * @returns The updated or newly created worksheet
+ */
 export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[], opts?: JSON2SheetOpts): WorkSheet {
 	const options: any = opts || {};
 	const dense = existingSheet ? (existingSheet as any)["!data"] != null : !!options.dense;
+	// offset is 1 to reserve the first row for headers, 0 when skipHeader is set
 	const offset = +!options.skipHeader;
 	const worksheet: any = existingSheet || {};
 	if (!existingSheet && dense) {
@@ -209,6 +257,7 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 		const existingRange = safeDecodeRange(worksheet["!ref"]);
 		range.e.c = Math.max(range.e.c, existingRange.e.c);
 		range.e.r = Math.max(range.e.r, existingRange.e.r);
+		// origin of -1 means "append after the last row"
 		if (originRow === -1) {
 			originRow = existingRange.e.r + 1;
 			range.e.r = originRow + jsonData.length - 1 + offset;
@@ -220,6 +269,7 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 		}
 	}
 
+	// Collect headers from options or discover them from object keys
 	const headers: string[] = options.header || [];
 	let colIdx = 0;
 	jsonData.forEach((rowObj, rowIdx) => {
@@ -228,6 +278,7 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 		}
 		const denseRow = dense ? worksheet["!data"][originRow + rowIdx + offset] : null;
 		Object.keys(rowObj).forEach((key: string) => {
+			// Assign a column index for each key; new keys get appended to the headers array
 			if ((colIdx = headers.indexOf(key)) === -1) {
 				headers[(colIdx = headers.length)] = key;
 			}
@@ -237,6 +288,7 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 			const ref = dense ? "" : encodeCol(originCol + colIdx) + encodeRow(originRow + rowIdx + offset);
 			const cell: any = dense ? denseRow[originCol + colIdx] : worksheet[ref];
 
+			// If the value is a pre-built cell object (non-Date object), store it directly
 			if (value && typeof value === "object" && !(value instanceof Date)) {
 				if (dense) {
 					denseRow[originCol + colIdx] = value;
@@ -259,6 +311,7 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 						cellType = "n";
 						value = dateToSerialNumber(value);
 					}
+					// Preserve an existing date format on the cell if valid, else use option or default
 					dateFormat =
 						cell != null && cell.z && isDateFormat(String(cell.z))
 							? String(cell.z)
@@ -269,6 +322,7 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 				}
 
 				if (!cell) {
+					// Create a new cell object
 					const newCell: any = { t: cellType, v: value };
 					if (dateFormat) {
 						newCell.z = dateFormat;
@@ -279,9 +333,10 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 						worksheet[ref] = newCell;
 					}
 				} else {
+					// Update the existing cell in place
 					cell.t = cellType;
 					cell.v = value;
-					delete cell.w;
+					delete cell.w; // invalidate cached formatted string
 					if (dateFormat) {
 						cell.z = dateFormat;
 					}
@@ -295,6 +350,7 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 	if (dense && !worksheet["!data"][originRow]) {
 		worksheet["!data"][originRow] = [];
 	}
+	// Write header row unless skipHeader was set (offset === 0)
 	if (offset) {
 		for (colIdx = 0; colIdx < headers.length; ++colIdx) {
 			if (dense) {
@@ -308,7 +364,16 @@ export function addJsonToSheet(existingSheet: WorkSheet | null, jsonData: any[],
 	return worksheet as WorkSheet;
 }
 
-/** Create a new worksheet from JSON data */
+/**
+ * Create a new worksheet from an array of JSON objects.
+ *
+ * This is a convenience wrapper around `addJsonToSheet` that always creates
+ * a fresh worksheet.
+ *
+ * @param js - Array of plain objects whose keys map to column headers
+ * @param opts - Optional settings (same as `addJsonToSheet`)
+ * @returns A new worksheet populated with the given data
+ */
 export function jsonToSheet(js: any[], opts?: JSON2SheetOpts): WorkSheet {
 	return addJsonToSheet(null, js, opts);
 }

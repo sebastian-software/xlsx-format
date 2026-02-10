@@ -4,6 +4,10 @@ import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS } from "../xml/namespaces.js";
 
+/**
+ * Mapping of extended property XML element names to FullProperties keys and value types.
+ * Each entry is [xmlElementName, propertyKey, valueType].
+ */
 const EXT_PROPS: [string, string, string][] = [
 	["Application", "Application", "string"],
 	["AppVersion", "AppVersion", "string"],
@@ -16,14 +20,26 @@ const EXT_PROPS: [string, string, string][] = [
 	["ScaleCrop", "ScaleCrop", "bool"],
 ];
 
-/** Simple namespace-aware XML tag content extraction */
+/**
+ * Extract text content from an XML tag, allowing for optional namespace prefixes.
+ * Builds a regex that matches both `<tag>` and `<ns:tag>` forms.
+ * @param data - the XML string to search
+ * @param tag - the local element name (without namespace prefix)
+ * @returns the text content, or null if not found
+ */
 function xml_extract_ns(data: string, tag: string): string | null {
-	// Match <tag>...</tag> or <ns:tag>...</ns:tag>
 	const re = new RegExp("<(?:\\w+:)?" + tag + "[\\s>]([\\s\\S]*?)<\\/(?:\\w+:)?" + tag + ">");
 	const m = data.match(re);
 	return m ? m[1] : null;
 }
 
+/**
+ * Parse OPC extended properties XML (Application, AppVersion, HeadingPairs, etc.)
+ * into a partial FullProperties object.
+ * @param data - raw XML string of the extended properties part
+ * @param props - optional existing properties object to merge into
+ * @returns the populated properties object
+ */
 export function parseExtendedProperties(data: string, props?: Partial<FullProperties>): Partial<FullProperties> {
 	if (!props) {
 		props = {};
@@ -43,7 +59,9 @@ export function parseExtendedProperties(data: string, props?: Partial<FullProper
 		}
 	}
 
-	// Parse HeadingPairs and TitlesOfParts for sheet names
+	// Parse HeadingPairs + TitlesOfParts to extract sheet names and count.
+	// HeadingPairs contains category labels and counts (e.g., "Worksheets" -> 3),
+	// TitlesOfParts contains all part titles in order.
 	const hpMatch = data.match(/<HeadingPairs>([\s\S]*?)<\/HeadingPairs>/);
 	const topMatch = data.match(/<TitlesOfParts>([\s\S]*?)<\/TitlesOfParts>/);
 	if (hpMatch && topMatch) {
@@ -53,7 +71,7 @@ export function parseExtendedProperties(data: string, props?: Partial<FullProper
 				const match = lpstr.match(/<vt:lpstr>([\s\S]*?)<\/vt:lpstr>/);
 				return match ? unescapeXml(match[1]) : "";
 			});
-			// Try to extract Worksheets count from HeadingPairs
+			// The i4 value in HeadingPairs tells us how many of the parts are worksheets
 			const i4match = hpMatch[1].match(/<vt:i4>(\d+)<\/vt:i4>/);
 			if (i4match) {
 				(props as any).Worksheets = parseInt(i4match[1], 10);
@@ -65,6 +83,12 @@ export function parseExtendedProperties(data: string, props?: Partial<FullProper
 	return props;
 }
 
+/**
+ * Serialize OPC extended properties to XML.
+ * Produces the Properties element with application metadata and sheet information.
+ * @param cp - record of property values (may be undefined; defaults are applied)
+ * @returns the complete XML string for the extended properties part
+ */
 export function writeExtendedProperties(cp: Record<string, any> | undefined): string {
 	const lines: string[] = [];
 	const writeElement = writeXmlElement;
@@ -81,6 +105,7 @@ export function writeExtendedProperties(cp: Record<string, any> | undefined): st
 		}),
 	);
 
+	// Write simple scalar properties (strings and booleans)
 	for (const propDef of EXT_PROPS) {
 		if (cp[propDef[1]] === undefined) {
 			continue;
@@ -99,6 +124,8 @@ export function writeExtendedProperties(cp: Record<string, any> | undefined): st
 		}
 	}
 
+	// HeadingPairs: a vt:vector of variant pairs (label, count) describing part categories.
+	// For spreadsheets this is always ["Worksheets", <count>].
 	lines.push(
 		writeElement(
 			"HeadingPairs",
@@ -110,6 +137,7 @@ export function writeExtendedProperties(cp: Record<string, any> | undefined): st
 		),
 	);
 
+	// TitlesOfParts: a vt:vector listing all sheet names as vt:lpstr elements
 	lines.push(
 		writeElement(
 			"TitlesOfParts",
@@ -121,8 +149,10 @@ export function writeExtendedProperties(cp: Record<string, any> | undefined): st
 		),
 	);
 
+	// Only close the root element if child elements were added
 	if (lines.length > 2) {
 		lines.push("</Properties>");
+		// Convert the self-closing root tag to an opening tag
 		lines[1] = lines[1].replace("/>", ">");
 	}
 	return lines.join("");

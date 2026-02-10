@@ -5,6 +5,7 @@ import { XMLNS_main, XMLNS } from "../xml/namespaces.js";
 import { utf8read } from "../utils/buffer.js";
 import type { WorkBook } from "../types.js";
 
+/** Parsed workbook.xml structure */
 export interface WorkbookFile {
 	AppVersion: Record<string, any>;
 	WBProps: Record<string, any>;
@@ -15,21 +16,26 @@ export interface WorkbookFile {
 	xmlns: string;
 }
 
+/** A sheet entry from the <sheets> element in workbook.xml */
 export interface SheetEntry {
 	name: string;
 	sheetId: string;
+	/** 0 = visible, 1 = hidden, 2 = veryHidden */
 	Hidden?: number;
 	[key: string]: any;
 }
 
+/** A defined name entry from the <definedNames> element */
 export interface DefinedNameEntry {
 	Name: string;
 	Ref?: string;
+	/** Local sheet index (undefined = workbook-scoped) */
 	Sheet?: number;
 	Comment?: string;
 	Hidden?: boolean;
 }
 
+/** Default values and types for workbook properties (workbookPr) */
 const WBPropsDef: [string, any, string?][] = [
 	["allowRefreshQuery", false, "bool"],
 	["autoCompressPictures", true, "bool"],
@@ -51,6 +57,7 @@ const WBPropsDef: [string, any, string?][] = [
 	["updateLinks", "userSet"],
 ];
 
+/** Default values and types for workbook view properties (workbookView) */
 const WBViewDef: [string, any, string?][] = [
 	["activeTab", 0, "int"],
 	["autoFilterDateGrouping", true, "bool"],
@@ -63,8 +70,10 @@ const WBViewDef: [string, any, string?][] = [
 	["visibility", "visible"],
 ];
 
+/** Default values for sheet entries (currently empty, extensible) */
 const SheetDef: [string, any, string?][] = [];
 
+/** Default values and types for calculation properties (calcPr) */
 const CalcPrDef: [string, any, string?][] = [
 	["calcCompleted", "true"],
 	["calcMode", "auto"],
@@ -78,6 +87,10 @@ const CalcPrDef: [string, any, string?][] = [
 	["refMode", "A1"],
 ];
 
+/**
+ * Apply default values to each entry in an array of objects.
+ * Coerces string values to bool/int based on the type hint in the defaults definition.
+ */
 function applyDefaultsToArray(target: any[], defaults: [string, any, string?][]): void {
 	for (let j = 0; j < target.length; ++j) {
 		const entry = target[j];
@@ -103,6 +116,10 @@ function applyDefaultsToArray(target: any[], defaults: [string, any, string?][])
 	}
 }
 
+/**
+ * Apply default values to a single object.
+ * Coerces string values to bool/int based on the type hint in the defaults definition.
+ */
 function applyDefaults(target: Record<string, any>, defaults: [string, any, string?][]): void {
 	for (let i = 0; i < defaults.length; ++i) {
 		const defaultDef = defaults[i];
@@ -125,6 +142,11 @@ function applyDefaults(target: Record<string, any>, defaults: [string, any, stri
 	}
 }
 
+/**
+ * Apply default values to all sections of a parsed workbook file.
+ *
+ * @param wb - Parsed workbook file to fill with defaults
+ */
 export function parse_wb_defaults(wb: WorkbookFile): void {
 	applyDefaults(wb.WBProps, WBPropsDef);
 	applyDefaults(wb.CalcPr, CalcPrDef);
@@ -132,6 +154,12 @@ export function parse_wb_defaults(wb: WorkbookFile): void {
 	applyDefaultsToArray(wb.Sheets, SheetDef);
 }
 
+/**
+ * Determine whether the workbook uses the 1904 date system (Mac Excel legacy).
+ *
+ * @param wb - WorkBook to inspect
+ * @returns "true" if 1904 date system is active, "false" otherwise
+ */
 export function is1904DateSystem(wb: WorkBook): string {
 	if (!wb.Workbook) {
 		return "false";
@@ -142,8 +170,17 @@ export function is1904DateSystem(wb: WorkBook): string {
 	return parseXmlBoolean(wb.Workbook.WBProps.date1904) ? "true" : "false";
 }
 
+/** Characters forbidden in Excel sheet names */
 const badchars = ":][*?/\\".split("");
 
+/**
+ * Validate a sheet name against Excel naming rules.
+ *
+ * @param n - Sheet name to validate
+ * @param safe - If true, return false on invalid names instead of throwing
+ * @returns true if valid
+ * @throws Error describing the validation failure (unless safe=true)
+ */
 export function validateSheetName(n: string, safe?: boolean): boolean {
 	try {
 		if (n === "") {
@@ -152,6 +189,7 @@ export function validateSheetName(n: string, safe?: boolean): boolean {
 		if (n.length > 31) {
 			throw new Error("Sheet name cannot exceed 31 chars");
 		}
+		// 0x27 = apostrophe (')
 		if (n.charCodeAt(0) === 0x27 || n.charCodeAt(n.length - 1) === 0x27) {
 			throw new Error("Sheet name cannot start or end with apostrophe (')");
 		}
@@ -172,6 +210,13 @@ export function validateSheetName(n: string, safe?: boolean): boolean {
 	return true;
 }
 
+/**
+ * Validate all sheet names in a workbook for correctness and uniqueness.
+ *
+ * @param sheetNames - Array of sheet names to validate
+ * @param sheetEntries - Optional sheet entry metadata (reserved for future use)
+ * @throws Error if any name is invalid or duplicated
+ */
 export function validateWorkbookNames(sheetNames: string[], sheetEntries?: any[]): void {
 	for (let i = 0; i < sheetNames.length; ++i) {
 		validateSheetName(sheetNames[i]);
@@ -183,6 +228,12 @@ export function validateWorkbookNames(sheetNames: string[], sheetEntries?: any[]
 	}
 }
 
+/**
+ * Validate that a WorkBook object has the required structure.
+ *
+ * @param wb - WorkBook to validate
+ * @throws Error if the workbook is missing required fields or has invalid sheet names
+ */
 export function validateWorkbook(wb: WorkBook): void {
 	if (!wb || !wb.SheetNames || !wb.Sheets) {
 		throw new Error("Invalid Workbook");
@@ -194,9 +245,20 @@ export function validateWorkbook(wb: WorkBook): void {
 	validateWorkbookNames(wb.SheetNames, Sheets);
 }
 
+/** Detects whether the workbook XML uses a namespace prefix (e.g. <x:workbook>) */
 const wbnsregex = /<\w+:workbook/;
 
-/** Parse a workbook XML file */
+/**
+ * Parse a workbook.xml file into a WorkbookFile structure.
+ *
+ * Extracts file version, workbook properties, views, sheet list, defined names,
+ * and calculation properties from the XML.
+ *
+ * @param data - Raw XML string of workbook.xml
+ * @param opts - Parsing options
+ * @returns Parsed workbook file structure
+ * @throws Error if data is empty or the namespace is unrecognized
+ */
 export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 	if (!data) {
 		throw new Error("Could not find file");
@@ -213,6 +275,7 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 	let pass = false;
 	let xmlns = "xmlns";
 	let dname: any = {};
+	// Track the character offset where the defined name content starts
 	let dnstart = 0;
 
 	data.replace(XML_TAG_REGEX, function xml_wb(xmlTag: string, idx: number): string {
@@ -222,6 +285,7 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 				break;
 
 			case "<workbook":
+				// Detect namespace prefix (e.g. <x:workbook -> xmlns:x)
 				if (xmlTag.match(wbnsregex)) {
 					xmlns = "xmlns" + xmlTag.match(/<(\w+):/)?.[1];
 				}
@@ -287,6 +351,7 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 			case "</sheets>":
 				break;
 			case "<sheet":
+				// Map state attribute to numeric Hidden value
 				switch (parsedTag.state) {
 					case "hidden":
 						parsedTag.Hidden = 1;
@@ -337,10 +402,12 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 				if (parseXmlBoolean(parsedTag.hidden || "0")) {
 					dname.Hidden = true;
 				}
+				// Record position after the opening tag to extract the Ref content later
 				dnstart = idx + xmlTag.length;
 				break;
 			}
 			case "</definedName>": {
+				// Extract the defined name reference formula from between open/close tags
 				dname.Ref = unescapeXml(utf8read(data.slice(dnstart, idx)));
 				workbook.Names.push(dname);
 				break;
@@ -396,6 +463,7 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 			case "<webPublishObject":
 				break;
 
+			// Extension list - skip unknown extensions
 			case "<extLst":
 			case "<extLst>":
 			case "</extLst>":
@@ -410,6 +478,7 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 
 			case "<ArchID":
 				break;
+			// Markup Compatibility AlternateContent - skip
 			case "<AlternateContent":
 			case "<AlternateContent>":
 				pass = true;
@@ -436,7 +505,12 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 	return workbook;
 }
 
-/** Write the workbook XML */
+/**
+ * Write the workbook.xml containing the sheet list, defined names, and properties.
+ *
+ * @param wb - WorkBook to serialize
+ * @returns Complete workbook.xml string
+ */
 export function writeWorkbookXml(wb: WorkBook): string {
 	const lines: string[] = [XML_HEADER];
 	lines.push(
@@ -450,6 +524,7 @@ export function writeWorkbookXml(wb: WorkBook): string {
 
 	const workbookPr: any = { codeName: "ThisWorkbook" };
 	if (wb.Workbook && wb.Workbook.WBProps) {
+		// Only write properties that differ from defaults
 		WBPropsDef.forEach((x) => {
 			if (!wb.Workbook || !wb.Workbook.WBProps) {
 				return;
@@ -472,7 +547,7 @@ export function writeWorkbookXml(wb: WorkBook): string {
 
 	const sheets = (wb.Workbook && wb.Workbook.Sheets) || [];
 
-	/* bookViews only written if first worksheet is hidden */
+	/* bookViews: only written if the first worksheet is hidden, to set activeTab to first visible sheet */
 	if (sheets[0] && !!sheets[0].Hidden) {
 		lines.push("<bookViews>");
 		let i = 0;
@@ -491,9 +566,11 @@ export function writeWorkbookXml(wb: WorkBook): string {
 		lines.push("</bookViews>");
 	}
 
+	// Sheet list
 	lines.push("<sheets>");
 	for (let i = 0; i < wb.SheetNames.length; ++i) {
 		const sht: any = { name: escapeXml(wb.SheetNames[i].slice(0, 31)) };
+		// sheetId is 1-based
 		sht.sheetId = "" + (i + 1);
 		sht["r:id"] = "rId" + (i + 1);
 		if (sheets[i]) {
@@ -510,6 +587,7 @@ export function writeWorkbookXml(wb: WorkBook): string {
 	}
 	lines.push("</sheets>");
 
+	// Defined names
 	if (write_names) {
 		lines.push("<definedNames>");
 		if (wb.Workbook && wb.Workbook.Names) {
@@ -535,6 +613,7 @@ export function writeWorkbookXml(wb: WorkBook): string {
 
 	if (lines.length > 2) {
 		lines.push("</workbook>");
+		// Convert self-closing <workbook .../> to opening tag <workbook ...>
 		lines[1] = lines[1].replace("/>", ">");
 	}
 	return lines.join("");
