@@ -55,7 +55,7 @@ xlsx-format does one thing well: read and write modern Excel files. The result i
 
 ## Runs everywhere
 
-**Node.js >= 18** -- full support including `readFile` / `writeFile` for filesystem access.
+**Node.js >= 22** -- full support including `readFile` / `writeFile` for filesystem access.
 
 **Browsers** -- `read()` and `write()` work in any modern browser with `Uint8Array` or `ArrayBuffer`. No Node.js APIs needed. Only `readFile()` / `writeFile()` require Node.
 
