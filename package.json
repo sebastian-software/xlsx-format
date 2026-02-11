@@ -1,6 +1,6 @@
 {
 	"name": "xlsx-format",
-	"version": "1.0.0",
+	"version": "0.21.0",
 	"description": "Modern XLSX reader/writer — TypeScript rewrite of SheetJS (XLSX only)",
 	"keywords": [
 		"excel",
