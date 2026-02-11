@@ -64,5 +64,12 @@
 		"*.{json,md,yml,yaml}": "prettier --write"
 	},
 	"license": "Apache-2.0",
-	"homepage": "https://github.com/nickelow/xlsx-format"
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/sebastian-software/xlsx-format.git"
+	},
+	"bugs": {
+		"url": "https://github.com/sebastian-software/xlsx-format/issues"
+	},
+	"homepage": "https://github.com/sebastian-software/xlsx-format"
 }
