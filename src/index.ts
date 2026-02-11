@@ -58,8 +58,8 @@ export {
 // Utilities - format conversions
 export { arrayToSheet, addArrayToSheet } from "./api/aoa.js";
 export { jsonToSheet, sheetToJson, addJsonToSheet } from "./api/json.js";
-export { sheetToCsv, sheetToTxt } from "./api/csv.js";
-export { sheetToHtml } from "./api/html.js";
+export { sheetToCsv, sheetToTxt, csvToSheet } from "./api/csv.js";
+export { sheetToHtml, htmlToSheet } from "./api/html.js";
 export { formatCell } from "./api/format.js";
 
 // Cell utilities

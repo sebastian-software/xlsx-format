@@ -21,8 +21,8 @@ const rows = sheetToJson(workbook.Sheets[workbook.SheetNames[0]]);
 
 // Write JSON back to Excel
 const sheet = jsonToSheet([
-  { Name: "Alice", Revenue: 48000 },
-  { Name: "Bob", Revenue: 52000 },
+	{ Name: "Alice", Revenue: 48000 },
+	{ Name: "Bob", Revenue: 52000 },
 ]);
 const wb = createWorkbook(sheet, "Q4 Sales");
 fs.writeFileSync("output.xlsx", await write(wb, { type: "buffer" }));
@@ -32,23 +32,23 @@ fs.writeFileSync("output.xlsx", await write(wb, { type: "buffer" }));
 
 SheetJS (the `xlsx` npm package) supports every spreadsheet format ever made -- XLS, XLSB, ODS, CSV, DBF, and more. That coverage comes at a cost: 7 runtime dependencies, 7.5 MB unpacked, and source code that's difficult to read or contribute to.
 
-Most projects only need XLSX. xlsx-format strips away everything else and rewrites the core in modern TypeScript.
+Most projects only need XLSX. xlsx-format strips away everything else and rewrites the core in modern TypeScript. It also reads and writes CSV, TSV, and HTML through the same `read()`/`write()` API.
 
 ## How it compares
 
-|  | **xlsx-format** | **SheetJS (xlsx)** | **ExcelJS** |
-|---|---|---|---|
-| **Formats** | XLSX / XLSM | 30+ formats | XLSX / CSV |
-| **Bundle (ESM)** | 184 KB | ~1 MB (full) | ~1 MB |
-| **Gzipped** | 42 KB | ~330 KB | ~250 KB |
-| **Runtime deps** | 0 | 7 (cfb, ssf, codepage...) | 9 (jszip, archiver, saxes...) |
-| **TypeScript** | Written in TS | JS with .d.ts | Written in TS |
-| **Tree-shakeable** | Yes (ESM) | No | Partial |
-| **Module format** | ESM + CJS | CJS (+ browser bundle) | CJS (+ browser bundle) |
-| **ZIP handling** | Built-in (DecompressionStream) | cfb + custom | jszip + archiver + unzipper |
-| **Node requirement** | >= 18 | >= 0.8 | >= 16 |
-| **API compatible** | ~90% (read/write/utils) | -- | Different API |
-| **License** | Apache 2.0 | Apache 2.0 | MIT |
+|                      | **xlsx-format**                | **SheetJS (xlsx)**        | **ExcelJS**                   |
+| -------------------- | ------------------------------ | ------------------------- | ----------------------------- |
+| **Formats**          | XLSX / XLSM / CSV / TSV / HTML | 30+ formats               | XLSX / CSV                    |
+| **Bundle (ESM)**     | 184 KB                         | ~1 MB (full)              | ~1 MB                         |
+| **Gzipped**          | 42 KB                          | ~330 KB                   | ~250 KB                       |
+| **Runtime deps**     | 0                              | 7 (cfb, ssf, codepage...) | 9 (jszip, archiver, saxes...) |
+| **TypeScript**       | Written in TS                  | JS with .d.ts             | Written in TS                 |
+| **Tree-shakeable**   | Yes (ESM)                      | No                        | Partial                       |
+| **Module format**    | ESM + CJS                      | CJS (+ browser bundle)    | CJS (+ browser bundle)        |
+| **ZIP handling**     | Built-in (DecompressionStream) | cfb + custom              | jszip + archiver + unzipper   |
+| **Node requirement** | >= 18                          | >= 0.8                    | >= 16                         |
+| **API compatible**   | ~90% (read/write/utils)        | --                        | Different API                 |
+| **License**          | Apache 2.0                     | Apache 2.0                | MIT                           |
 
 ## What it can do
 
@@ -66,18 +66,30 @@ Most projects only need XLSX. xlsx-format strips away everything else and rewrit
 // From a Buffer or Uint8Array
 const workbook = await read(buffer);
 
-// From a file path (Node.js)
+// From a file path (Node.js) — format detected from extension
 const workbook = await readFile("spreadsheet.xlsx");
+const workbook = await readFile("data.csv");
+const workbook = await readFile("report.html");
+
+// From a plain string (CSV or HTML auto-detected)
+const workbook = await read(csvString, { type: "string" });
 ```
 
 ### Writing
 
 ```typescript
-// To a Buffer
+// To a Buffer (XLSX)
 const buffer = await write(workbook, { type: "buffer" });
 
-// Directly to a file (Node.js)
+// To CSV / TSV / HTML string
+const csv = await write(workbook, { bookType: "csv", type: "string" });
+const tsv = await write(workbook, { bookType: "tsv", type: "string" });
+const html = await write(workbook, { bookType: "html", type: "string" });
+
+// Directly to a file (Node.js) — format detected from extension
 await writeFile(workbook, "output.xlsx");
+await writeFile(workbook, "output.csv");
+await writeFile(workbook, "output.html");
 ```
 
 ### Sheet to data
@@ -105,7 +117,16 @@ const html = sheetToHtml(sheet);
 const sheet = jsonToSheet([{ Name: "Alice", Age: 30 }]);
 
 // Array of arrays -> sheet
-const sheet = arrayToSheet([["Name", "Age"], ["Alice", 30]]);
+const sheet = arrayToSheet([
+	["Name", "Age"],
+	["Alice", 30],
+]);
+
+// CSV string -> sheet
+const sheet = csvToSheet("Name,Age\nAlice,30");
+
+// HTML table -> sheet
+const sheet = htmlToSheet("<table><tr><td>Name</td></tr></table>");
 ```
 
 ### Workbook helpers
@@ -128,10 +149,10 @@ setArrayFormula(sheet, "D1:D10", "=A1:A10*B1:B10");
 ### Cell address encoding
 
 ```typescript
-decodeCell("B3");       // { r: 2, c: 1 }
+decodeCell("B3"); // { r: 2, c: 1 }
 encodeCell({ r: 2, c: 1 }); // "B3"
-decodeRange("A1:C5");  // { s: { r: 0, c: 0 }, e: { r: 4, c: 2 } }
-encodeRange(range);     // "A1:C5"
+decodeRange("A1:C5"); // { s: { r: 0, c: 0 }, e: { r: 4, c: 2 } }
+encodeRange(range); // "A1:C5"
 ```
 
 ## Migration from SheetJS
@@ -154,6 +175,11 @@ The API mirrors SheetJS where it matters. If you're already using SheetJS for XL
 
 - const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 + const buf = await write(wb, { type: "buffer" });
+
+- const csv = XLSX.utils.sheet_to_csv(ws);
++ const csv = sheetToCsv(ws);
++ // or write the whole workbook as CSV:
++ const csv = await write(wb, { bookType: "csv", type: "string" });
 ```
 
 The cell object shape is unchanged: `{ t: "n", v: 42, w: "42" }` works exactly the same way.

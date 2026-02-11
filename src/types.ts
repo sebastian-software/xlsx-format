@@ -79,8 +79,8 @@ export interface CommonOptions {
 
 /** Options for reading/parsing workbook files */
 export interface ReadOptions extends CommonOptions {
-	/** Input data type: "base64" for base64 string, "buffer" for Node Buffer, "array" for Uint8Array */
-	type?: "base64" | "buffer" | "array";
+	/** Input data type: "base64" for base64 string, "buffer" for Node Buffer, "array" for Uint8Array, "string" for plain text (CSV/HTML) */
+	type?: "base64" | "buffer" | "array" | "string";
 	/** If true, parse and store cell formulas */
 	cellFormula?: boolean;
 	/** If true, generate HTML representation of rich text */
@@ -115,8 +115,10 @@ export interface ReadOptions extends CommonOptions {
 
 /** Options for writing/serializing workbook files */
 export interface WriteOptions extends CommonOptions {
-	/** Output data type: "base64" for base64 string, "buffer" for Node Buffer, "array" for Uint8Array */
-	type?: "base64" | "buffer" | "array";
+	/** Output data type: "base64" for base64 string, "buffer" for Node Buffer, "array" for Uint8Array, "string" for plain text */
+	type?: "base64" | "buffer" | "array" | "string";
+	/** Output file format (default: "xlsx") */
+	bookType?: "xlsx" | "xlsm" | "csv" | "tsv" | "html";
 	/** If true, generate a Shared Strings Table for string deduplication */
 	bookSST?: boolean;
 	/** If true, compress (deflate) ZIP entries */

@@ -4,6 +4,7 @@ import { encodeCol, encodeRow, decodeRange, getCell } from "../utils/cell.js";
 import { escapeHtml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { formatCell } from "./format.js";
+import { arrayToSheet } from "./aoa.js";
 
 /** Default HTML document prefix wrapping the table in a minimal page structure */
 const HTML_BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
@@ -59,7 +60,8 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 		}
 
 		// Resolve cell content: prefer cached HTML (cell.h), then formatted text, then empty
-		let cellContent = (cell && cell.v != null && (cell.h || escapeHtml(cell.w || (formatCell(cell), cell.w) || ""))) || "";
+		let cellContent =
+			(cell && cell.v != null && (cell.h || escapeHtml(cell.w || (formatCell(cell), cell.w) || ""))) || "";
 
 		const cellAttrs: Record<string, any> = {};
 		if (rowSpan > 1) {
@@ -127,4 +129,152 @@ export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
 	}
 	out.push("</table>" + footer);
 	return out.join("");
+}
+
+/** Unescape basic HTML entities */
+function unescapeHtml(s: string): string {
+	return s
+		.replace(/&amp;/g, "&")
+		.replace(/&lt;/g, "<")
+		.replace(/&gt;/g, ">")
+		.replace(/&quot;/g, '"')
+		.replace(/&#x27;/g, "'")
+		.replace(/&#39;/g, "'");
+}
+
+/** Strip HTML tags from a string, returning only text content */
+function stripTags(s: string): string {
+	return s.replace(/<[^>]*>/g, "");
+}
+
+/** Extract an attribute value from a tag string */
+function getAttr(tag: string, name: string): string | null {
+	const re = new RegExp(name + '\\s*=\\s*"([^"]*)"', "i");
+	const m = tag.match(re);
+	return m ? m[1] : null;
+}
+
+/** Coerce a data-v value based on data-t type code */
+function coerceDataValue(type: string, rawValue: string): any {
+	switch (type) {
+		case "n":
+			return Number(rawValue);
+		case "b":
+			return rawValue === "true" || rawValue === "1";
+		case "d":
+			return rawValue;
+		case "e":
+			return rawValue;
+		default:
+			return rawValue;
+	}
+}
+
+/** Try to coerce a plain text value to number or boolean */
+function coerceTextValue(text: string): string | number | boolean {
+	if (text === "") {
+		return text;
+	}
+	if (text === "TRUE" || text === "true") {
+		return true;
+	}
+	if (text === "FALSE" || text === "false") {
+		return false;
+	}
+	const num = Number(text);
+	if (text.length > 0 && !isNaN(num) && isFinite(num)) {
+		return num;
+	}
+	return text;
+}
+
+/**
+ * Parse an HTML string containing a `<table>` into a WorkSheet.
+ *
+ * Handles `rowspan`/`colspan` attributes and uses `data-t`/`data-v`
+ * attributes (when present) for round-trip fidelity.
+ *
+ * @param html - HTML string containing a table
+ * @returns A WorkSheet with the parsed table data
+ */
+export function htmlToSheet(html: string): WorkSheet {
+	// Find the first <table>...</table> block
+	const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
+	if (!tableMatch) {
+		return arrayToSheet([]);
+	}
+
+	const tableBody = tableMatch[1];
+	const rowMatches = tableBody.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+
+	const data: any[][] = [];
+	// Track cells occupied by rowspan from previous rows: occupied[row][col] = true
+	const occupied: Record<number, Record<number, boolean>> = {};
+
+	for (let r = 0; r < rowMatches.length; r++) {
+		if (!data[r]) {
+			data[r] = [];
+		}
+		if (!occupied[r]) {
+			occupied[r] = {};
+		}
+
+		const rowHtml = rowMatches[r];
+		const cellMatches = rowHtml.match(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi) || [];
+
+		let col = 0;
+		for (let ci = 0; ci < cellMatches.length; ci++) {
+			// Skip columns occupied by rowspan from prior rows
+			while (occupied[r][col]) {
+				col++;
+			}
+
+			const cellHtml = cellMatches[ci];
+			const tagEnd = cellHtml.indexOf(">");
+			const tag = cellHtml.slice(0, tagEnd + 1);
+
+			const rowspanStr = getAttr(tag, "rowspan");
+			const colspanStr = getAttr(tag, "colspan");
+			const rs = rowspanStr ? parseInt(rowspanStr, 10) : 1;
+			const cs = colspanStr ? parseInt(colspanStr, 10) : 1;
+			const dataT = getAttr(tag, "data-t");
+			const dataV = getAttr(tag, "data-v");
+
+			// Extract cell value
+			const innerHtml = cellHtml.slice(tagEnd + 1, cellHtml.lastIndexOf("</"));
+			let value: any;
+			if (dataT && dataV != null) {
+				value = coerceDataValue(dataT, unescapeHtml(dataV));
+			} else {
+				const text = unescapeHtml(stripTags(innerHtml)).trim();
+				value = coerceTextValue(text);
+			}
+
+			data[r][col] = value;
+
+			// Mark cells occupied by rowspan/colspan
+			for (let dr = 0; dr < rs; dr++) {
+				for (let dc = 0; dc < cs; dc++) {
+					if (dr === 0 && dc === 0) {
+						continue;
+					}
+					const tr = r + dr;
+					const tc = col + dc;
+					if (!occupied[tr]) {
+						occupied[tr] = {};
+					}
+					occupied[tr][tc] = true;
+				}
+			}
+
+			// Fill colspan cells in the current row with empty strings
+			for (let dc = 1; dc < cs; dc++) {
+				data[r][col + dc] = "";
+			}
+
+			col += cs;
+		}
+	}
+
+	return arrayToSheet(data);
 }

@@ -9,7 +9,9 @@ async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint
 	let totalLength = 0;
 	for (;;) {
 		const { done, value } = await reader.read();
-		if (done) break;
+		if (done) {
+			break;
+		}
 		chunks.push(value);
 		totalLength += value.length;
 	}

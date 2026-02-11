@@ -1,6 +1,7 @@
 import type { WorkSheet, Sheet2CSVOpts, Range } from "../types.js";
 import { encodeCol, safeDecodeRange, getCell } from "../utils/cell.js";
 import { formatCell } from "./format.js";
+import { arrayToSheet } from "./aoa.js";
 
 /** Regex to match double-quote characters for CSV escaping (doubled inside quoted fields) */
 const qreg = /"/g;
@@ -46,9 +47,9 @@ function buildCsvRow(
 				if (
 					(charCode = txt.charCodeAt(i)) === fieldSepCode ||
 					charCode === recordSepCode ||
-					charCode === 10 ||  // LF
-					charCode === 13 ||  // CR
-					charCode === 34 ||  // double-quote
+					charCode === 10 || // LF
+					charCode === 13 || // CR
+					charCode === 34 || // double-quote
 					options.forceQuotes
 				) {
 					txt = '"' + txt.replace(qreg, '""') + '"';
@@ -121,7 +122,17 @@ export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 		if ((rowinfo[rowIdx] || {}).hidden) {
 			continue;
 		}
-		const row = buildCsvRow(sheet, range, rowIdx, cols, fieldSepCode, recordSepCode, fieldSeparator, rowCount, options);
+		const row = buildCsvRow(
+			sheet,
+			range,
+			rowIdx,
+			cols,
+			fieldSepCode,
+			recordSepCode,
+			fieldSeparator,
+			rowCount,
+			options,
+		);
 		if (row == null) {
 			continue;
 		}
@@ -148,4 +159,123 @@ export function sheetToTxt(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 	options.FS = "\t";
 	options.RS = "\n";
 	return sheetToCsv(sheet, options);
+}
+
+/**
+ * Parse an RFC 4180 CSV string into a 2D array of values.
+ *
+ * Handles quoted fields, escaped double-quotes, and newlines within quotes.
+ */
+function parseCsv(text: string, sep: string): any[][] {
+	const rows: any[][] = [];
+	let row: any[] = [];
+	let i = 0;
+	const len = text.length;
+
+	while (i <= len) {
+		if (i === len) {
+			// End of input — push final row if it has content or there are already rows
+			if (row.length > 0 || rows.length > 0) {
+				row.push("");
+				rows.push(row);
+			}
+			break;
+		}
+
+		if (text[i] === '"') {
+			// Quoted field
+			let val = "";
+			i++; // skip opening quote
+			while (i < len) {
+				if (text[i] === '"') {
+					if (i + 1 < len && text[i + 1] === '"') {
+						// Escaped double-quote
+						val += '"';
+						i += 2;
+					} else {
+						// Closing quote
+						i++; // skip closing quote
+						break;
+					}
+				} else {
+					val += text[i];
+					i++;
+				}
+			}
+			row.push(val);
+			// After closing quote, expect separator, newline, or end
+			if (i < len && text[i] === sep) {
+				i++;
+			} else if (i < len && (text[i] === "\r" || text[i] === "\n")) {
+				if (text[i] === "\r" && i + 1 < len && text[i + 1] === "\n") {
+					i++;
+				}
+				i++;
+				rows.push(row);
+				row = [];
+			}
+		} else if (text[i] === sep) {
+			row.push("");
+			i++;
+		} else if (text[i] === "\r" || text[i] === "\n") {
+			if (text[i] === "\r" && i + 1 < len && text[i + 1] === "\n") {
+				i++;
+			}
+			i++;
+			rows.push(row);
+			row = [];
+		} else {
+			// Unquoted field
+			let val = "";
+			while (i < len && text[i] !== sep && text[i] !== "\r" && text[i] !== "\n") {
+				val += text[i];
+				i++;
+			}
+			row.push(val);
+			if (i < len && text[i] === sep) {
+				i++;
+			} else if (i < len && (text[i] === "\r" || text[i] === "\n")) {
+				if (text[i] === "\r" && i + 1 < len && text[i + 1] === "\n") {
+					i++;
+				}
+				i++;
+				rows.push(row);
+				row = [];
+			}
+		}
+	}
+
+	return rows;
+}
+
+/** Try to coerce a string value to a number or boolean */
+function coerceValue(val: string): string | number | boolean {
+	if (val === "") {
+		return val;
+	}
+	if (val === "TRUE" || val === "true") {
+		return true;
+	}
+	if (val === "FALSE" || val === "false") {
+		return false;
+	}
+	const num = Number(val);
+	if (val.length > 0 && !isNaN(num) && isFinite(num)) {
+		return num;
+	}
+	return val;
+}
+
+/**
+ * Parse a CSV string into a WorkSheet.
+ *
+ * @param text - CSV text to parse
+ * @param opts - Optional: { FS: field separator (default ",") }
+ * @returns A WorkSheet with the parsed data
+ */
+export function csvToSheet(text: string, opts?: { FS?: string }): WorkSheet {
+	const sep = (opts && opts.FS) || ",";
+	const rows = parseCsv(text, sep);
+	const data: any[][] = rows.map((row) => row.map(coerceValue));
+	return arrayToSheet(data);
 }

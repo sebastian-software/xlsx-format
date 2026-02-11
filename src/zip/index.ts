@@ -86,7 +86,7 @@ export async function zipRead(data: Uint8Array): Promise<ZipArchive> {
 		if (readU32(data, pos) !== SIG_CENTRAL) {
 			throw new Error("Invalid ZIP: bad central directory entry");
 		}
-		const method = readU16(data, pos + 10);     // compression method (0=stored, 8=deflate)
+		const method = readU16(data, pos + 10); // compression method (0=stored, 8=deflate)
 		const crcVal = readU32(data, pos + 16);
 		const compSize = readU32(data, pos + 20);
 		const uncompSize = readU32(data, pos + 24);
@@ -114,7 +114,9 @@ export async function zipRead(data: Uint8Array): Promise<ZipArchive> {
 		const name = decoder.decode(entry.nameBytes);
 
 		// Skip directory entries (paths ending with "/")
-		if (name.endsWith("/")) continue;
+		if (name.endsWith("/")) {
+			continue;
+		}
 
 		if (entry.method === 0) {
 			// Method 0: Stored (no compression)
@@ -188,16 +190,16 @@ export async function zipWrite(archive: ZipArchive, compress?: boolean): Promise
 		centralEntries.push({ offset, index: i });
 
 		writeU32(buf, offset, SIG_LOCAL);
-		writeU16(buf, offset + 4, 20);              // version needed to extract (2.0)
-		writeU16(buf, offset + 6, 0);               // general purpose bit flags
-		writeU16(buf, offset + 8, methods[i]);       // compression method
-		writeU16(buf, offset + 10, 0);              // last mod file time
-		writeU16(buf, offset + 12, 0);              // last mod file date
-		writeU32(buf, offset + 14, entry.crc);       // CRC-32
+		writeU16(buf, offset + 4, 20); // version needed to extract (2.0)
+		writeU16(buf, offset + 6, 0); // general purpose bit flags
+		writeU16(buf, offset + 8, methods[i]); // compression method
+		writeU16(buf, offset + 10, 0); // last mod file time
+		writeU16(buf, offset + 12, 0); // last mod file date
+		writeU32(buf, offset + 14, entry.crc); // CRC-32
 		writeU32(buf, offset + 18, compData.length); // compressed size
 		writeU32(buf, offset + 22, entry.data.length); // uncompressed size
 		writeU16(buf, offset + 26, entry.nameBytes.length); // file name length
-		writeU16(buf, offset + 28, 0);              // extra field length
+		writeU16(buf, offset + 28, 0); // extra field length
 		buf.set(entry.nameBytes, offset + 30);
 		buf.set(compData, offset + 30 + entry.nameBytes.length);
 		offset += 30 + entry.nameBytes.length + compData.length;
@@ -210,22 +212,22 @@ export async function zipWrite(archive: ZipArchive, compress?: boolean): Promise
 		const compData = compressedDatas[ce.index];
 
 		writeU32(buf, offset, SIG_CENTRAL);
-		writeU16(buf, offset + 4, 20);               // version made by (2.0)
-		writeU16(buf, offset + 6, 20);               // version needed to extract (2.0)
-		writeU16(buf, offset + 8, 0);                // general purpose bit flags
+		writeU16(buf, offset + 4, 20); // version made by (2.0)
+		writeU16(buf, offset + 6, 20); // version needed to extract (2.0)
+		writeU16(buf, offset + 8, 0); // general purpose bit flags
 		writeU16(buf, offset + 10, methods[ce.index]); // compression method
-		writeU16(buf, offset + 12, 0);               // last mod file time
-		writeU16(buf, offset + 14, 0);               // last mod file date
-		writeU32(buf, offset + 16, entry.crc);        // CRC-32
-		writeU32(buf, offset + 20, compData.length);  // compressed size
+		writeU16(buf, offset + 12, 0); // last mod file time
+		writeU16(buf, offset + 14, 0); // last mod file date
+		writeU32(buf, offset + 16, entry.crc); // CRC-32
+		writeU32(buf, offset + 20, compData.length); // compressed size
 		writeU32(buf, offset + 24, entry.data.length); // uncompressed size
 		writeU16(buf, offset + 28, entry.nameBytes.length); // file name length
-		writeU16(buf, offset + 30, 0);               // extra field length
-		writeU16(buf, offset + 32, 0);               // file comment length
-		writeU16(buf, offset + 34, 0);               // disk number start
-		writeU16(buf, offset + 36, 0);               // internal file attributes
-		writeU32(buf, offset + 38, 0);               // external file attributes
-		writeU32(buf, offset + 42, ce.offset);        // relative offset of local header
+		writeU16(buf, offset + 30, 0); // extra field length
+		writeU16(buf, offset + 32, 0); // file comment length
+		writeU16(buf, offset + 34, 0); // disk number start
+		writeU16(buf, offset + 36, 0); // internal file attributes
+		writeU32(buf, offset + 38, 0); // external file attributes
+		writeU32(buf, offset + 42, ce.offset); // relative offset of local header
 		buf.set(entry.nameBytes, offset + 46);
 		offset += 46 + entry.nameBytes.length;
 	}
@@ -233,13 +235,13 @@ export async function zipWrite(archive: ZipArchive, compress?: boolean): Promise
 	// Write End of Central Directory record
 	const cdSize = offset - cdStart;
 	writeU32(buf, offset, SIG_EOCD);
-	writeU16(buf, offset + 4, 0);                   // number of this disk
-	writeU16(buf, offset + 6, 0);                   // disk where CD starts
-	writeU16(buf, offset + 8, rawEntries.length);    // number of CD entries on this disk
-	writeU16(buf, offset + 10, rawEntries.length);   // total number of CD entries
-	writeU32(buf, offset + 12, cdSize);              // size of central directory
-	writeU32(buf, offset + 16, cdStart);             // offset of start of CD
-	writeU16(buf, offset + 20, 0);                   // ZIP file comment length
+	writeU16(buf, offset + 4, 0); // number of this disk
+	writeU16(buf, offset + 6, 0); // disk where CD starts
+	writeU16(buf, offset + 8, rawEntries.length); // number of CD entries on this disk
+	writeU16(buf, offset + 10, rawEntries.length); // total number of CD entries
+	writeU32(buf, offset + 12, cdSize); // size of central directory
+	writeU32(buf, offset + 16, cdStart); // offset of start of CD
+	writeU16(buf, offset + 20, 0); // ZIP file comment length
 
 	return buf;
 }

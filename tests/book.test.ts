@@ -101,7 +101,9 @@ describe("setSheetVisibility", () => {
 	it("should throw for invalid visibility value", () => {
 		const wb = createWorkbook();
 		appendSheet(wb, createSheet(), "A");
-		expect(() => setSheetVisibility(wb, "A", 3 as any)).toThrow("Bad sheet visibility");
+		expect(() => {
+			setSheetVisibility(wb, "A", 3 as any);
+		}).toThrow("Bad sheet visibility");
 	});
 });
 

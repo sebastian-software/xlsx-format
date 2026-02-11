@@ -3,7 +3,10 @@ import { zipRead } from "./zip/index.js";
 import { parseZip } from "./xlsx/parse-zip.js";
 import { base64decode } from "./utils/base64.js";
 import { resetFormatTable } from "./ssf/table.js";
+import { csvToSheet } from "./api/csv.js";
+import { htmlToSheet } from "./api/html.js";
 import * as fs from "node:fs";
+import * as path from "node:path";
 
 /**
  * Normalize any supported input type into a Uint8Array for ZIP parsing.
@@ -56,13 +59,22 @@ function detect_type(data: any): ReadOptions["type"] {
 	return "array";
 }
 
+/** Wrap a single worksheet into a WorkBook */
+function sheetToWorkBook(ws: any, name?: string): WorkBook {
+	const n = name || "Sheet1";
+	return {
+		SheetNames: [n],
+		Sheets: { [n]: ws },
+	};
+}
+
 /**
- * Read an XLSX file from an in-memory data source.
+ * Read a spreadsheet from an in-memory data source.
  *
- * Accepts multiple input types (Uint8Array, ArrayBuffer, Buffer, base64 string, binary string).
- * Validates the file signature (must be a ZIP/PK file) and delegates parsing to the XLSX module.
+ * Supports XLSX (ZIP), CSV, and HTML input. For string input with type "string",
+ * auto-detects HTML (starts with "<") vs CSV.
  *
- * @param data - File contents as Uint8Array, ArrayBuffer, Buffer, base64 string, or binary string
+ * @param data - File contents as Uint8Array, ArrayBuffer, Buffer, base64 string, binary string, or plain text string
  * @param opts - Read options controlling parsing behavior
  * @returns Promise resolving to a parsed WorkBook object
  * @throws Error if the input is a PDF, PNG, or other unsupported format
@@ -72,6 +84,15 @@ export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 	const options: any = opts ? { ...opts } : {};
 	if (!options.type) {
 		options.type = detect_type(data);
+	}
+
+	// Handle plain text string input (CSV or HTML)
+	if (options.type === "string" && typeof data === "string") {
+		const trimmed = data.trimStart();
+		if (trimmed.charAt(0) === "<") {
+			return sheetToWorkBook(htmlToSheet(data));
+		}
+		return sheetToWorkBook(csvToSheet(data));
 	}
 
 	const u8 = to_uint8array(data, options);
@@ -95,17 +116,38 @@ export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 	throw new Error("Unsupported file format. xlsx-format only supports XLSX files.");
 }
 
+/** Map file extensions to text format types */
+const TEXT_EXTENSIONS: Record<string, string> = {
+	".csv": "csv",
+	".tsv": "tsv",
+	".tab": "tsv",
+	".html": "html",
+	".htm": "html",
+};
+
 /**
- * Read an XLSX file from the local filesystem (Node.js only).
+ * Read a spreadsheet file from the local filesystem (Node.js only).
  *
- * Convenience wrapper that reads the file synchronously with fs.readFileSync
- * and then delegates to {@link read}.
+ * Automatically detects CSV, TSV, and HTML files by extension and reads
+ * them as text. All other extensions are read as binary XLSX.
  *
- * @param filename - Path to the XLSX file
+ * @param filename - Path to the file
  * @param opts - Read options controlling parsing behavior
  * @returns Promise resolving to a parsed WorkBook object
  */
 export async function readFile(filename: string, opts?: ReadOptions): Promise<WorkBook> {
+	const ext = path.extname(filename).toLowerCase();
+	const textType = TEXT_EXTENSIONS[ext];
+
+	if (textType) {
+		const text = fs.readFileSync(filename, "utf-8");
+		if (textType === "html") {
+			return sheetToWorkBook(htmlToSheet(text));
+		}
+		const sep = textType === "tsv" ? "\t" : ",";
+		return sheetToWorkBook(csvToSheet(text, { FS: sep }));
+	}
+
 	const data = fs.readFileSync(filename);
 	return read(new Uint8Array(data), opts);
 }

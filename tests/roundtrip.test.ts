@@ -1,7 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
 	read,
+	readFile,
 	write,
+	writeFile,
 	createWorkbook,
 	appendSheet,
 	arrayToSheet,
@@ -11,7 +13,12 @@ import {
 	sheetToHtml,
 	addArrayToSheet,
 	createSheet,
+	csvToSheet,
+	htmlToSheet,
 } from "../src/index.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 
 describe("roundtrip", () => {
 	it("should write and re-read a simple workbook", async () => {
@@ -235,5 +242,214 @@ describe("error handling", () => {
 
 	it("should throw on invalid workbook", async () => {
 		await expect(write({} as any)).rejects.toThrow();
+	});
+});
+
+describe("CSV write and read", () => {
+	it("should write CSV via bookType", async () => {
+		const ws = arrayToSheet([
+			["Name", "Score"],
+			["Alice", 95],
+			["Bob", 87],
+		]);
+		const wb = createWorkbook(ws, "Data");
+		const csv = await write(wb, { bookType: "csv", type: "string" });
+		expect(typeof csv).toBe("string");
+		expect(csv).toContain("Name,Score");
+		expect(csv).toContain("Alice,95");
+		expect(csv).toContain("Bob,87");
+	});
+
+	it("should write TSV via bookType", async () => {
+		const ws = arrayToSheet([
+			["A", "B"],
+			[1, 2],
+		]);
+		const wb = createWorkbook(ws, "Data");
+		const tsv = await write(wb, { bookType: "tsv", type: "string" });
+		expect(tsv).toContain("A\tB");
+		expect(tsv).toContain("1\t2");
+	});
+
+	it("should roundtrip CSV: csvToSheet(sheetToCsv(ws))", () => {
+		const original = arrayToSheet([
+			["Name", "Score"],
+			["Alice", 95],
+			["Bob", 87],
+		]);
+		const csv = sheetToCsv(original);
+		const ws2 = csvToSheet(csv);
+		const rows = sheetToJson(ws2);
+		expect(rows.length).toBe(2);
+		expect(rows[0]["Name"]).toBe("Alice");
+		expect(rows[0]["Score"]).toBe(95);
+		expect(rows[1]["Name"]).toBe("Bob");
+	});
+
+	it("should read CSV string via read()", async () => {
+		const csv = "Name,Age\nAlice,30\nBob,25";
+		const wb = await read(csv, { type: "string" });
+		expect(wb.SheetNames).toEqual(["Sheet1"]);
+		const rows = sheetToJson(wb.Sheets["Sheet1"]);
+		expect(rows.length).toBe(2);
+		expect(rows[0]["Name"]).toBe("Alice");
+		expect(rows[0]["Age"]).toBe(30);
+	});
+
+	it("should handle commas in quoted fields", () => {
+		const csv = 'Name,Address\n"Doe, Jane","123 Main St, Apt 4"';
+		const ws = csvToSheet(csv);
+		const rows = sheetToJson(ws);
+		expect(rows[0]["Name"]).toBe("Doe, Jane");
+		expect(rows[0]["Address"]).toBe("123 Main St, Apt 4");
+	});
+
+	it("should handle escaped quotes", () => {
+		const csv = 'Val\n"He said ""hello"""';
+		const ws = csvToSheet(csv);
+		const rows = sheetToJson(ws);
+		expect(rows[0]["Val"]).toBe('He said "hello"');
+	});
+
+	it("should handle newlines in quoted fields", () => {
+		const csv = 'Note\n"Line1\nLine2"';
+		const ws = csvToSheet(csv);
+		const rows = sheetToJson(ws);
+		expect(rows[0]["Note"]).toBe("Line1\nLine2");
+	});
+
+	it("should handle empty cells", () => {
+		const csv = "A,B,C\n1,,3";
+		const ws = csvToSheet(csv);
+		const rows = sheetToJson(ws, { header: 1 });
+		expect(rows[1][0]).toBe(1);
+		expect(rows[1][1]).toBe("");
+		expect(rows[1][2]).toBe(3);
+	});
+
+	it("should support custom separator in csvToSheet", () => {
+		const tsv = "A\tB\n1\t2";
+		const ws = csvToSheet(tsv, { FS: "\t" });
+		const rows = sheetToJson(ws);
+		expect(rows[0]["A"]).toBe(1);
+		expect(rows[0]["B"]).toBe(2);
+	});
+});
+
+describe("HTML write and read", () => {
+	it("should write HTML via bookType", async () => {
+		const ws = arrayToSheet([
+			["X", "Y"],
+			[1, 2],
+		]);
+		const wb = createWorkbook(ws, "Data");
+		const html = await write(wb, { bookType: "html", type: "string" });
+		expect(typeof html).toBe("string");
+		expect(html).toContain("<table");
+		expect(html).toContain("<td");
+		expect(html).toContain("X");
+	});
+
+	it("should roundtrip HTML: htmlToSheet(sheetToHtml(ws))", () => {
+		const original = arrayToSheet([
+			["Name", "Value"],
+			["Alpha", 100],
+			["Beta", 200],
+		]);
+		const html = sheetToHtml(original);
+		const ws2 = htmlToSheet(html);
+		const rows = sheetToJson(ws2);
+		expect(rows.length).toBe(2);
+		expect(rows[0]["Name"]).toBe("Alpha");
+		expect(rows[0]["Value"]).toBe(100);
+		expect(rows[1]["Name"]).toBe("Beta");
+	});
+
+	it("should read HTML string via read()", async () => {
+		const html = "<table><tr><td>A</td><td>B</td></tr><tr><td>1</td><td>2</td></tr></table>";
+		const wb = await read(html, { type: "string" });
+		expect(wb.SheetNames).toEqual(["Sheet1"]);
+		const rows = sheetToJson(wb.Sheets["Sheet1"]);
+		expect(rows[0]["A"]).toBe(1);
+		expect(rows[0]["B"]).toBe(2);
+	});
+
+	it("should parse HTML with data-t/data-v attributes", () => {
+		const html =
+			'<table><tr><td data-t="s" data-v="Hello">Hello</td><td data-t="n" data-v="42">42</td></tr></table>';
+		const ws = htmlToSheet(html);
+		const rows = sheetToJson(ws, { header: 1 });
+		expect(rows[0][0]).toBe("Hello");
+		expect(rows[0][1]).toBe(42);
+	});
+
+	it("should return empty sheet for HTML without table", () => {
+		const html = "<div>No table here</div>";
+		const ws = htmlToSheet(html);
+		expect(ws["!ref"]).toBeUndefined();
+	});
+});
+
+describe("writeFile / readFile extension detection", () => {
+	let tmpDir: string;
+
+	function tmpPath(name: string) {
+		return path.join(tmpDir, name);
+	}
+
+	beforeAll(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "xlsx-format-test-"));
+	});
+
+	afterAll(() => {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	it("should write and read CSV via file extension", async () => {
+		const ws = arrayToSheet([
+			["A", "B"],
+			[1, 2],
+		]);
+		const wb = createWorkbook(ws, "Data");
+		const csvPath = tmpPath("test.csv");
+		await writeFile(wb, csvPath);
+		const content = fs.readFileSync(csvPath, "utf-8");
+		expect(content).toContain("A,B");
+
+		const wb2 = await readFile(csvPath);
+		const rows = sheetToJson(wb2.Sheets["Sheet1"]);
+		expect(rows[0]["A"]).toBe(1);
+	});
+
+	it("should write and read TSV via file extension", async () => {
+		const ws = arrayToSheet([
+			["X", "Y"],
+			[3, 4],
+		]);
+		const wb = createWorkbook(ws, "Data");
+		const tsvPath = tmpPath("test.tsv");
+		await writeFile(wb, tsvPath);
+		const content = fs.readFileSync(tsvPath, "utf-8");
+		expect(content).toContain("X\tY");
+
+		const wb2 = await readFile(tsvPath);
+		const rows = sheetToJson(wb2.Sheets["Sheet1"]);
+		expect(rows[0]["X"]).toBe(3);
+	});
+
+	it("should write and read HTML via file extension", async () => {
+		const ws = arrayToSheet([
+			["P", "Q"],
+			[5, 6],
+		]);
+		const wb = createWorkbook(ws, "Data");
+		const htmlPath = tmpPath("test.html");
+		await writeFile(wb, htmlPath);
+		const content = fs.readFileSync(htmlPath, "utf-8");
+		expect(content).toContain("<table");
+
+		const wb2 = await readFile(htmlPath);
+		const rows = sheetToJson(wb2.Sheets["Sheet1"]);
+		expect(rows[0]["P"]).toBe(5);
 	});
 });
