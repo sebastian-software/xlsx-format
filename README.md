@@ -35,17 +35,20 @@ Most projects just need XLSX -- but the popular libraries ship with support for 
 
 xlsx-format does one thing well: read and write modern Excel files. The result is a library you can actually tree-shake, `await`, and ship to the browser without a separate bundle.
 
-|                     | **xlsx-format**                | **SheetJS (xlsx)**      | **ExcelJS** |
-| ------------------- | ------------------------------ | ----------------------- | ----------- |
-| **Written in**      | TypeScript (strict)            | JavaScript (with .d.ts) | TypeScript  |
-| **Async**           | Yes (streaming ZIP)            | No                      | Partial     |
-| **Module format**   | ESM + CJS                      | CJS only                | CJS only    |
-| **Tree-shakeable**  | Yes                            | No                      | Partial     |
-| **Runtime deps**    | 0                              | 7                       | 9           |
-| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No          |
-| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV  |
-| **API style**       | Named exports, async           | Namespace object        | Class-based |
-| **License**         | Apache 2.0                     | Apache 2.0              | MIT         |
+|                     | **xlsx-format**                | **SheetJS (xlsx)**      | **ExcelJS**  |
+| ------------------- | ------------------------------ | ----------------------- | ------------ |
+| **Written in**      | TypeScript (strict)            | JavaScript (with .d.ts) | TypeScript   |
+| **Async**           | Yes (streaming ZIP)            | No                      | Partial      |
+| **Module format**   | ESM + CJS                      | CJS only                | CJS only     |
+| **Tree-shakeable**  | Yes                            | No                      | Partial      |
+| **Runtime deps**    | 0                              | 7                       | 9            |
+| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No           |
+| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV   |
+| **API style**       | Named exports, async           | Namespace object        | Class-based  |
+| **Test coverage**   | 91% ([Codecov][codecov])       | Not measured            | Not measured |
+| **License**         | Apache 2.0                     | Apache 2.0              | MIT          |
+
+[codecov]: https://codecov.io/gh/sebastian-software/xlsx-format
 
 ## Feature Support
 
