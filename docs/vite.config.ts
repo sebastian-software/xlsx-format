@@ -12,6 +12,14 @@ export default defineConfig({
 
 			// GitHub Pages: base path auto-detected from git remote
 
+			// Override until ardo vite plugin uses the updated default
+			markdown: {
+				theme: {
+					light: "github-light-default",
+					dark: "github-dark-default",
+				},
+			},
+
 			themeConfig: {
 				siteTitle: "xlsx-format",
 
