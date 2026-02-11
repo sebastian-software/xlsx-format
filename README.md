@@ -46,13 +46,96 @@ xlsx-format does one thing well: read and write modern Excel files. The result i
 | **API style**       | Named exports, async           | Namespace object        | Class-based |
 | **License**         | Apache 2.0                     | Apache 2.0              | MIT         |
 
-## What it handles
+## Feature Support
 
-- **Cell data** -- strings, numbers, booleans, dates, formulas, comments, hyperlinks
-- **Number formatting** -- full SSF engine with the same format codes Excel uses (`#,##0.00`, `yyyy-mm-dd`, custom patterns)
-- **Sheet structure** -- multiple sheets, merge regions, column widths, row heights, frozen panes, auto-filters
-- **Metadata** -- defined names, document properties, sheet visibility
-- **Format conversion** -- JSON, arrays, CSV, TSV, HTML tables (read and write)
+What xlsx-format can read from and write to XLSX files at a glance.
+
+### Cell Data
+
+| Feature      | Read | Write | Notes                                           |
+| ------------ | :--: | :---: | ----------------------------------------------- |
+| Strings      | Yes  |  Yes  | Via shared string table or inline               |
+| Numbers      | Yes  |  Yes  | Full floating-point precision                   |
+| Booleans     | Yes  |  Yes  | Native boolean cell type                        |
+| Dates        | Yes  |  Yes  | Serial numbers or ISO 8601 (`cellDates` option) |
+| Error values | Yes  |  Yes  | `#NULL!`, `#DIV/0!`, `#VALUE!`, etc.            |
+
+### Formulas
+
+| Feature         | Read | Write | Notes                                                    |
+| --------------- | :--: | :---: | -------------------------------------------------------- |
+| Cell formulas   | Yes  |  Yes  | Stored in `cell.f`                                       |
+| Array formulas  | Yes  |  Yes  | Range reference in `cell.F`, dynamic array flag `cell.D` |
+| Shared formulas | Yes  |  --   | Expanded to individual cell formulas on read             |
+
+### Number Formats
+
+| Feature             | Read | Write | Notes                                           |
+| ------------------- | :--: | :---: | ----------------------------------------------- |
+| Built-in formats    | Yes  |  Yes  | 164+ standard Excel format codes                |
+| Custom formats      | Yes  |  Yes  | e.g. `#,##0.00`, `yyyy-mm-dd`, custom patterns  |
+| Format display text | Yes  |  Yes  | Formatted value in `cell.w` via full SSF engine |
+
+### Styles
+
+| Feature                                    | Read | Write | Notes                                            |
+| ------------------------------------------ | :--: | :---: | ------------------------------------------------ |
+| Rich text (bold, italic, underline, color) | Yes  |  Yes  | Preserved in shared strings                      |
+| Cell number format references              | Yes  |  Yes  | Style index maps to format codes                 |
+| Fonts / Fills / Borders                    |  --  |  --   | Minimal defaults only; no cell-level styling API |
+
+### Comments
+
+| Feature           | Read | Write | Notes                                |
+| ----------------- | :--: | :---: | ------------------------------------ |
+| Legacy comments   | Yes  |  Yes  | ECMA-376 format with VML positioning |
+| Threaded comments | Yes  |  Yes  | Modern reply-chain format            |
+| Comment authors   | Yes  |  Yes  | Author list and people mapping       |
+
+### Hyperlinks
+
+| Feature        | Read | Write | Notes                      |
+| -------------- | :--: | :---: | -------------------------- |
+| External URLs  | Yes  |  --   | Parsed from relationships  |
+| Internal links | Yes  |  --   | `#Sheet2!A1` syntax        |
+| Tooltips       | Yes  |  --   | Stored in `cell.l.Tooltip` |
+
+### Sheet Structure
+
+| Feature               | Read | Write | Notes                                        |
+| --------------------- | :--: | :---: | -------------------------------------------- |
+| Multiple sheets       | Yes  |  Yes  | Ordered sheet list with unique names         |
+| Merge regions         | Yes  |  Yes  | Rectangular merge ranges                     |
+| Column widths         | Yes  |  Yes  | Character-unit widths                        |
+| Row heights           | Yes  |  Yes  | Point-based heights                          |
+| Hidden columns / rows | Yes  |  Yes  | Via `hidden` flag                            |
+| Auto-filter range     | Yes  |  Yes  | Filter range definition (no filter criteria) |
+| Page margins          | Yes  |  Yes  | Left, right, top, bottom, header, footer     |
+
+### Workbook & Metadata
+
+| Feature                 | Read | Write | Notes                                |
+| ----------------------- | :--: | :---: | ------------------------------------ |
+| Sheet visibility        | Yes  |  Yes  | Visible, hidden, very hidden         |
+| Defined names           | Yes  |  Yes  | Workbook-scoped and sheet-scoped     |
+| Document properties     | Yes  |  Yes  | Title, author, dates, keywords, etc. |
+| Custom properties       | Yes  |  Yes  | User-defined key/value pairs         |
+| Date system (1904 mode) | Yes  |  Yes  | Mac Excel legacy support             |
+| Dynamic array metadata  | Yes  |  Yes  | XLDAPR spill-range support           |
+
+### Format Conversion
+
+| Feature          | Read | Write | Notes                                         |
+| ---------------- | :--: | :---: | --------------------------------------------- |
+| JSON objects     | Yes  |  Yes  | `sheetToJson` / `jsonToSheet`                 |
+| Arrays of arrays | Yes  |  Yes  | `sheetToJson({ header: 1 })` / `arrayToSheet` |
+| CSV              | Yes  |  Yes  | `csvToSheet` / `sheetToCsv`                   |
+| TSV              | Yes  |  Yes  | Via separator option                          |
+| HTML tables      | Yes  |  Yes  | `htmlToSheet` / `sheetToHtml`                 |
+
+### Not Yet Supported
+
+Conditional formatting, data validation, frozen panes, charts, images, pivot tables, sparklines, VBA macros, digital signatures, sheet/workbook protection, outline grouping.
 
 ## Runs everywhere
 
