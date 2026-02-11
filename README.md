@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/xlsx-format)](https://www.npmjs.com/package/xlsx-format)
 [![CI](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml/badge.svg)](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/sebastian-software/xlsx-format/graph/badge.svg)](https://codecov.io/gh/sebastian-software/xlsx-format)
 [![license](https://img.shields.io/npm/l/xlsx-format)](LICENSE)
 [![node](https://img.shields.io/node/v/xlsx-format)](https://nodejs.org/)
 [![bun](https://img.shields.io/badge/Bun-tested-f9f1e1?logo=bun)](https://bun.sh/)
@@ -273,3 +274,6 @@ Based on the work of [SheetJS](https://github.com/SheetJS/sheetjs), originally c
 ## License
 
 Apache 2.0 -- see [LICENSE](LICENSE) for details.
+
+Copyright (C) 2012-present SheetJS LLC (original work)\
+Copyright (C) 2025-present [Sebastian Software GmbH](https://sebastian-software.de) (modifications)

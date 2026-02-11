@@ -1,2 +1,3 @@
-npm run check
-npm run lint
+pnpm run check
+pnpm run lint
+pnpm run format:check
