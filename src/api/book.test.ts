@@ -11,9 +11,9 @@ import {
 	addCellComment,
 	setArrayFormula,
 	sheetToFormulae,
-} from "../src/api/book.js";
-import { arrayToSheet } from "../src/api/aoa.js";
-import type { CellObject } from "../src/types.js";
+} from "./book.js";
+import { arrayToSheet } from "./aoa.js";
+import type { CellObject } from "../types.js";
 
 describe("createWorkbook", () => {
 	it("should create an empty workbook", () => {

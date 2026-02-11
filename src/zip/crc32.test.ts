@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { crc32 } from "../src/zip/crc32.js";
+import { crc32 } from "./crc32.js";
 
 describe("crc32", () => {
 	it("should return 0 for empty input", () => {

@@ -132,7 +132,13 @@ export function writeRelationships(rels: Relationships): string {
  * @returns the numeric rId that was assigned
  * @throws if the specified rId is already in use
  */
-export function addRelationship(rels: Relationships, rId: number, f: string, type: string, targetmode?: string): number {
+export function addRelationship(
+	rels: Relationships,
+	rId: number,
+	f: string,
+	type: string,
+	targetmode?: string,
+): number {
 	if (!rels["!id"]) {
 		(rels as any)["!id"] = {};
 	}

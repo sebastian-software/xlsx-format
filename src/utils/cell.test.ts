@@ -8,7 +8,7 @@ import {
 	encodeCol,
 	decodeRow,
 	encodeRow,
-} from "../src/utils/cell.js";
+} from "./cell.js";
 
 describe("decodeCol / encodeCol", () => {
 	it("should decode single-letter columns", () => {

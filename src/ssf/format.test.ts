@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatNumber } from "../src/ssf/format.js";
+import { formatNumber } from "./format.js";
 
 describe("formatNumber", () => {
 	describe("General format", () => {

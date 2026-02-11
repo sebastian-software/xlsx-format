@@ -94,7 +94,9 @@ function buildJsonRow(
 				}
 			} else {
 				// Use raw value when rawNumbers/raw is set, otherwise format for display
-				row[headers[colIdx]] = (val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw)
+				row[headers[colIdx]] = (
+					val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw
+				)
 					? cellValue
 					: formatCell(val, cellValue, options);
 			}

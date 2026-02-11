@@ -131,7 +131,8 @@ export function writeExtendedProperties(cp: Record<string, any> | undefined): st
 			"HeadingPairs",
 			writeElement(
 				"vt:vector",
-				writeElement("vt:variant", "<vt:lpstr>Worksheets</vt:lpstr>") + writeElement("vt:variant", writeElement("vt:i4", String(cp.Worksheets))),
+				writeElement("vt:variant", "<vt:lpstr>Worksheets</vt:lpstr>") +
+					writeElement("vt:variant", writeElement("vt:i4", String(cp.Worksheets))),
 				{ size: "2", baseType: "variant" },
 			),
 		),
@@ -143,7 +144,9 @@ export function writeExtendedProperties(cp: Record<string, any> | undefined): st
 			"TitlesOfParts",
 			writeElement(
 				"vt:vector",
-				(cp.SheetNames as string[]).map((sheetName: string) => "<vt:lpstr>" + escapeXml(sheetName) + "</vt:lpstr>").join(""),
+				(cp.SheetNames as string[])
+					.map((sheetName: string) => "<vt:lpstr>" + escapeXml(sheetName) + "</vt:lpstr>")
+					.join(""),
 				{ size: String(cp.Worksheets), baseType: "lpstr" },
 			),
 		),

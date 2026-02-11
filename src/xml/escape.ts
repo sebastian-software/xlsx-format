@@ -112,7 +112,7 @@ const entities: [RegExp, string][] = [
 	["apos", "'"],
 	["gt", ">"],
 	["lt", "<"],
-	["amp", "&"],  // &amp; must be last so earlier replacements don't get double-decoded
+	["amp", "&"], // &amp; must be last so earlier replacements don't get double-decoded
 ].map(([name, ch]) => [new RegExp("&" + name + ";", "gi"), ch]);
 
 /**
@@ -124,13 +124,13 @@ const entities: [RegExp, string][] = [
  */
 export function htmlDecode(str: string): string {
 	let result = str
-		.replace(/^[\t\n\r ]+/, "")           // trim leading whitespace
+		.replace(/^[\t\n\r ]+/, "") // trim leading whitespace
 		.replace(/(^|[^\t\n\r ])[\t\n\r ]+$/, "$1") // trim trailing whitespace (preserve last non-ws char)
-		.replace(/>\s+/g, ">")                // collapse whitespace after closing brackets
-		.replace(/\b\s+</g, "<")              // collapse whitespace before opening brackets
-		.replace(/[\t\n\r ]+/g, " ")          // normalize internal whitespace to single spaces
+		.replace(/>\s+/g, ">") // collapse whitespace after closing brackets
+		.replace(/\b\s+</g, "<") // collapse whitespace before opening brackets
+		.replace(/[\t\n\r ]+/g, " ") // normalize internal whitespace to single spaces
 		.replace(/<\s*[bB][rR]\s*\/?>/g, "\n") // convert <br> / <BR/> variants to newlines
-		.replace(/<[^<>]*>/g, "");             // strip all remaining HTML tags
+		.replace(/<[^<>]*>/g, ""); // strip all remaining HTML tags
 	for (let i = 0; i < entities.length; ++i) {
 		result = result.replace(entities[i][0], entities[i][1]);
 	}

@@ -12,7 +12,9 @@ const wtregex = /(^\s|\s$|\n)/;
  * @returns an XML string like `<tag>content</tag>`
  */
 export function writeXmlTag(tagName: string, content: string): string {
-	return "<" + tagName + (content.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + content + "</" + tagName + ">";
+	return (
+		"<" + tagName + (content.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + content + "</" + tagName + ">"
+	);
 }
 
 /**
@@ -35,13 +37,19 @@ function formatXmlAttributes(attributes: Record<string, string>): string {
  * @param attributes - optional attribute key-value pairs
  * @returns the complete XML element string
  */
-export function writeXmlElement(tagName: string, content?: string | null, attributes?: Record<string, string> | null): string {
+export function writeXmlElement(
+	tagName: string,
+	content?: string | null,
+	attributes?: Record<string, string> | null,
+): string {
 	return (
 		"<" +
 		tagName +
 		(attributes != null ? formatXmlAttributes(attributes) : "") +
 		// If content is non-null, emit open+close tags; otherwise self-close with "/>"
-		(content != null ? (content.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + content + "</" + tagName : "/") +
+		(content != null
+			? (content.match(wtregex) ? ' xml:space="preserve"' : "") + ">" + content + "</" + tagName
+			: "/") +
 		">"
 	);
 }

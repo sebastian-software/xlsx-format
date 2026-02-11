@@ -149,7 +149,8 @@ export function writeCoreProperties(
 
 	// Write remaining properties, with opts.Props taking priority over cp values
 	for (const propDef of CORE_PROPS) {
-		let propValue: any = opts?.Props?.[propDef[1]] != null ? opts.Props[propDef[1]] : cp ? (cp as any)[propDef[1]] : null;
+		let propValue: any =
+			opts?.Props?.[propDef[1]] != null ? opts.Props[propDef[1]] : cp ? (cp as any)[propDef[1]] : null;
 		// Coerce booleans and numbers to strings for XML serialization
 		if (propValue === true) {
 			propValue = "1";

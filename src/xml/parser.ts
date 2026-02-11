@@ -84,7 +84,8 @@ export function parseXmlTag(tag: string, skip_root?: boolean, skip_LC?: boolean)
 			} else {
 				// Has namespace prefix -- extract the local name.
 				// Special case: "xmlns:foo" keeps "xmlns" prefix for the local name.
-				const localName = (colonPos === 5 && attrName.slice(0, 5) === "xmlns" ? "xmlns" : "") + attrName.slice(colonPos + 1);
+				const localName =
+					(colonPos === 5 && attrName.slice(0, 5) === "xmlns" ? "xmlns" : "") + attrName.slice(colonPos + 1);
 				// Skip "ext" namespace attributes if a non-ext value already exists
 				if (attrs[localName] && attrName.slice(colonPos - 3, colonPos) === "ext") {
 					continue;

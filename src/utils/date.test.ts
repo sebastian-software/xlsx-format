@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { dateToSerialNumber, serialNumberToDate, localToUtc, utcToLocal } from "../src/utils/date.js";
+import { dateToSerialNumber, serialNumberToDate, localToUtc, utcToLocal } from "./date.js";
 
 describe("dateToSerialNumber", () => {
 	it("should convert 1900-01-01 to serial 2", () => {

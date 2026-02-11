@@ -18,7 +18,10 @@ function safeFormatCell(cell: CellObject, value: any): string {
 	// Fall back to the numFmtId from the cell's XF style record;
 	// default to format 14 (short date) for date cells, or 0 (General) otherwise
 	try {
-		return (cell.w = formatNumber((cell.XF || {}).numFmtId || (isDateCell ? 14 : 0), isDateCell ? dateToSerialNumber(value) : value));
+		return (cell.w = formatNumber(
+			(cell.XF || {}).numFmtId || (isDateCell ? 14 : 0),
+			isDateCell ? dateToSerialNumber(value) : value,
+		));
 	} catch {
 		return "" + value;
 	}

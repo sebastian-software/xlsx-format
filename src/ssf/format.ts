@@ -43,13 +43,13 @@ function isGeneralFormat(s: string, i?: number): boolean {
 	i = i || 0;
 	return (
 		s.length >= 7 + i &&
-		(s.charCodeAt(i) | 32) === 103 &&     // g/G
-		(s.charCodeAt(i + 1) | 32) === 101 &&  // e/E
-		(s.charCodeAt(i + 2) | 32) === 110 &&  // n/N
-		(s.charCodeAt(i + 3) | 32) === 101 &&  // e/E
-		(s.charCodeAt(i + 4) | 32) === 114 &&  // r/R
-		(s.charCodeAt(i + 5) | 32) === 97 &&   // a/A
-		(s.charCodeAt(i + 6) | 32) === 108     // l/L
+		(s.charCodeAt(i) | 32) === 103 && // g/G
+		(s.charCodeAt(i + 1) | 32) === 101 && // e/E
+		(s.charCodeAt(i + 2) | 32) === 110 && // n/N
+		(s.charCodeAt(i + 3) | 32) === 101 && // e/E
+		(s.charCodeAt(i + 4) | 32) === 114 && // r/R
+		(s.charCodeAt(i + 5) | 32) === 97 && // a/A
+		(s.charCodeAt(i + 6) | 32) === 108 // l/L
 	);
 }
 
@@ -100,7 +100,9 @@ function normalizeExcelNumber(value: number): number {
 		return +ml + +("1" + precStr.slice(precStr.indexOf("e"))) - 1 || +precStr;
 	}
 	const normalizedStr =
-		precStr.indexOf(".") > -1 ? precStr.slice(0, precStr.slice(0, 2) === "0." ? 17 : 16) : precStr.slice(0, 15) + "0".repeat(precStr.length - 15);
+		precStr.indexOf(".") > -1
+			? precStr.slice(0, precStr.slice(0, 2) === "0." ? 17 : 16)
+			: precStr.slice(0, 15) + "0".repeat(precStr.length - 15);
 	return Number(normalizedStr);
 }
 
@@ -439,7 +441,9 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 				case "[s]":
 				case "[ss]":
 					// Total elapsed seconds
-					numericOut = ((val.daySerial * 24 + val.hours) * 60 + val.minutes) * 60 + (ss0 === 0 ? Math.round(val.seconds + val.subSeconds) : val.seconds);
+					numericOut =
+						((val.daySerial * 24 + val.hours) * 60 + val.minutes) * 60 +
+						(ss0 === 0 ? Math.round(val.seconds + val.subSeconds) : val.seconds);
 					break;
 				default:
 					throw new Error("bad abstime format: " + fmt);
@@ -775,7 +779,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 	}
 	if (fmt.match(phone)) {
 		o = write_num_flt(type, "##########", val);
-		return "(" + o.substring(0, 3) + ") " + o.substring(3, 3) + "-" + o.substring(6);
+		return "(" + o.substring(0, 3) + ") " + o.substring(3, 6) + "-" + o.substring(6);
 	}
 	// Fraction format without whole part: "?/?" or "??/??"
 	let oa = "";
@@ -936,7 +940,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 	}
 	if (fmt.match(phone)) {
 		o = write_num_int(type, "##########", val);
-		return "(" + o.substring(0, 3) + ") " + o.substring(3, 3) + "-" + o.substring(6);
+		return "(" + o.substring(0, 3) + ") " + o.substring(3, 6) + "-" + o.substring(6);
 	}
 	// Fraction format without whole part
 	let oa = "";
@@ -1041,7 +1045,7 @@ function SSF_split_fmt(fmt: string): string[] {
 				++i;
 				break;
 			case 59 /* ';' — section separator */:
-				out[out.length] = fmt.substring(j, i - j);
+				out[out.length] = fmt.substring(j, i);
 				j = i + 1;
 		}
 	}
@@ -1117,13 +1121,13 @@ export function isDateFormat(fmt: string): boolean {
 			case "A":
 			case "a":
 			case "\u4E0A": // Chinese "上" (used in AM/PM: 上午/下午)
-				if (fmt.substring(i, 3).toUpperCase() === "A/P") {
+				if (fmt.substring(i, i + 3).toUpperCase() === "A/P") {
 					return true;
 				}
-				if (fmt.substring(i, 5).toUpperCase() === "AM/PM") {
+				if (fmt.substring(i, i + 5).toUpperCase() === "AM/PM") {
 					return true;
 				}
-				if (fmt.substring(i, 5).toUpperCase() === "\u4E0A\u5348/\u4E0B\u5348") {
+				if (fmt.substring(i, i + 5).toUpperCase() === "\u4E0A\u5348/\u4E0B\u5348") {
 					return true; // Chinese AM/PM: 上午/下午
 				}
 				++i;
@@ -1282,7 +1286,7 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 							return "";
 						}
 					}
-					out[out.length] = { type: "X", value: fmt.substring(i, 2) };
+					out[out.length] = { type: "X", value: fmt.substring(i, i + 2) };
 					lastTokenType = char;
 					i += 2;
 					break;
@@ -1338,21 +1342,21 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 				if (dateVal == null) {
 					dateVal = parseExcelDateCode(value, opts);
 				}
-				if (fmt.substring(i, 3).toUpperCase() === "A/P") {
+				if (fmt.substring(i, i + 3).toUpperCase() === "A/P") {
 					if (dateVal != null) {
 						ampmToken.value = dateVal.hours >= 12 ? fmt.charAt(i + 2) : char;
 					}
 					ampmToken.type = "T";
 					hourFormat = "h"; // Switch to 12-hour format
 					i += 3;
-				} else if (fmt.substring(i, 5).toUpperCase() === "AM/PM") {
+				} else if (fmt.substring(i, i + 5).toUpperCase() === "AM/PM") {
 					if (dateVal != null) {
 						ampmToken.value = dateVal.hours >= 12 ? "PM" : "AM";
 					}
 					ampmToken.type = "T";
 					i += 5;
 					hourFormat = "h"; // Switch to 12-hour format
-				} else if (fmt.substring(i, 5).toUpperCase() === "\u4E0A\u5348/\u4E0B\u5348") {
+				} else if (fmt.substring(i, i + 5).toUpperCase() === "\u4E0A\u5348/\u4E0B\u5348") {
 					// Chinese AM/PM: 上午/下午
 					if (dateVal != null) {
 						ampmToken.value = dateVal.hours >= 12 ? "\u4E0B\u5348" : "\u4E0A\u5348";
@@ -1676,11 +1680,14 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 						char === "D" ||
 						((char === " " || char === "t") &&
 							out[numFmtIdx + 1] != null &&
-							(out[numFmtIdx + 1]!.type === "?" || (out[numFmtIdx + 1]!.type === "t" && out[numFmtIdx + 1]!.value === "/"))) ||
+							(out[numFmtIdx + 1]!.type === "?" ||
+								(out[numFmtIdx + 1]!.type === "t" && out[numFmtIdx + 1]!.value === "/"))) ||
 						(out[i]!.type === "(" && (char === " " || char === "n" || char === ")")) ||
 						(char === "t" &&
 							(out[numFmtIdx]!.value === "/" ||
-								(out[numFmtIdx]!.value === " " && out[numFmtIdx + 1] != null && out[numFmtIdx + 1]!.type === "?"))))
+								(out[numFmtIdx]!.value === " " &&
+									out[numFmtIdx + 1] != null &&
+									out[numFmtIdx + 1]!.type === "?"))))
 				) {
 					out[i]!.value += out[numFmtIdx]!.value;
 					out[numFmtIdx] = { value: "", type: ";" };
@@ -1754,10 +1761,16 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 				if (out[i] == null || "n?".indexOf(out[i]!.type) === -1) {
 					continue;
 				}
-				scanIdx = out[i]!.value.indexOf(".") > -1 && i === decpt ? out[i]!.value.indexOf(".") - 1 : out[i]!.value.length - 1;
+				scanIdx =
+					out[i]!.value.indexOf(".") > -1 && i === decpt
+						? out[i]!.value.indexOf(".") - 1
+						: out[i]!.value.length - 1;
 				partialValue = out[i]!.value.substring(scanIdx + 1);
 				for (; scanIdx >= 0; --scanIdx) {
-					if (numFmtIdx >= 0 && (out[i]!.value.charAt(scanIdx) === "0" || out[i]!.value.charAt(scanIdx) === "#")) {
+					if (
+						numFmtIdx >= 0 &&
+						(out[i]!.value.charAt(scanIdx) === "0" || out[i]!.value.charAt(scanIdx) === "#")
+					) {
 						partialValue = formattedNumber.charAt(numFmtIdx--) + partialValue;
 					}
 				}
@@ -1952,7 +1965,8 @@ export function formatNumber(fmt: string | number, value: any, options?: any): s
 			}
 			// Fallback chain: custom table -> DEFAULT_FORMAT_MAP -> DEFAULT_FORMAT_STRINGS -> "General"
 			if (sfmt == null) {
-				sfmt = (options.table && options.table[DEFAULT_FORMAT_MAP[fmt]]) || formatTable[DEFAULT_FORMAT_MAP[fmt]];
+				sfmt =
+					(options.table && options.table[DEFAULT_FORMAT_MAP[fmt]]) || formatTable[DEFAULT_FORMAT_MAP[fmt]];
 			}
 			if (sfmt == null) {
 				sfmt = DEFAULT_FORMAT_STRINGS[fmt] || "General";

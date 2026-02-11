@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { escapeXml, unescapeXml, escapeHtml, htmlDecode, escapeXmlTag } from "../src/xml/escape.js";
-import { parseXmlTag, parseXmlBoolean, stripNamespace } from "../src/xml/parser.js";
+import { escapeXml, unescapeXml, escapeHtml, htmlDecode, escapeXmlTag } from "./escape.js";
+import { parseXmlTag, parseXmlBoolean, stripNamespace } from "./parser.js";
 
 describe("escapeXml", () => {
 	it("should escape ampersand", () => {
@@ -57,7 +57,7 @@ describe("unescapeXml", () => {
 	});
 
 	it("should roundtrip with escapeXml", () => {
-		const input = 'Tom & Jerry <"friends"> & \'rivals\'';
+		const input = "Tom & Jerry <\"friends\"> & 'rivals'";
 		expect(unescapeXml(escapeXml(input))).toBe(input);
 	});
 });

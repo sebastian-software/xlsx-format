@@ -8,7 +8,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { csvToSheet, createWorkbook, writeFile } from "../../src/index.js";
+import { csvToSheet, createWorkbook, writeFile } from "../index.js";
 
 const fixturesDir = path.dirname(new URL(import.meta.url).pathname);
 const csvDir = path.join(fixturesDir, "csv");
@@ -51,4 +51,4 @@ for (const csvFile of csvFiles) {
 	await writeFile(wb, xlsxPath);
 }
 
-console.log("Done. Generated XLSX files in tests/fixtures/xlsx/");
+console.log("Done. Generated XLSX files in src/__fixtures__/xlsx/");

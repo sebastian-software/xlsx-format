@@ -101,7 +101,9 @@ function writeVmlComment(x: [string, any], _shapeid: number): string {
 		fillopts.angle = "-180";
 	}
 	const fillparm =
-		fillopts.type === "gradient" ? writeXmlElement("o:fill", null, { type: "gradientUnscaled", "v:ext": "view" }) : null;
+		fillopts.type === "gradient"
+			? writeXmlElement("o:fill", null, { type: "gradientUnscaled", "v:ext": "view" })
+			: null;
 	const fillxml = writeXmlElement("v:fill", fillparm, fillopts);
 	const shadata: any = { on: "t", obscured: "t" };
 

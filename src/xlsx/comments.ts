@@ -143,7 +143,7 @@ export function parseCommentsXml(data: string, opts?: any): RawComment[] {
 			if (x === "" || x.trim() === "") {
 				return;
 			}
-			const a = x.match(/<(?:\w+:)?author[^<>]*>(.*)/);
+			const a = x.match(/<(?:\w+:)?author\b[^<>]*>(.*)/);
 			if (a) {
 				authors.push(a[1]);
 			}
@@ -157,7 +157,7 @@ export function parseCommentsXml(data: string, opts?: any): RawComment[] {
 			if (x === "" || x.trim() === "") {
 				return;
 			}
-			const cm = x.match(/<(?:\w+:)?comment[^<>]*>/);
+			const cm = x.match(/<(?:\w+:)?comment\b[^<>]*>/);
 			if (!cm) {
 				return;
 			}

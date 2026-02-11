@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { read, csvToSheet, sheetToJson } from "../src/index.js";
+import { read, csvToSheet, sheetToJson } from "./index.js";
 
-const fixturesDir = path.join(import.meta.dirname, "fixtures");
+const fixturesDir = path.join(import.meta.dirname, "__fixtures__");
 const csvDir = path.join(fixturesDir, "csv");
 const xlsxDir = path.join(fixturesDir, "xlsx");
 
