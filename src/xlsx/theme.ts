@@ -1,0 +1,77 @@
+/**
+ * Parse a theme XML file, extracting the color scheme.
+ *
+ * The color scheme defines the 12 standard theme colors used by Excel:
+ * dk1, lt1, dk2, lt2, accent1-6, hlink, folHlink. Colors are extracted
+ * from either <a:sysClr> (system colors with lastClr) or <a:srgbClr> elements.
+ *
+ * @param data - Raw XML string of the theme file (e.g. theme1.xml)
+ * @returns Parsed theme data with color scheme array
+ */
+export function parse_theme_xml(data: string): ThemeData {
+	const theme: ThemeData = { themeElements: { clrScheme: [] } };
+
+	// Extract color values from the <a:clrScheme> section
+	const colors: string[] = [];
+	const clrMatch = data.match(/<a:clrScheme[^>]*>([\s\S]*?)<\/a:clrScheme>/);
+	if (clrMatch) {
+		// Match both sysClr (val/lastClr) and srgbClr (val) elements, extracting the 6-digit hex color
+		const valRegex = /<a:(?:sysClr|srgbClr)[^>]*(?:val|lastClr)="([0-9A-Fa-f]{6})"/g;
+		let m: RegExpExecArray | null;
+		while ((m = valRegex.exec(clrMatch[1]))) {
+			colors.push(m[1]);
+		}
+	}
+	theme.themeElements.clrScheme = colors;
+
+	return theme;
+}
+
+/** Parsed theme data structure */
+export interface ThemeData {
+	themeElements: {
+		/** Array of 6-digit hex color strings from the theme color scheme */
+		clrScheme: string[];
+	};
+}
+
+/**
+ * Write a default XLSX theme XML based on the Office default theme.
+ *
+ * Includes the standard Office color scheme, Calibri/Calibri Light fonts,
+ * and minimal format/fill/line/effect style definitions.
+ *
+ * @returns Complete theme1.xml string
+ */
+export function write_theme_xml(): string {
+	// Minimal theme - based on Office default
+	return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme">
+<a:themeElements>
+<a:clrScheme name="Office">
+<a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1>
+<a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1>
+<a:dk2><a:srgbClr val="44546A"/></a:dk2>
+<a:lt2><a:srgbClr val="E7E6E6"/></a:lt2>
+<a:accent1><a:srgbClr val="4472C4"/></a:accent1>
+<a:accent2><a:srgbClr val="ED7D31"/></a:accent2>
+<a:accent3><a:srgbClr val="A5A5A5"/></a:accent3>
+<a:accent4><a:srgbClr val="FFC000"/></a:accent4>
+<a:accent5><a:srgbClr val="5B9BD5"/></a:accent5>
+<a:accent6><a:srgbClr val="70AD47"/></a:accent6>
+<a:hlink><a:srgbClr val="0563C1"/></a:hlink>
+<a:folHlink><a:srgbClr val="954F72"/></a:folHlink>
+</a:clrScheme>
+<a:fontScheme name="Office">
+<a:majorFont><a:latin typeface="Calibri Light"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>
+<a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont>
+</a:fontScheme>
+<a:fmtScheme name="Office">
+<a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
+<a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
+<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
+<a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst>
+</a:fmtScheme>
+</a:themeElements>
+</a:theme>`;
+}
