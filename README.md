@@ -1,5 +1,11 @@
 # xlsx-format
 
+[![npm version](https://img.shields.io/npm/v/xlsx-format)](https://www.npmjs.com/package/xlsx-format)
+[![CI](https://github.com/nickelow/xlsx-format/actions/workflows/ci.yml/badge.svg)](https://github.com/nickelow/xlsx-format/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/xlsx-format)](LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/xlsx-format)](https://bundlephobia.com/package/xlsx-format)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
+
 Read and write XLSX spreadsheets in Node.js. No runtime dependencies. 184 KB unminified, 42 KB gzipped.
 
 ```bash
