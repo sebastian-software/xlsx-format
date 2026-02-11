@@ -1,0 +1,6 @@
+Label,Value,Notes,Extra
+Simple,42,Normal,test
+"Has, comma",0,"Also, has comma",ok
+"",,"",data
+"She said ""hi""",999,"Quotes ""inside""","""quoted"""
+ABCDEFGHIJKLMNOPQRSTUVWXYZ ABCDEFGHIJKLMNOPQRSTUVWXYZ ABCDEFGHIJKLMNOPQRSTUVWXYZ ABCDEFGHIJKLMNOPQRSTUVWXYZ,1,Long,end
