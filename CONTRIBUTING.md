@@ -5,20 +5,20 @@ Thanks for your interest in contributing! Here's how to get started.
 ## Setup
 
 ```bash
-git clone https://github.com/nickelow/xlsx-format.git
+git clone https://github.com/sebastian-software/xlsx-format.git
 cd xlsx-format
-npm install
+pnpm install
 ```
 
 ## Development Workflow
 
 ```bash
-npm run check       # TypeScript type checking
-npm run lint        # ESLint
-npm run format      # Prettier (auto-fix)
-npm test            # Run tests once
-npm run test:watch  # Run tests in watch mode
-npm run build       # Build ESM + CJS bundles
+pnpm run check       # TypeScript type checking
+pnpm run lint        # ESLint
+pnpm run format      # Prettier (auto-fix)
+pnpm test            # Run tests once
+pnpm run test:watch  # Run tests in watch mode
+pnpm run build       # Build ESM + CJS bundles
 ```
 
 ## Making Changes
@@ -26,7 +26,7 @@ npm run build       # Build ESM + CJS bundles
 1. Fork the repository and create a branch from `main`.
 2. Write your code. Follow the existing style -- Prettier and ESLint enforce most of it.
 3. Add or update tests for any changed behavior.
-4. Make sure all checks pass: `npm run check && npm run lint && npm test`
+4. Make sure all checks pass: `pnpm run check && pnpm run lint && pnpm test`
 5. Use [Conventional Commits](https://www.conventionalcommits.org/) for your commit messages (e.g. `feat: add X`, `fix: handle Y`). Release Please uses these to generate the changelog.
 6. Open a pull request against `main`.
 
