@@ -4,6 +4,7 @@
 [![CI](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml/badge.svg)](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml)
 [![license](https://img.shields.io/npm/l/xlsx-format)](LICENSE)
 [![node](https://img.shields.io/node/v/xlsx-format)](https://nodejs.org/)
+[![bun](https://img.shields.io/badge/Bun-tested-f9f1e1?logo=bun)](https://bun.sh/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 
 The XLSX library your bundler will thank you for. Zero dependencies. Fully async. Works in Node.js and the browser.
@@ -33,17 +34,17 @@ Most projects just need XLSX -- but the popular libraries ship with support for 
 
 xlsx-format does one thing well: read and write modern Excel files. The result is a library you can actually tree-shake, `await`, and ship to the browser without a separate bundle.
 
-|                     | **xlsx-format**                | **SheetJS (xlsx)**      | **ExcelJS**            |
-| ------------------- | ------------------------------ | ----------------------- | ---------------------- |
-| **Written in**      | TypeScript (strict)            | JavaScript (with .d.ts) | TypeScript             |
-| **Async**           | Yes (streaming ZIP)            | No                      | Partial                |
-| **Module format**   | ESM + CJS                      | CJS only                | CJS only               |
-| **Tree-shakeable**  | Yes                            | No                      | Partial                |
-| **Runtime deps**    | 0                              | 7                       | 9                      |
-| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No                     |
-| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV             |
-| **API style**       | Named exports, async           | Namespace object        | Class-based            |
-| **License**         | Apache 2.0                     | Apache 2.0              | MIT                    |
+|                     | **xlsx-format**                | **SheetJS (xlsx)**      | **ExcelJS** |
+| ------------------- | ------------------------------ | ----------------------- | ----------- |
+| **Written in**      | TypeScript (strict)            | JavaScript (with .d.ts) | TypeScript  |
+| **Async**           | Yes (streaming ZIP)            | No                      | Partial     |
+| **Module format**   | ESM + CJS                      | CJS only                | CJS only    |
+| **Tree-shakeable**  | Yes                            | No                      | Partial     |
+| **Runtime deps**    | 0                              | 7                       | 9           |
+| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No          |
+| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV  |
+| **API style**       | Named exports, async           | Namespace object        | Class-based |
+| **License**         | Apache 2.0                     | Apache 2.0              | MIT         |
 
 ## What it handles
 
@@ -121,7 +122,10 @@ const html = sheetToHtml(sheet);
 
 // JSON / arrays / CSV / HTML -> Sheet
 const sheet = jsonToSheet([{ Name: "Alice", Age: 30 }]);
-const sheet = arrayToSheet([["Name", "Age"], ["Alice", 30]]);
+const sheet = arrayToSheet([
+	["Name", "Age"],
+	["Alice", 30],
+]);
 const sheet = csvToSheet("Name,Age\nAlice,30");
 const sheet = htmlToSheet("<table><tr><td>Name</td></tr></table>");
 ```

@@ -37,7 +37,7 @@ jobs:
             - run: pnpm install --frozen-lockfile
             - run: pnpm run check
 
-    test:
+    test-node:
         name: Test (Node ${{ matrix.node-version }})
         runs-on: ubuntu-latest
         strategy:
@@ -52,6 +52,22 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: pnpm test
+
+    test-bun:
+        name: Test (Bun)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: bun run test
 
     build:
         name: Build
