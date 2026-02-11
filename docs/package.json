@@ -9,8 +9,9 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
-		"ardo": "^2.2.2",
+		"ardo": "^2.4.0",
 		"isbot": "*",
+		"lucide-react": "^0.563.0",
 		"react": "*",
 		"react-dom": "*",
 		"react-router": "*"

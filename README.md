@@ -10,6 +10,8 @@
 
 The XLSX library your bundler will thank you for. Zero dependencies. Fully async. Works in Node.js and the browser.
 
+**[Documentation](https://sebastian-software.github.io/xlsx-format/)** | **[API Reference](https://sebastian-software.github.io/xlsx-format/api-reference)**
+
 ```bash
 npm install xlsx-format
 ```
@@ -50,198 +52,13 @@ xlsx-format does one thing well: read and write modern Excel files. The result i
 
 [codecov]: https://codecov.io/gh/sebastian-software/xlsx-format
 
-## Feature Support
-
-What xlsx-format can read from and write to XLSX files at a glance.
-
-### Cell Data
-
-| Feature      | Read | Write | Notes                                           |
-| ------------ | :--: | :---: | ----------------------------------------------- |
-| Strings      | Yes  |  Yes  | Via shared string table or inline               |
-| Numbers      | Yes  |  Yes  | Full floating-point precision                   |
-| Booleans     | Yes  |  Yes  | Native boolean cell type                        |
-| Dates        | Yes  |  Yes  | Serial numbers or ISO 8601 (`cellDates` option) |
-| Error values | Yes  |  Yes  | `#NULL!`, `#DIV/0!`, `#VALUE!`, etc.            |
-
-### Formulas
-
-| Feature         | Read | Write | Notes                                                    |
-| --------------- | :--: | :---: | -------------------------------------------------------- |
-| Cell formulas   | Yes  |  Yes  | Stored in `cell.f`                                       |
-| Array formulas  | Yes  |  Yes  | Range reference in `cell.F`, dynamic array flag `cell.D` |
-| Shared formulas | Yes  |  --   | Expanded to individual cell formulas on read             |
-
-### Number Formats
-
-| Feature             | Read | Write | Notes                                           |
-| ------------------- | :--: | :---: | ----------------------------------------------- |
-| Built-in formats    | Yes  |  Yes  | 164+ standard Excel format codes                |
-| Custom formats      | Yes  |  Yes  | e.g. `#,##0.00`, `yyyy-mm-dd`, custom patterns  |
-| Format display text | Yes  |  Yes  | Formatted value in `cell.w` via full SSF engine |
-
-### Styles
-
-| Feature                                    | Read | Write | Notes                                            |
-| ------------------------------------------ | :--: | :---: | ------------------------------------------------ |
-| Rich text (bold, italic, underline, color) | Yes  |  Yes  | Preserved in shared strings                      |
-| Cell number format references              | Yes  |  Yes  | Style index maps to format codes                 |
-| Fonts / Fills / Borders                    |  --  |  --   | Minimal defaults only; no cell-level styling API |
-
-### Comments
-
-| Feature           | Read | Write | Notes                                |
-| ----------------- | :--: | :---: | ------------------------------------ |
-| Legacy comments   | Yes  |  Yes  | ECMA-376 format with VML positioning |
-| Threaded comments | Yes  |  Yes  | Modern reply-chain format            |
-| Comment authors   | Yes  |  Yes  | Author list and people mapping       |
-
-### Hyperlinks
-
-| Feature        | Read | Write | Notes                      |
-| -------------- | :--: | :---: | -------------------------- |
-| External URLs  | Yes  |  --   | Parsed from relationships  |
-| Internal links | Yes  |  --   | `#Sheet2!A1` syntax        |
-| Tooltips       | Yes  |  --   | Stored in `cell.l.Tooltip` |
-
-### Sheet Structure
-
-| Feature               | Read | Write | Notes                                        |
-| --------------------- | :--: | :---: | -------------------------------------------- |
-| Multiple sheets       | Yes  |  Yes  | Ordered sheet list with unique names         |
-| Merge regions         | Yes  |  Yes  | Rectangular merge ranges                     |
-| Column widths         | Yes  |  Yes  | Character-unit widths                        |
-| Row heights           | Yes  |  Yes  | Point-based heights                          |
-| Hidden columns / rows | Yes  |  Yes  | Via `hidden` flag                            |
-| Auto-filter range     | Yes  |  Yes  | Filter range definition (no filter criteria) |
-| Page margins          | Yes  |  Yes  | Left, right, top, bottom, header, footer     |
-
-### Workbook & Metadata
-
-| Feature                 | Read | Write | Notes                                |
-| ----------------------- | :--: | :---: | ------------------------------------ |
-| Sheet visibility        | Yes  |  Yes  | Visible, hidden, very hidden         |
-| Defined names           | Yes  |  Yes  | Workbook-scoped and sheet-scoped     |
-| Document properties     | Yes  |  Yes  | Title, author, dates, keywords, etc. |
-| Custom properties       | Yes  |  Yes  | User-defined key/value pairs         |
-| Date system (1904 mode) | Yes  |  Yes  | Mac Excel legacy support             |
-| Dynamic array metadata  | Yes  |  Yes  | XLDAPR spill-range support           |
-
-### Format Conversion
-
-| Feature          | Read | Write | Notes                                         |
-| ---------------- | :--: | :---: | --------------------------------------------- |
-| JSON objects     | Yes  |  Yes  | `sheetToJson` / `jsonToSheet`                 |
-| Arrays of arrays | Yes  |  Yes  | `sheetToJson({ header: 1 })` / `arrayToSheet` |
-| CSV              | Yes  |  Yes  | `csvToSheet` / `sheetToCsv`                   |
-| TSV              | Yes  |  Yes  | Via separator option                          |
-| HTML tables      | Yes  |  Yes  | `htmlToSheet` / `sheetToHtml`                 |
-
-### Not Yet Supported
-
-Conditional formatting, data validation, frozen panes, charts, images, pivot tables, sparklines, VBA macros, digital signatures, sheet/workbook protection, outline grouping.
+For a detailed feature matrix (cell data, formulas, styles, comments, hyperlinks, and more), see [Why xlsx-format?](https://sebastian-software.github.io/xlsx-format/guide/why-xlsx-format) in the docs.
 
 ## Runs everywhere
 
 **Node.js >= 22** -- full support including `readFile` / `writeFile` for filesystem access.
 
 **Browsers** -- `read()` and `write()` work in any modern browser with `Uint8Array` or `ArrayBuffer`. No Node.js APIs needed. Only `readFile()` / `writeFile()` require Node.
-
-```typescript
-// Browser: read from a File input
-const buffer = await file.arrayBuffer();
-const workbook = await read(buffer);
-
-// Browser: trigger a download
-const data = await write(workbook, { type: "array" });
-const blob = new Blob([data], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-const url = URL.createObjectURL(blob);
-```
-
-## API
-
-### Reading
-
-```typescript
-// From a Uint8Array or ArrayBuffer
-const workbook = await read(buffer);
-
-// From a file (Node.js) -- format detected from extension
-const workbook = await readFile("spreadsheet.xlsx");
-const workbook = await readFile("data.csv");
-const workbook = await readFile("report.html");
-
-// From a plain string (CSV or HTML auto-detected)
-const workbook = await read(csvString, { type: "string" });
-```
-
-### Writing
-
-```typescript
-// To a Uint8Array (XLSX)
-const bytes = await write(workbook);
-
-// To CSV / TSV / HTML string
-const csv = await write(workbook, { bookType: "csv", type: "string" });
-const tsv = await write(workbook, { bookType: "tsv", type: "string" });
-const html = await write(workbook, { bookType: "html", type: "string" });
-
-// To a file (Node.js) -- format detected from extension
-await writeFile(workbook, "output.xlsx");
-await writeFile(workbook, "output.csv");
-await writeFile(workbook, "output.html");
-```
-
-### Converting data
-
-```typescript
-// Sheet -> JSON objects (first row = headers)
-const rows = sheetToJson(sheet);
-// [{ Name: "Alice", Age: 30 }, { Name: "Bob", Age: 25 }]
-
-// Sheet -> array of arrays
-const arrays = sheetToJson(sheet, { header: 1 });
-// [["Name", "Age"], ["Alice", 30], ["Bob", 25]]
-
-// Sheet -> CSV / HTML
-const csv = sheetToCsv(sheet);
-const html = sheetToHtml(sheet);
-
-// JSON / arrays / CSV / HTML -> Sheet
-const sheet = jsonToSheet([{ Name: "Alice", Age: 30 }]);
-const sheet = arrayToSheet([
-	["Name", "Age"],
-	["Alice", 30],
-]);
-const sheet = csvToSheet("Name,Age\nAlice,30");
-const sheet = htmlToSheet("<table><tr><td>Name</td></tr></table>");
-```
-
-### Workbook helpers
-
-```typescript
-const wb = createWorkbook(firstSheet, "Sheet1");
-appendSheet(wb, secondSheet, "Sheet2");
-setSheetVisibility(wb, 1, "hidden");
-```
-
-### Cell utilities
-
-```typescript
-setCellNumberFormat(sheet, "B2", "#,##0.00");
-setCellHyperlink(sheet, "A1", "https://example.com");
-addCellComment(sheet, "C3", "Check this value", "Alice");
-setArrayFormula(sheet, "D1:D10", "=A1:A10*B1:B10");
-```
-
-### Cell addresses
-
-```typescript
-decodeCell("B3"); // { r: 2, c: 1 }
-encodeCell({ r: 2, c: 1 }); // "B3"
-decodeRange("A1:C5"); // { s: { r: 0, c: 0 }, e: { r: 4, c: 2 } }
-encodeRange(range); // "A1:C5"
-```
 
 ## Switching from SheetJS
 
@@ -263,12 +80,9 @@ The API is intentionally close to SheetJS. Three things change:
 
 - const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 + const buf = await write(wb, { type: "buffer" });
-
-- const csv = XLSX.utils.sheet_to_csv(ws);
-+ const csv = sheetToCsv(ws);
 ```
 
-Cell objects keep the same shape: `{ t: "n", v: 42, w: "42" }` works exactly as before.
+Cell objects keep the same shape: `{ t: "n", v: 42, w: "42" }` works exactly as before. For a full function mapping table, see the [Migration Guide](https://sebastian-software.github.io/xlsx-format/guide/migration).
 
 ## Acknowledgments
 

@@ -4,15 +4,16 @@ import { ardo } from "ardo/vite";
 export default defineConfig({
 	plugins: [
 		ardo({
-			title: "XLSX Format",
-			description: "Modern XLSX reader/writer — TypeScript rewrite of SheetJS (XLSX only)",
+			title: "xlsx-format",
+			description:
+				"The XLSX library your bundler will thank you for. Zero dependencies. Fully async. TypeScript-first.",
 
 			typedoc: true,
 
 			// GitHub Pages: base path auto-detected from git remote
 
 			themeConfig: {
-				siteTitle: "XLSX Format",
+				siteTitle: "xlsx-format",
 
 				nav: [
 					{ text: "Guide", link: "/guide/getting-started" },
@@ -22,7 +23,11 @@ export default defineConfig({
 				sidebar: [
 					{
 						text: "Guide",
-						items: [{ text: "Getting Started", link: "/guide/getting-started" }],
+						items: [
+							{ text: "Getting Started", link: "/guide/getting-started" },
+							{ text: "Why xlsx-format?", link: "/guide/why-xlsx-format" },
+							{ text: "Migration from SheetJS", link: "/guide/migration" },
+						],
 					},
 					{ text: "API Reference", link: "/api-reference" },
 				],

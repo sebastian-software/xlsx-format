@@ -1,0 +1,57 @@
+/*
+ * Custom styles for xlsx-format docs
+ */
+
+/* ----------------------------------------
+   Blue Steel color scheme
+   ---------------------------------------- */
+
+:root {
+  --ardo-brand-h: 245;
+  --ardo-brand-c: 0.08;
+  --ardo-brand-l: 0.45;
+}
+
+.dark {
+  --ardo-brand-l: 0.65;
+  --ardo-brand-c: 0.10;
+}
+
+/* ----------------------------------------
+   Hero refinements
+   ---------------------------------------- */
+
+.ardo-hero-name {
+  background: linear-gradient(
+    135deg,
+    oklch(0.40 0.10 245) 0%,
+    oklch(0.55 0.12 275) 50%,
+    oklch(0.45 0.08 220) 100%
+  );
+  background-clip: text;
+}
+
+.ardo-hero-tagline {
+  letter-spacing: 0.01em;
+}
+
+/* ----------------------------------------
+   Harmonize feature support table columns
+   ---------------------------------------- */
+
+.feature-tables table {
+  table-layout: fixed;
+}
+
+.feature-tables th:nth-child(1) {
+  width: 30%;
+}
+
+.feature-tables th:nth-child(2),
+.feature-tables th:nth-child(3) {
+  width: 10%;
+}
+
+.feature-tables th:nth-child(4) {
+  width: 50%;
+}

@@ -1,0 +1,119 @@
+---
+title: Why xlsx-format?
+---
+
+# Why xlsx-format?
+
+Most projects just need XLSX -- but the popular libraries ship with support for dozens of legacy formats, pull in 7-9 runtime dependencies, and lock you into synchronous APIs that block the event loop.
+
+xlsx-format does one thing well: read and write modern Excel files. The result is a library you can actually tree-shake, `await`, and ship to the browser without a separate bundle.
+
+## Comparison
+
+|                     | **xlsx-format**                | **SheetJS (xlsx)**      | **ExcelJS**  |
+| ------------------- | ------------------------------ | ----------------------- | ------------ |
+| **Written in**      | TypeScript (strict)            | JavaScript (with .d.ts) | TypeScript   |
+| **Async**           | Yes (streaming ZIP)            | No                      | Partial      |
+| **Module format**   | ESM + CJS                      | CJS only                | CJS only     |
+| **Tree-shakeable**  | Yes                            | No                      | Partial      |
+| **Runtime deps**    | 0                              | 7                       | 9            |
+| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No           |
+| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV   |
+| **API style**       | Named exports, async           | Namespace object        | Class-based  |
+| **Test coverage**   | 91%                            | Not measured            | Not measured |
+| **License**         | Apache 2.0                     | Apache 2.0              | MIT          |
+
+## Feature Support
+
+What xlsx-format can read from and write to XLSX files at a glance.
+
+<div className="feature-tables">
+
+### Cell Data
+
+| Feature      | Read | Write | Notes                                           |
+| ------------ | :--: | :---: | ----------------------------------------------- |
+| Strings      | Yes  |  Yes  | Via shared string table or inline               |
+| Numbers      | Yes  |  Yes  | Full floating-point precision                   |
+| Booleans     | Yes  |  Yes  | Native boolean cell type                        |
+| Dates        | Yes  |  Yes  | Serial numbers or ISO 8601 (`cellDates` option) |
+| Error values | Yes  |  Yes  | `#NULL!`, `#DIV/0!`, `#VALUE!`, etc.            |
+
+### Formulas
+
+| Feature         | Read | Write | Notes                                                    |
+| --------------- | :--: | :---: | -------------------------------------------------------- |
+| Cell formulas   | Yes  |  Yes  | Stored in `cell.f`                                       |
+| Array formulas  | Yes  |  Yes  | Range reference in `cell.F`, dynamic array flag `cell.D` |
+| Shared formulas | Yes  |  --   | Expanded to individual cell formulas on read             |
+
+### Number Formats
+
+| Feature             | Read | Write | Notes                                           |
+| ------------------- | :--: | :---: | ----------------------------------------------- |
+| Built-in formats    | Yes  |  Yes  | 164+ standard Excel format codes                |
+| Custom formats      | Yes  |  Yes  | e.g. `#,##0.00`, `yyyy-mm-dd`, custom patterns  |
+| Format display text | Yes  |  Yes  | Formatted value in `cell.w` via full SSF engine |
+
+### Styles
+
+| Feature                                    | Read | Write | Notes                                            |
+| ------------------------------------------ | :--: | :---: | ------------------------------------------------ |
+| Rich text (bold, italic, underline, color) | Yes  |  Yes  | Preserved in shared strings                      |
+| Cell number format references              | Yes  |  Yes  | Style index maps to format codes                 |
+| Fonts / Fills / Borders                    |  --  |  --   | Minimal defaults only; no cell-level styling API |
+
+### Comments
+
+| Feature           | Read | Write | Notes                                |
+| ----------------- | :--: | :---: | ------------------------------------ |
+| Legacy comments   | Yes  |  Yes  | ECMA-376 format with VML positioning |
+| Threaded comments | Yes  |  Yes  | Modern reply-chain format            |
+| Comment authors   | Yes  |  Yes  | Author list and people mapping       |
+
+### Hyperlinks
+
+| Feature        | Read | Write | Notes                      |
+| -------------- | :--: | :---: | -------------------------- |
+| External URLs  | Yes  |  --   | Parsed from relationships  |
+| Internal links | Yes  |  --   | `#Sheet2!A1` syntax        |
+| Tooltips       | Yes  |  --   | Stored in `cell.l.Tooltip` |
+
+### Sheet Structure
+
+| Feature               | Read | Write | Notes                                        |
+| --------------------- | :--: | :---: | -------------------------------------------- |
+| Multiple sheets       | Yes  |  Yes  | Ordered sheet list with unique names         |
+| Merge regions         | Yes  |  Yes  | Rectangular merge ranges                     |
+| Column widths         | Yes  |  Yes  | Character-unit widths                        |
+| Row heights           | Yes  |  Yes  | Point-based heights                          |
+| Hidden columns / rows | Yes  |  Yes  | Via `hidden` flag                            |
+| Auto-filter range     | Yes  |  Yes  | Filter range definition (no filter criteria) |
+| Page margins          | Yes  |  Yes  | Left, right, top, bottom, header, footer     |
+
+### Workbook & Metadata
+
+| Feature                 | Read | Write | Notes                                |
+| ----------------------- | :--: | :---: | ------------------------------------ |
+| Sheet visibility        | Yes  |  Yes  | Visible, hidden, very hidden         |
+| Defined names           | Yes  |  Yes  | Workbook-scoped and sheet-scoped     |
+| Document properties     | Yes  |  Yes  | Title, author, dates, keywords, etc. |
+| Custom properties       | Yes  |  Yes  | User-defined key/value pairs         |
+| Date system (1904 mode) | Yes  |  Yes  | Mac Excel legacy support             |
+| Dynamic array metadata  | Yes  |  Yes  | XLDAPR spill-range support           |
+
+### Format Conversion
+
+| Feature          | Read | Write | Notes                                         |
+| ---------------- | :--: | :---: | --------------------------------------------- |
+| JSON objects     | Yes  |  Yes  | `sheetToJson` / `jsonToSheet`                 |
+| Arrays of arrays | Yes  |  Yes  | `sheetToJson({ header: 1 })` / `arrayToSheet` |
+| CSV              | Yes  |  Yes  | `csvToSheet` / `sheetToCsv`                   |
+| TSV              | Yes  |  Yes  | Via separator option                          |
+| HTML tables      | Yes  |  Yes  | `htmlToSheet` / `sheetToHtml`                 |
+
+### Not Yet Supported
+
+Conditional formatting, data validation, frozen panes, charts, images, pivot tables, sparklines, VBA macros, digital signatures, sheet/workbook protection, outline grouping.
+
+</div>

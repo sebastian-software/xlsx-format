@@ -1,0 +1,72 @@
+---
+title: Migration from SheetJS
+---
+
+# Migration from SheetJS
+
+The xlsx-format API is intentionally close to SheetJS. Most code migrates with three small changes -- and nothing else.
+
+## The Three Changes
+
+### 1. `read()` and `write()` are async
+
+ZIP operations use streaming internally, so both functions return a `Promise`. Add `await` to every call.
+
+### 2. Named imports replace the namespace
+
+Instead of accessing everything through `XLSX.*`, import each function by name.
+
+### 3. Utility names are camelCase
+
+`sheet_to_json` becomes `sheetToJson`, `sheet_to_csv` becomes `sheetToCsv`, and so on.
+
+## Side-by-Side
+
+```diff
+- import XLSX from "xlsx";
++ import { read, write, sheetToJson, sheetToCsv } from "xlsx-format";
+
+- const wb = XLSX.read(buffer);
++ const wb = await read(buffer);
+
+- const rows = XLSX.utils.sheet_to_json(ws);
++ const rows = sheetToJson(ws);
+
+- const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
++ const buf = await write(wb, { type: "buffer" });
+
+- const csv = XLSX.utils.sheet_to_csv(ws);
++ const csv = sheetToCsv(ws);
+```
+
+## Function Name Mapping
+
+| SheetJS                          | xlsx-format          |
+| -------------------------------- | -------------------- |
+| `XLSX.read()`                    | `read()`             |
+| `XLSX.readFile()`                | `readFile()`         |
+| `XLSX.write()`                   | `write()`            |
+| `XLSX.writeFile()`               | `writeFile()`        |
+| `XLSX.utils.sheet_to_json()`     | `sheetToJson()`      |
+| `XLSX.utils.json_to_sheet()`     | `jsonToSheet()`      |
+| `XLSX.utils.sheet_to_csv()`      | `sheetToCsv()`       |
+| `XLSX.utils.sheet_to_html()`     | `sheetToHtml()`      |
+| `XLSX.utils.aoa_to_sheet()`      | `arrayToSheet()`     |
+| `XLSX.utils.sheet_to_formulae()` | `sheetToFormulae()`  |
+| `XLSX.utils.decode_cell()`       | `decodeCell()`       |
+| `XLSX.utils.encode_cell()`       | `encodeCell()`       |
+| `XLSX.utils.decode_range()`      | `decodeRange()`      |
+| `XLSX.utils.encode_range()`      | `encodeRange()`      |
+| `XLSX.utils.book_new()`          | `createWorkbook()`   |
+| `XLSX.utils.book_append_sheet()` | `appendSheet()`      |
+
+## Cell Objects Stay the Same
+
+Cell objects keep the same shape. `{ t: "n", v: 42, w: "42" }` works exactly as before. No data migration needed.
+
+## What's Different Under the Hood
+
+- **Streaming ZIP** -- reads and writes are non-blocking
+- **Tree-shaking** -- named exports let your bundler drop unused code
+- **No legacy formats** -- xlsx-format focuses on XLSX, XLSM, CSV, TSV, and HTML
+- **Zero dependencies** -- nothing to audit, nothing that can break

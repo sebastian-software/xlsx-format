@@ -13,6 +13,7 @@ import { PressProvider } from "ardo/runtime"
 import config from "virtual:ardo/config"
 import sidebar from "virtual:ardo/sidebar"
 import "ardo/ui/styles.css"
+import "./custom.css"
 
 export function Layout({ children }: { children: React.ReactNode }) {
   return (
@@ -42,7 +43,7 @@ export default function Root() {
         className={isHomePage ? "ardo-layout ardo-home" : "ardo-layout"}
         header={
           <Header
-            title="XLSX Format"
+            title="xlsx-format"
             nav={
               <Nav>
                 <NavLink to="/guide/getting-started">Guide</NavLink>
@@ -56,6 +57,8 @@ export default function Root() {
             <Sidebar>
               <SidebarGroup title="Guide">
                 <SidebarLink to="/guide/getting-started">Getting Started</SidebarLink>
+                <SidebarLink to="/guide/why-xlsx-format">Why xlsx-format?</SidebarLink>
+                <SidebarLink to="/guide/migration">Migration from SheetJS</SidebarLink>
               </SidebarGroup>
               <SidebarLink to="/api-reference">API Reference</SidebarLink>
             </Sidebar>

@@ -4,35 +4,153 @@ title: Getting Started
 
 # Getting Started
 
-Welcome to your new documentation site!
+Install xlsx-format and start reading and writing Excel files in minutes.
 
-## Development
+## Installation
 
 ```bash
-# Start development server
-pnpm dev
+# npm
+npm install xlsx-format
 
-# Build for production
-pnpm build
+# pnpm
+pnpm add xlsx-format
 
-# Preview production build
-pnpm preview
+# yarn
+yarn add xlsx-format
+
+# bun
+bun add xlsx-format
 ```
 
-## Adding Content
+## Quick Start
 
-Create `.md` or `.mdx` files in the `app/routes/` directory. They will automatically become pages.
+```typescript
+import { readFile, writeFile, sheetToJson, jsonToSheet, createWorkbook } from "xlsx-format";
 
-## Configuration
+// Read an Excel file into JSON
+const workbook = await readFile("report.xlsx");
+const rows = sheetToJson(workbook.Sheets[workbook.SheetNames[0]]);
 
-Edit `vite.config.ts` to customize your site:
+// Write JSON back to Excel
+const sheet = jsonToSheet([
+  { Name: "Alice", Revenue: 48000 },
+  { Name: "Bob", Revenue: 52000 },
+]);
+await writeFile(createWorkbook(sheet, "Q4 Sales"), "output.xlsx");
+```
 
-- Navigation links
-- Sidebar structure
-- Site title and description
-- Theme options
+## Reading Files
 
-## Learn More
+```typescript
+import { read, readFile } from "xlsx-format";
 
-- [Ardo Documentation](https://sebastian-software.github.io/ardo/)
-- [GitHub Repository](https://github.com/sebastian-software/ardo)
+// From a file path (Node.js only)
+const workbook = await readFile("spreadsheet.xlsx");
+const workbook = await readFile("data.csv");
+
+// From a Uint8Array or ArrayBuffer
+const workbook = await read(buffer);
+
+// From a plain string (CSV or HTML auto-detected)
+const workbook = await read(csvString, { type: "string" });
+```
+
+## Writing Files
+
+```typescript
+import { write, writeFile } from "xlsx-format";
+
+// To a Uint8Array (XLSX)
+const bytes = await write(workbook);
+
+// To CSV / TSV / HTML string
+const csv = await write(workbook, { bookType: "csv", type: "string" });
+const html = await write(workbook, { bookType: "html", type: "string" });
+
+// To a file (Node.js only)
+await writeFile(workbook, "output.xlsx");
+await writeFile(workbook, "output.csv");
+```
+
+## Converting Data
+
+xlsx-format converts between sheets and common data formats in both directions.
+
+```typescript
+import { sheetToJson, jsonToSheet, arrayToSheet, sheetToCsv, sheetToHtml, csvToSheet, htmlToSheet } from "xlsx-format";
+
+// Sheet -> JSON objects (first row = headers)
+const rows = sheetToJson(sheet);
+// [{ Name: "Alice", Age: 30 }, { Name: "Bob", Age: 25 }]
+
+// Sheet -> array of arrays
+const arrays = sheetToJson(sheet, { header: 1 });
+// [["Name", "Age"], ["Alice", 30], ["Bob", 25]]
+
+// Sheet -> CSV / HTML
+const csv = sheetToCsv(sheet);
+const html = sheetToHtml(sheet);
+
+// JSON / arrays / CSV / HTML -> Sheet
+const sheet1 = jsonToSheet([{ Name: "Alice", Age: 30 }]);
+const sheet2 = arrayToSheet([["Name", "Age"], ["Alice", 30]]);
+const sheet3 = csvToSheet("Name,Age\nAlice,30");
+const sheet4 = htmlToSheet("<table><tr><td>Name</td></tr></table>");
+```
+
+## Workbook Helpers
+
+```typescript
+import { createWorkbook, appendSheet, setSheetVisibility } from "xlsx-format";
+
+const wb = createWorkbook(firstSheet, "Sheet1");
+appendSheet(wb, secondSheet, "Sheet2");
+setSheetVisibility(wb, 1, "hidden");
+```
+
+## Cell Utilities
+
+```typescript
+import { setCellNumberFormat, setCellHyperlink, addCellComment, setArrayFormula } from "xlsx-format";
+
+setCellNumberFormat(sheet, "B2", "#,##0.00");
+setCellHyperlink(sheet, "A1", "https://example.com");
+addCellComment(sheet, "C3", "Check this value", "Alice");
+setArrayFormula(sheet, "D1:D10", "=A1:A10*B1:B10");
+```
+
+## Cell Addresses
+
+```typescript
+import { decodeCell, encodeCell, decodeRange, encodeRange } from "xlsx-format";
+
+decodeCell("B3");       // { r: 2, c: 1 }
+encodeCell({ r: 2, c: 1 }); // "B3"
+decodeRange("A1:C5");   // { s: { r: 0, c: 0 }, e: { r: 4, c: 2 } }
+encodeRange(range);      // "A1:C5"
+```
+
+## Runtime Support
+
+**Node.js >= 22** -- Full support including `readFile` / `writeFile` for filesystem access.
+
+**Browsers** -- `read()` and `write()` work in any modern browser with `Uint8Array` or `ArrayBuffer`. No Node.js APIs needed. Only `readFile()` / `writeFile()` require Node.
+
+```typescript
+// Browser: read from a File input
+const buffer = await file.arrayBuffer();
+const workbook = await read(buffer);
+
+// Browser: trigger a download
+const data = await write(workbook, { type: "array" });
+const blob = new Blob([data], {
+  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+});
+const url = URL.createObjectURL(blob);
+```
+
+## Next Steps
+
+- [Why xlsx-format?](/guide/why-xlsx-format) -- See how xlsx-format compares to SheetJS and ExcelJS
+- [Migration Guide](/guide/migration) -- Step-by-step guide for switching from SheetJS
+- [API Reference](/api-reference) -- Full API documentation
