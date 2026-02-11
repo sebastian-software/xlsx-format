@@ -1,4 +1,4 @@
-import type { WorkBook, WorkSheet, ReadOptions, FullProperties } from "../types.js";
+import type { WorkBook, WorkSheet, ReadOptions } from "../types.js";
 import type { ZipArchive } from "../zip/index.js";
 import type { ContentTypes } from "../opc/content-types.js";
 import type { Relationships } from "../opc/relationships.js";
@@ -8,7 +8,7 @@ import type { ThemeData } from "./theme.js";
 import type { WorkbookFile, SheetEntry } from "./workbook.js";
 import { zipReadString, zipHas } from "../zip/index.js";
 import { parseContentTypes } from "../opc/content-types.js";
-import { parseRelationships, getRelsPath } from "../opc/relationships.js";
+import { parseRelationships } from "../opc/relationships.js";
 import { parseCoreProperties } from "../opc/core-properties.js";
 import { parseExtendedProperties } from "../opc/extended-properties.js";
 import { parseCustomProperties } from "../opc/custom-properties.js";
@@ -21,7 +21,7 @@ import { parseCommentsXml, parseTcmntXml, parsePeopleXml, insertCommentsIntoShee
 import { parseVml } from "./vml.js";
 import { parseMetadataXml } from "./metadata.js";
 import { parseCalcChainXml } from "./calc-chain.js";
-import { resetFormatTable, formatTable } from "../ssf/table.js";
+import { resetFormatTable } from "../ssf/table.js";
 import { utf8read } from "../utils/buffer.js";
 import { RELS as RELTYPE } from "../xml/namespaces.js";
 
@@ -389,7 +389,10 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 			if (typeof options.sheets === "number" && i !== options.sheets) {
 				continue;
 			}
-			if (typeof options.sheets === "string" && props.SheetNames[i].toLowerCase() !== options.sheets.toLowerCase()) {
+			if (
+				typeof options.sheets === "string" &&
+				props.SheetNames[i].toLowerCase() !== options.sheets.toLowerCase()
+			) {
 				continue;
 			}
 			if (Array.isArray(options.sheets)) {

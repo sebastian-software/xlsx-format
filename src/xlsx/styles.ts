@@ -1,5 +1,5 @@
 import { parseXmlTag, XML_TAG_REGEX, XML_HEADER } from "../xml/parser.js";
-import { unescapeXml, escapeXml } from "../xml/escape.js";
+import { unescapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main } from "../xml/namespaces.js";
 import { loadFormat } from "../ssf/table.js";
@@ -31,7 +31,7 @@ export interface CellXfEntry {
  * Parse <numFmts> section, registering custom number formats into the styles object
  * and the global SSF format table.
  */
-function parseNumberFormats(t: string, styles: StylesData, opts: any): void {
+function parseNumberFormats(t: string, styles: StylesData, _opts: any): void {
 	const matches = t.match(XML_TAG_REGEX);
 	if (!matches) {
 		return;

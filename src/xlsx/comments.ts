@@ -2,7 +2,7 @@ import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace } from "../xml/p
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlTag, writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main, XMLNS } from "../xml/namespaces.js";
-import { decodeCell, encodeCell, encodeRange, safeDecodeRange } from "../utils/cell.js";
+import { decodeCell, encodeRange, safeDecodeRange } from "../utils/cell.js";
 import { matchXmlTagFirst } from "../utils/helpers.js";
 import type { WorkSheet } from "../types.js";
 
@@ -283,21 +283,34 @@ export function writeCommentsXml(data: [string, any[]][]): string {
  * @param opts - Parsing options
  * @returns Array of parsed threaded comment entries
  */
-export function parseTcmntXml(data: string, opts?: any): RawComment[] {
+export function parseTcmntXml(data: string, _opts?: any): RawComment[] {
 	const out: RawComment[] = [];
-	let pass = false;
 	let comment: any = {};
 	// Track the character offset where the <text> content starts
 	let tidx = 0;
 
+	const ignoredTags = new Set([
+		"<?xml",
+		"<ThreadedComments",
+		"</ThreadedComments>",
+		"<mentions",
+		"<mentions>",
+		"</mentions>",
+		"<extLst",
+		"<extLst>",
+		"</extLst>",
+		"<extLst/>",
+		"<ext",
+		"</ext>",
+	]);
+
 	data.replace(XML_TAG_REGEX, function xml_tcmnt(x: string, idx: number): string {
 		const y: any = parseXmlTag(x);
-		switch (stripNamespace(y[0])) {
-			case "<?xml":
-				break;
-			case "<ThreadedComments":
-			case "</ThreadedComments>":
-				break;
+		const tag = stripNamespace(y[0]);
+		if (ignoredTags.has(tag)) {
+			return x;
+		}
+		switch (tag) {
 			case "<threadedComment":
 				comment = { author: y.personId, guid: y.id, ref: y.ref, T: 1 };
 				break;
@@ -313,27 +326,6 @@ export function parseTcmntXml(data: string, opts?: any): RawComment[] {
 			case "</text>":
 				// Normalize line endings
 				comment.t = data.slice(tidx, idx).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-				break;
-			case "<mentions":
-			case "<mentions>":
-				pass = true;
-				break;
-			case "</mentions>":
-				pass = false;
-				break;
-			// Skip extension lists
-			case "<extLst":
-			case "<extLst>":
-			case "</extLst>":
-			case "<extLst/>":
-				break;
-			case "<ext":
-				pass = true;
-				break;
-			case "</ext>":
-				pass = false;
-				break;
-			default:
 				break;
 		}
 		return x;
@@ -353,7 +345,10 @@ export function parseTcmntXml(data: string, opts?: any): RawComment[] {
  * @returns Complete threadedComment XML string
  */
 export function writeTcmntXml(comments: [string, any[]][], people: string[], opts: { tcid: number }): string {
-	const o: string[] = [XML_HEADER, writeXmlElement("ThreadedComments", null, { xmlns: XMLNS.TCMNT }).replace(/[/]>/, ">")];
+	const o: string[] = [
+		XML_HEADER,
+		writeXmlElement("ThreadedComments", null, { xmlns: XMLNS.TCMNT }).replace(/[/]>/, ">"),
+	];
 	comments.forEach((carr) => {
 		let rootid = "";
 		(carr[1] || []).forEach((c: any, idx: number) => {
@@ -396,33 +391,28 @@ export function writeTcmntXml(comments: [string, any[]][], people: string[], opt
  */
 export function parsePeopleXml(data: string): { name: string; id: string }[] {
 	const out: { name: string; id: string }[] = [];
-	let pass = false;
+	const ignoredTags = new Set([
+		"<?xml",
+		"<personList",
+		"</personList>",
+		"</person>",
+		"<extLst",
+		"<extLst>",
+		"</extLst>",
+		"<extLst/>",
+		"<ext",
+		"</ext>",
+	]);
+
 	data.replace(XML_TAG_REGEX, function xml_people(x: string): string {
 		const y: any = parseXmlTag(x);
-		switch (stripNamespace(y[0])) {
-			case "<?xml":
-				break;
-			case "<personList":
-			case "</personList>":
-				break;
+		const tag = stripNamespace(y[0]);
+		if (ignoredTags.has(tag)) {
+			return x;
+		}
+		switch (tag) {
 			case "<person":
 				out.push({ name: y.displayname, id: y.id });
-				break;
-			case "</person>":
-				break;
-			// Skip extension lists
-			case "<extLst":
-			case "<extLst>":
-			case "</extLst>":
-			case "<extLst/>":
-				break;
-			case "<ext":
-				pass = true;
-				break;
-			case "</ext>":
-				pass = false;
-				break;
-			default:
 				break;
 		}
 		return x;

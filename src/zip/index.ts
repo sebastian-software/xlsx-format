@@ -68,7 +68,7 @@ export async function zipRead(data: Uint8Array): Promise<ZipArchive> {
 
 	// EOCD layout: +8 = total entries on disk, +10 = total entries, +12 = CD size, +16 = CD offset
 	const cdEntries = readU16(data, eocdOffset + 10);
-	const cdSize = readU32(data, eocdOffset + 12);
+	const _cdSize = readU32(data, eocdOffset + 12);
 	const cdOffset = readU32(data, eocdOffset + 16);
 
 	// Parse central directory entries

@@ -217,7 +217,7 @@ export function validateSheetName(n: string, safe?: boolean): boolean {
  * @param sheetEntries - Optional sheet entry metadata (reserved for future use)
  * @throws Error if any name is invalid or duplicated
  */
-export function validateWorkbookNames(sheetNames: string[], sheetEntries?: any[]): void {
+export function validateWorkbookNames(sheetNames: string[], _sheetEntries?: any[]): void {
 	for (let i = 0; i < sheetNames.length; ++i) {
 		validateSheetName(sheetNames[i]);
 		for (let j = 0; j < i; ++j) {
@@ -259,7 +259,7 @@ const wbnsregex = /<\w+:workbook/;
  * @returns Parsed workbook file structure
  * @throws Error if data is empty or the namespace is unrecognized
  */
-export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
+export function parseWorkbookXml(data: string, _opts?: any): WorkbookFile {
 	if (!data) {
 		throw new Error("Could not find file");
 	}
@@ -272,18 +272,86 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 		Names: [],
 		xmlns: "",
 	};
-	let pass = false;
 	let xmlns = "xmlns";
 	let dname: any = {};
 	// Track the character offset where the defined name content starts
 	let dnstart = 0;
 
+	const ignoredTags = new Set([
+		"<?xml",
+		"</workbook>",
+		"<fileVersion/>",
+		"</fileVersion>",
+		"<fileSharing",
+		"<fileSharing/>",
+		"</workbookPr>",
+		"<workbookProtection",
+		"<workbookProtection/>",
+		"<bookViews",
+		"<bookViews>",
+		"</bookViews>",
+		"</workbookView>",
+		"<sheets",
+		"<sheets>",
+		"</sheets>",
+		"</sheet>",
+		"<functionGroups",
+		"<functionGroups/>",
+		"<functionGroup",
+		"<externalReferences",
+		"</externalReferences>",
+		"<externalReferences>",
+		"<externalReference",
+		"<definedNames/>",
+		"<definedNames>",
+		"<definedNames",
+		"</definedNames>",
+		"<definedName/>",
+		"</calcPr>",
+		"<oleSize",
+		"<customWorkbookViews>",
+		"</customWorkbookViews>",
+		"<customWorkbookViews",
+		"<customWorkbookView",
+		"</customWorkbookView>",
+		"<pivotCaches>",
+		"</pivotCaches>",
+		"<pivotCaches",
+		"<pivotCache",
+		"<smartTagPr",
+		"<smartTagPr/>",
+		"<smartTagTypes",
+		"<smartTagTypes>",
+		"</smartTagTypes>",
+		"<smartTagType",
+		"<webPublishing",
+		"<webPublishing/>",
+		"<fileRecoveryPr",
+		"<fileRecoveryPr/>",
+		"<webPublishObjects>",
+		"<webPublishObjects",
+		"</webPublishObjects>",
+		"<webPublishObject",
+		"<extLst",
+		"<extLst>",
+		"</extLst>",
+		"<extLst/>",
+		"<ext",
+		"</ext>",
+		"<ArchID",
+		"<AlternateContent",
+		"<AlternateContent>",
+		"</AlternateContent>",
+		"<revisionPtr",
+	]);
+
 	data.replace(XML_TAG_REGEX, function xml_wb(xmlTag: string, idx: number): string {
 		const parsedTag: any = parseXmlTag(xmlTag);
-		switch (stripNamespace(parsedTag[0])) {
-			case "<?xml":
-				break;
-
+		const tag = stripNamespace(parsedTag[0]);
+		if (ignoredTags.has(tag)) {
+			return xmlTag;
+		}
+		switch (tag) {
 			case "<workbook":
 				// Detect namespace prefix (e.g. <x:workbook -> xmlns:x)
 				if (xmlTag.match(wbnsregex)) {
@@ -291,19 +359,10 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 				}
 				workbook.xmlns = parsedTag[xmlns];
 				break;
-			case "</workbook>":
-				break;
 
 			case "<fileVersion":
 				delete parsedTag[0];
 				workbook.AppVersion = parsedTag;
-				break;
-			case "<fileVersion/>":
-			case "</fileVersion>":
-				break;
-
-			case "<fileSharing":
-			case "<fileSharing/>":
 				break;
 
 			case "<workbookPr":
@@ -327,29 +386,13 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 					workbook.WBProps.CodeName = utf8read(parsedTag.codeName);
 				}
 				break;
-			case "</workbookPr>":
-				break;
 
-			case "<workbookProtection":
-			case "<workbookProtection/>":
-				break;
-
-			case "<bookViews":
-			case "<bookViews>":
-			case "</bookViews>":
-				break;
 			case "<workbookView":
 			case "<workbookView/>":
 				delete parsedTag[0];
 				workbook.WBView.push(parsedTag);
 				break;
-			case "</workbookView>":
-				break;
 
-			case "<sheets":
-			case "<sheets>":
-			case "</sheets>":
-				break;
 			case "<sheet":
 				// Map state attribute to numeric Hidden value
 				switch (parsedTag.state) {
@@ -367,29 +410,7 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 				delete parsedTag[0];
 				workbook.Sheets.push(parsedTag);
 				break;
-			case "</sheet>":
-				break;
 
-			case "<functionGroups":
-			case "<functionGroups/>":
-			case "<functionGroup":
-				break;
-
-			case "<externalReferences":
-			case "</externalReferences>":
-			case "<externalReferences>":
-			case "<externalReference":
-				break;
-
-			case "<definedNames/>":
-				break;
-			case "<definedNames>":
-			case "<definedNames":
-				pass = true;
-				break;
-			case "</definedNames>":
-				pass = false;
-				break;
 			case "<definedName": {
 				dname = {};
 				dname.Name = utf8read(parsedTag.name);
@@ -412,85 +433,11 @@ export function parseWorkbookXml(data: string, opts?: any): WorkbookFile {
 				workbook.Names.push(dname);
 				break;
 			}
-			case "<definedName/>":
-				break;
 
 			case "<calcPr":
 			case "<calcPr/>":
 				delete parsedTag[0];
 				workbook.CalcPr = parsedTag;
-				break;
-			case "</calcPr>":
-				break;
-
-			case "<oleSize":
-				break;
-
-			case "<customWorkbookViews>":
-			case "</customWorkbookViews>":
-			case "<customWorkbookViews":
-			case "<customWorkbookView":
-			case "</customWorkbookView>":
-				break;
-
-			case "<pivotCaches>":
-			case "</pivotCaches>":
-			case "<pivotCaches":
-			case "<pivotCache":
-				break;
-
-			case "<smartTagPr":
-			case "<smartTagPr/>":
-				break;
-
-			case "<smartTagTypes":
-			case "<smartTagTypes>":
-			case "</smartTagTypes>":
-			case "<smartTagType":
-				break;
-
-			case "<webPublishing":
-			case "<webPublishing/>":
-				break;
-
-			case "<fileRecoveryPr":
-			case "<fileRecoveryPr/>":
-				break;
-
-			case "<webPublishObjects>":
-			case "<webPublishObjects":
-			case "</webPublishObjects>":
-			case "<webPublishObject":
-				break;
-
-			// Extension list - skip unknown extensions
-			case "<extLst":
-			case "<extLst>":
-			case "</extLst>":
-			case "<extLst/>":
-				break;
-			case "<ext":
-				pass = true;
-				break;
-			case "</ext>":
-				pass = false;
-				break;
-
-			case "<ArchID":
-				break;
-			// Markup Compatibility AlternateContent - skip
-			case "<AlternateContent":
-			case "<AlternateContent>":
-				pass = true;
-				break;
-			case "</AlternateContent>":
-				pass = false;
-				break;
-
-			case "<revisionPtr":
-				break;
-
-			default:
 				break;
 		}
 		return xmlTag;

@@ -23,32 +23,44 @@ export interface XLMeta {
  * @param opts - Parsing options
  * @returns Parsed metadata structure
  */
-export function parseMetadataXml(data: string, opts?: any): XLMeta {
+export function parseMetadataXml(data: string, _opts?: any): XLMeta {
 	const out: XLMeta = { Types: [], Cell: [], Value: [] };
 	if (!data) {
 		return out;
 	}
 
-	let pass = false;
 	// metatype tracks which section we're in: 2=none, 1=cellMetadata, 0=valueMetadata
 	let metatype = 2;
 	let lastmeta: any;
 
+	const ignoredTags = new Set([
+		"<?xml",
+		"<metadata",
+		"</metadata>",
+		"<metadataTypes",
+		"</metadataTypes>",
+		"</metadataType>",
+		"</futureMetadata>",
+		"<bk>",
+		"</bk>",
+		"</rc>",
+		"<extLst",
+		"<extLst>",
+		"</extLst>",
+		"<extLst/>",
+		"<ext",
+		"</ext>",
+	]);
+
 	data.replace(XML_TAG_REGEX, function (x: string): string {
 		const y: any = parseXmlTag(x);
-		switch (stripNamespace(y[0])) {
-			case "<?xml":
-				break;
-			case "<metadata":
-			case "</metadata>":
-				break;
-			case "<metadataTypes":
-			case "</metadataTypes>":
-				break;
+		const tag = stripNamespace(y[0]);
+		if (ignoredTags.has(tag)) {
+			return x;
+		}
+		switch (tag) {
 			case "<metadataType":
 				out.Types.push({ name: y.name });
-				break;
-			case "</metadataType>":
 				break;
 			case "<futureMetadata":
 				// Associate future metadata with its type definition by name
@@ -58,11 +70,6 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 					}
 				}
 				break;
-			case "</futureMetadata>":
-				break;
-			case "<bk>":
-			case "</bk>":
-				break;
 			case "<rc":
 				// <rc t="N" v="M"> references type index N (1-based) and value index M
 				if (metatype === 1) {
@@ -70,8 +77,6 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 				} else if (metatype === 0) {
 					out.Value.push({ type: out.Types[y.t - 1].name, index: +y.v });
 				}
-				break;
-			case "</rc>":
 				break;
 			case "<cellMetadata":
 				metatype = 1;
@@ -85,29 +90,14 @@ export function parseMetadataXml(data: string, opts?: any): XLMeta {
 			case "</valueMetadata>":
 				metatype = 2;
 				break;
-			// Skip extension lists
-			case "<extLst":
-			case "<extLst>":
-			case "</extLst>":
-			case "<extLst/>":
-				break;
-			case "<ext":
-				pass = true;
-				break;
-			case "</ext>":
-				pass = false;
-				break;
 			case "<rvb":
 				// Rich value block offset: records the index into the rich data store
-				if (!lastmeta) {
-					break;
+				if (lastmeta) {
+					if (!lastmeta.offsets) {
+						lastmeta.offsets = [];
+					}
+					lastmeta.offsets.push(+y.i);
 				}
-				if (!lastmeta.offsets) {
-					lastmeta.offsets = [];
-				}
-				lastmeta.offsets.push(+y.i);
-				break;
-			default:
 				break;
 		}
 		return x;

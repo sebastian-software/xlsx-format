@@ -1,11 +1,9 @@
 import type { WorkSheet, CellObject, Range, ColInfo, RowInfo, MarginInfo } from "../types.js";
-import { BErr } from "../types.js";
-import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, parseXmlBoolean } from "../xml/parser.js";
+import { parseXmlTag, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main } from "../xml/namespaces.js";
-import { safeDecodeRange, encodeRange, encodeCell, encodeCol } from "../utils/cell.js";
-import { utf8read } from "../utils/buffer.js";
+import { safeDecodeRange, encodeRange, encodeCell } from "../utils/cell.js";
 import { formatNumber, isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
@@ -123,8 +121,6 @@ function parseWorksheetXml_hlinks(s: WorkSheet, hlinks: string[], rels: Relation
 	}
 }
 
-/** Regex to match <row> opening tags */
-const rowregex = /<(?:\w+:)?row\b[^>]*>/g;
 /** Regex to match <c> (cell) elements, capturing inner content */
 const cellregex = /<(?:\w+:)?c\b[^>]*(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g;
 
@@ -144,8 +140,6 @@ function parseSheetData(
 	const dense = s["!data"] != null;
 	const date1904 = wb?.WBProps?.date1904;
 
-	// Parse row by row
-	const rowMatches = sdata.match(rowregex) || [];
 	// Split by </row> boundaries to isolate each row's content
 	const rows = sdata.split(/<\/(?:\w+:)?row>/);
 
