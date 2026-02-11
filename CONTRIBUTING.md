@@ -23,12 +23,12 @@ npm run build       # Build ESM + CJS bundles
 
 ## Making Changes
 
-1. Fork the repository and create a branch from `master`.
+1. Fork the repository and create a branch from `main`.
 2. Write your code. Follow the existing style -- Prettier and ESLint enforce most of it.
 3. Add or update tests for any changed behavior.
 4. Make sure all checks pass: `npm run check && npm run lint && npm test`
 5. Use [Conventional Commits](https://www.conventionalcommits.org/) for your commit messages (e.g. `feat: add X`, `fix: handle Y`). Release Please uses these to generate the changelog.
-6. Open a pull request against `master`.
+6. Open a pull request against `main`.
 
 ## Commit Message Format
 
