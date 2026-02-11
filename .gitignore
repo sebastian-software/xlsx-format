@@ -3,5 +3,13 @@ dist/
 coverage/
 
 *.tgz
+*.local
 v8.log
 tmp
+.DS_Store
+
+# Docs generated files (Ardo/TypeDoc)
+docs/app/routes.ts
+docs/app/routes/api-reference/
+docs/build/
+docs/.react-router/
