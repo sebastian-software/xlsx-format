@@ -4,7 +4,7 @@ export default function HomePage() {
   return (
     <>
       <Hero
-        name="XLSX Docs"
+        name="XLSX Format"
         text="Documentation Made Simple"
         tagline="Focus on your content, not configuration"
         actions={[

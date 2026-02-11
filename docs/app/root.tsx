@@ -42,11 +42,11 @@ export default function Root() {
         className={isHomePage ? "ardo-layout ardo-home" : "ardo-layout"}
         header={
           <Header
-            title="XLSX Docs"
+            title="XLSX Format"
             nav={
               <Nav>
                 <NavLink to="/guide/getting-started">Guide</NavLink>
-                <NavLink to="/api-reference">API Reference</NavLink>
+                <NavLink to="/api-reference">API</NavLink>
               </Nav>
             }
           />
@@ -56,8 +56,8 @@ export default function Root() {
             <Sidebar>
               <SidebarGroup title="Guide">
                 <SidebarLink to="/guide/getting-started">Getting Started</SidebarLink>
-                <SidebarLink to="/api-reference">API Reference</SidebarLink>
               </SidebarGroup>
+              <SidebarLink to="/api-reference">API Reference</SidebarLink>
             </Sidebar>
           )
         }

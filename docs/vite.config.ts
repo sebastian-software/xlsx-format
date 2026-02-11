@@ -4,25 +4,27 @@ import { ardo } from "ardo/vite";
 export default defineConfig({
 	plugins: [
 		ardo({
-			title: "XLSX Docs",
-			description: "Built with Ardo",
+			title: "XLSX Format",
+			description: "Modern XLSX reader/writer — TypeScript rewrite of SheetJS (XLSX only)",
 
-			typedoc: {
-				entryPoints: ["../src/index.ts"],
-			},
+			typedoc: true,
 
 			// GitHub Pages: base path auto-detected from git remote
 
 			themeConfig: {
-				siteTitle: "XLSX Docs",
+				siteTitle: "XLSX Format",
 
-				nav: [{ text: "Guide", link: "/guide/getting-started" }],
+				nav: [
+					{ text: "Guide", link: "/guide/getting-started" },
+					{ text: "API", link: "/api-reference" },
+				],
 
 				sidebar: [
 					{
 						text: "Guide",
 						items: [{ text: "Getting Started", link: "/guide/getting-started" }],
 					},
+					{ text: "API Reference", link: "/api-reference" },
 				],
 
 				footer: {
