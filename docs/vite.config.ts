@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import { ardo } from "ardo/vite";
+import pkg from "../package.json" with { type: "json" };
 
 export default defineConfig({
 	plugins: [
@@ -9,6 +10,12 @@ export default defineConfig({
 				"The XLSX library your bundler will thank you for. Zero dependencies. Fully async. TypeScript-first.",
 
 			typedoc: true,
+
+			project: {
+				name: pkg.name,
+				version: pkg.version,
+				homepage: pkg.homepage,
+			},
 
 			themeConfig: {
 				nav: [
