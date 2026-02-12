@@ -6,6 +6,7 @@
 [![license](https://img.shields.io/npm/l/xlsx-format)](LICENSE)
 [![node](https://img.shields.io/node/v/xlsx-format)](https://nodejs.org/)
 [![bun](https://img.shields.io/badge/Bun-tested-f9f1e1?logo=bun)](https://bun.sh/)
+[![browser](https://img.shields.io/badge/Browser-supported-4285F4?logo=googlechrome&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 
 The XLSX library your bundler will thank you for. Zero dependencies. Fully async. Works in Node.js and the browser.
