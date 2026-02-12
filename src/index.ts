@@ -37,8 +37,8 @@ export type {
 } from "./types.js";
 
 // Read / Write
-export { read, readFile } from "./read.js";
-export { write, writeFile } from "./write.js";
+export { read } from "./read.js";
+export { write } from "./write.js";
 
 // Utilities - workbook/sheet manipulation
 export {

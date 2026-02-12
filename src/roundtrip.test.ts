@@ -1,9 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
 	read,
-	readFile,
 	write,
-	writeFile,
 	createWorkbook,
 	appendSheet,
 	arrayToSheet,
@@ -16,9 +14,6 @@ import {
 	csvToSheet,
 	htmlToSheet,
 } from "./index.js";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
 
 describe("roundtrip", () => {
 	it("should write and re-read a simple workbook", async () => {
@@ -387,69 +382,5 @@ describe("HTML write and read", () => {
 		const html = "<div>No table here</div>";
 		const ws = htmlToSheet(html);
 		expect(ws["!ref"]).toBeUndefined();
-	});
-});
-
-describe("writeFile / readFile extension detection", () => {
-	let tmpDir: string;
-
-	function tmpPath(name: string) {
-		return path.join(tmpDir, name);
-	}
-
-	beforeAll(() => {
-		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "xlsx-format-test-"));
-	});
-
-	afterAll(() => {
-		fs.rmSync(tmpDir, { recursive: true, force: true });
-	});
-
-	it("should write and read CSV via file extension", async () => {
-		const ws = arrayToSheet([
-			["A", "B"],
-			[1, 2],
-		]);
-		const wb = createWorkbook(ws, "Data");
-		const csvPath = tmpPath("test.csv");
-		await writeFile(wb, csvPath);
-		const content = fs.readFileSync(csvPath, "utf-8");
-		expect(content).toContain("A,B");
-
-		const wb2 = await readFile(csvPath);
-		const rows = sheetToJson(wb2.Sheets["Sheet1"]);
-		expect(rows[0]["A"]).toBe(1);
-	});
-
-	it("should write and read TSV via file extension", async () => {
-		const ws = arrayToSheet([
-			["X", "Y"],
-			[3, 4],
-		]);
-		const wb = createWorkbook(ws, "Data");
-		const tsvPath = tmpPath("test.tsv");
-		await writeFile(wb, tsvPath);
-		const content = fs.readFileSync(tsvPath, "utf-8");
-		expect(content).toContain("X\tY");
-
-		const wb2 = await readFile(tsvPath);
-		const rows = sheetToJson(wb2.Sheets["Sheet1"]);
-		expect(rows[0]["X"]).toBe(3);
-	});
-
-	it("should write and read HTML via file extension", async () => {
-		const ws = arrayToSheet([
-			["P", "Q"],
-			[5, 6],
-		]);
-		const wb = createWorkbook(ws, "Data");
-		const htmlPath = tmpPath("test.html");
-		await writeFile(wb, htmlPath);
-		const content = fs.readFileSync(htmlPath, "utf-8");
-		expect(content).toContain("<table");
-
-		const wb2 = await readFile(htmlPath);
-		const rows = sheetToJson(wb2.Sheets["Sheet1"]);
-		expect(rows[0]["P"]).toBe(5);
 	});
 });

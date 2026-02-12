@@ -25,10 +25,11 @@ bun add xlsx-format
 ## Quick Start
 
 ```typescript
-import { readFile, writeFile, sheetToJson, jsonToSheet, createWorkbook } from "xlsx-format";
+import { readFile, writeFile } from "node:fs/promises";
+import { read, write, sheetToJson, jsonToSheet, createWorkbook } from "xlsx-format";
 
 // Read an Excel file into JSON
-const workbook = await readFile("report.xlsx");
+const workbook = await read(await readFile("report.xlsx"));
 const rows = sheetToJson(workbook.Sheets[workbook.SheetNames[0]]);
 
 // Write JSON back to Excel
@@ -36,40 +37,74 @@ const sheet = jsonToSheet([
   { Name: "Alice", Revenue: 48000 },
   { Name: "Bob", Revenue: 52000 },
 ]);
-await writeFile(createWorkbook(sheet, "Q4 Sales"), "output.xlsx");
+await writeFile("output.xlsx", await write(createWorkbook(sheet, "Q4 Sales")));
 ```
 
 ## Reading Files
 
-```typescript
-import { read, readFile } from "xlsx-format";
+### Node.js
 
-// From a file path (Node.js only)
-const workbook = await readFile("spreadsheet.xlsx");
-const workbook = await readFile("data.csv");
+```typescript
+import { readFile } from "node:fs/promises";
+import { read } from "xlsx-format";
+
+// XLSX from a file
+const workbook = await read(await readFile("spreadsheet.xlsx"));
+
+// CSV / TSV / HTML from a file (pass as string)
+const workbook = await read(await readFile("data.csv", "utf-8"), { type: "string" });
 
 // From a Uint8Array or ArrayBuffer
 const workbook = await read(buffer);
+```
 
-// From a plain string (CSV or HTML auto-detected)
-const workbook = await read(csvString, { type: "string" });
+### Browser
+
+```typescript
+import { read } from "xlsx-format";
+
+// From a File input
+const buffer = await file.arrayBuffer();
+const workbook = await read(buffer);
+
+// From a fetch response
+const response = await fetch("/data/report.xlsx");
+const workbook = await read(new Uint8Array(await response.arrayBuffer()));
 ```
 
 ## Writing Files
 
+### Node.js
+
 ```typescript
-import { write, writeFile } from "xlsx-format";
+import { writeFile } from "node:fs/promises";
+import { write } from "xlsx-format";
 
-// To a Uint8Array (XLSX)
-const bytes = await write(workbook);
+// XLSX to a file
+await writeFile("output.xlsx", await write(workbook));
 
-// To CSV / TSV / HTML string
-const csv = await write(workbook, { bookType: "csv", type: "string" });
-const html = await write(workbook, { bookType: "html", type: "string" });
+// CSV to a file
+await writeFile("output.csv", await write(workbook, { bookType: "csv", type: "string" }));
 
-// To a file (Node.js only)
-await writeFile(workbook, "output.xlsx");
-await writeFile(workbook, "output.csv");
+// HTML to a file
+await writeFile("output.html", await write(workbook, { bookType: "html", type: "string" }));
+```
+
+### Browser
+
+```typescript
+import { write } from "xlsx-format";
+
+// Trigger a download
+const data = await write(workbook, { type: "array" });
+const blob = new Blob([data], {
+  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+});
+
+const link = document.createElement("a");
+link.href = URL.createObjectURL(blob);
+link.download = "output.xlsx";
+link.click();
 ```
 
 ## Converting Data
@@ -132,22 +167,9 @@ encodeRange(range);      // "A1:C5"
 
 ## Runtime Support
 
-**Node.js >= 22** -- Full support including `readFile` / `writeFile` for filesystem access.
+**Node.js >= 22** -- Use `read()` with `fs.readFile()` and `write()` with `fs.writeFile()` from `node:fs/promises` for file I/O.
 
-**Browsers** -- `read()` and `write()` work in any modern browser with `Uint8Array` or `ArrayBuffer`. No Node.js APIs needed. Only `readFile()` / `writeFile()` require Node.
-
-```typescript
-// Browser: read from a File input
-const buffer = await file.arrayBuffer();
-const workbook = await read(buffer);
-
-// Browser: trigger a download
-const data = await write(workbook, { type: "array" });
-const blob = new Blob([data], {
-  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-});
-const url = URL.createObjectURL(blob);
-```
+**Browsers** -- `read()` and `write()` work in any modern browser with `Uint8Array` or `ArrayBuffer`. No Node.js APIs needed.
 
 ## Next Steps
 

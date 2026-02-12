@@ -17,10 +17,11 @@ npm install xlsx-format
 ```
 
 ```typescript
-import { readFile, writeFile, sheetToJson, jsonToSheet, createWorkbook } from "xlsx-format";
+import { readFile, writeFile } from "node:fs/promises";
+import { read, write, sheetToJson, jsonToSheet, createWorkbook } from "xlsx-format";
 
 // Read an Excel file into JSON
-const workbook = await readFile("report.xlsx");
+const workbook = await read(await readFile("report.xlsx"));
 const rows = sheetToJson(workbook.Sheets[workbook.SheetNames[0]]);
 
 // Write JSON back to Excel
@@ -28,7 +29,7 @@ const sheet = jsonToSheet([
 	{ Name: "Alice", Revenue: 48000 },
 	{ Name: "Bob", Revenue: 52000 },
 ]);
-await writeFile(createWorkbook(sheet, "Q4 Sales"), "output.xlsx");
+await writeFile("output.xlsx", await write(createWorkbook(sheet, "Q4 Sales")));
 ```
 
 ## Why xlsx-format?
@@ -56,9 +57,35 @@ For a detailed feature matrix (cell data, formulas, styles, comments, hyperlinks
 
 ## Runs everywhere
 
-**Node.js >= 22** -- full support including `readFile` / `writeFile` for filesystem access.
+xlsx-format is fully platform-agnostic -- it never imports `node:fs` or any other Node.js built-in. This means it works out of the box in browsers, edge runtimes (Cloudflare Workers, Deno Deploy), and Node.js without bundler polyfills.
 
-**Browsers** -- `read()` and `write()` work in any modern browser with `Uint8Array` or `ArrayBuffer`. No Node.js APIs needed. Only `readFile()` / `writeFile()` require Node.
+**Node.js** -- Pair `read()` / `write()` with Node's `fs` module:
+
+```typescript
+import { readFile, writeFile } from "node:fs/promises";
+import { read, write } from "xlsx-format";
+
+const wb = await read(await readFile("input.xlsx"));
+await writeFile("output.xlsx", await write(wb));
+```
+
+**Browsers** -- Use the File API or fetch:
+
+```typescript
+import { read, write } from "xlsx-format";
+
+// Read from a file input
+const wb = await read(await file.arrayBuffer());
+
+// Trigger a download
+const blob = new Blob([await write(wb, { type: "array" })], {
+	type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+});
+const link = document.createElement("a");
+link.href = URL.createObjectURL(blob);
+link.download = "output.xlsx";
+link.click();
+```
 
 ## Switching from SheetJS
 

@@ -6,8 +6,6 @@ import { base64encode } from "./utils/base64.js";
 import { resetFormatTable } from "./ssf/table.js";
 import { sheetToCsv, sheetToTxt } from "./api/csv.js";
 import { sheetToHtml } from "./api/html.js";
-import * as fs from "node:fs";
-import * as path from "node:path";
 
 /** Encode a text string as a UTF-8 Uint8Array */
 function textToUint8Array(text: string): Uint8Array {
@@ -98,51 +96,4 @@ export async function write(wb: WorkBook, opts?: WriteOptions): Promise<any> {
 /** Thin wrapper to encode Uint8Array to base64 */
 function base64encode_u8(data: Uint8Array): string {
 	return base64encode(data);
-}
-
-/** Map file extensions to bookType values */
-const EXT_TO_BOOKTYPE: Record<string, WriteOptions["bookType"]> = {
-	".csv": "csv",
-	".tsv": "tsv",
-	".tab": "tsv",
-	".html": "html",
-	".htm": "html",
-	".xlsx": "xlsx",
-	".xlsm": "xlsm",
-};
-
-/**
- * Write a WorkBook to a file on the local filesystem (Node.js only).
- *
- * Automatically detects the output format from the file extension if
- * opts.bookType is not explicitly set.
- *
- * @param wb - WorkBook object to serialize
- * @param filename - Output file path
- * @param opts - Write options controlling output format and behavior
- * @returns Promise that resolves when the file has been written
- */
-export async function writeFile(wb: WorkBook, filename: string, opts?: WriteOptions): Promise<void> {
-	const options: any = opts ? { ...opts } : {};
-
-	// Infer bookType from extension if not explicitly set
-	if (!options.bookType) {
-		const ext = path.extname(filename).toLowerCase();
-		if (EXT_TO_BOOKTYPE[ext]) {
-			options.bookType = EXT_TO_BOOKTYPE[ext];
-		}
-	}
-
-	const bookType = options.bookType || "xlsx";
-	const isText = bookType === "csv" || bookType === "tsv" || bookType === "html";
-
-	if (isText) {
-		options.type = "string";
-		const data = await write(wb, options);
-		fs.writeFileSync(filename, data, "utf-8");
-	} else {
-		options.type = "buffer";
-		const data = await write(wb, options);
-		fs.writeFileSync(filename, data instanceof Uint8Array ? Buffer.from(data) : data);
-	}
 }

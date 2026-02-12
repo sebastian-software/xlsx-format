@@ -9,21 +9,7 @@
  * - src/ssf/format.ts (number formats, fractions, scientific, conditionals, text)
  */
 import { describe, it, expect } from "vitest";
-import * as fs from "node:fs";
-import * as path from "node:path";
-import * as os from "node:os";
-
-import {
-	read,
-	write,
-	readFile,
-	writeFile,
-	arrayToSheet,
-	sheetToJson,
-	sheetToHtml,
-	htmlToSheet,
-	createWorkbook,
-} from "./index.js";
+import { read, write, arrayToSheet, sheetToJson, sheetToHtml, htmlToSheet, createWorkbook } from "./index.js";
 import { addArrayToSheet } from "./api/aoa.js";
 import { addJsonToSheet } from "./api/json.js";
 import { formatNumber } from "./ssf/format.js";
@@ -88,48 +74,6 @@ describe("read.ts — input type handling", () => {
 	});
 });
 
-describe("readFile — extension detection", () => {
-	it("should read a .csv file", async () => {
-		const tmpDir = os.tmpdir();
-		const csvPath = path.join(tmpDir, "xlsx-fmt-test-read.csv");
-		fs.writeFileSync(csvPath, "X,Y\n10,20", "utf-8");
-		try {
-			const wb = await readFile(csvPath);
-			const rows = sheetToJson(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-			expect(rows[1]).toContain(10);
-			expect(rows[1]).toContain(20);
-		} finally {
-			fs.unlinkSync(csvPath);
-		}
-	});
-
-	it("should read a .tsv file", async () => {
-		const tmpDir = os.tmpdir();
-		const tsvPath = path.join(tmpDir, "xlsx-fmt-test-read.tsv");
-		fs.writeFileSync(tsvPath, "A\tB\n1\t2", "utf-8");
-		try {
-			const wb = await readFile(tsvPath);
-			const rows = sheetToJson(wb.Sheets[wb.SheetNames[0]], { header: 1 });
-			expect(rows[0]).toContain("A");
-			expect(rows[0]).toContain("B");
-		} finally {
-			fs.unlinkSync(tsvPath);
-		}
-	});
-
-	it("should read a .html file", async () => {
-		const tmpDir = os.tmpdir();
-		const htmlPath = path.join(tmpDir, "xlsx-fmt-test-read.html");
-		fs.writeFileSync(htmlPath, "<table><tr><td>val</td></tr></table>", "utf-8");
-		try {
-			const wb = await readFile(htmlPath);
-			expect(wb.SheetNames).toHaveLength(1);
-		} finally {
-			fs.unlinkSync(htmlPath);
-		}
-	});
-});
-
 // ============================================================
 // src/write.ts
 // ============================================================
@@ -171,45 +115,6 @@ describe("write.ts — output types", () => {
 		const emptyWb = { SheetNames: ["S1"], Sheets: { S1: {} } } as any;
 		const csv = await write(emptyWb, { bookType: "csv", type: "string" });
 		expect(csv).toBe("");
-	});
-});
-
-describe("writeFile — extension inference", () => {
-	const tmpDir = os.tmpdir();
-	const simpleWb = () => createWorkbook(arrayToSheet([["Val"]]), "Sheet1");
-
-	it("should write .csv file", async () => {
-		const p = path.join(tmpDir, "xlsx-fmt-test-write.csv");
-		await writeFile(simpleWb(), p);
-		try {
-			const content = fs.readFileSync(p, "utf-8");
-			expect(content).toContain("Val");
-		} finally {
-			fs.unlinkSync(p);
-		}
-	});
-
-	it("should write .html file", async () => {
-		const p = path.join(tmpDir, "xlsx-fmt-test-write.html");
-		await writeFile(simpleWb(), p);
-		try {
-			const content = fs.readFileSync(p, "utf-8");
-			expect(content).toContain("<table");
-		} finally {
-			fs.unlinkSync(p);
-		}
-	});
-
-	it("should write .xlsx file", async () => {
-		const p = path.join(tmpDir, "xlsx-fmt-test-write.xlsx");
-		await writeFile(simpleWb(), p);
-		try {
-			const data = fs.readFileSync(p);
-			expect(data[0]).toBe(0x50); // PK
-			expect(data[1]).toBe(0x4b);
-		} finally {
-			fs.unlinkSync(p);
-		}
 	});
 });
 
