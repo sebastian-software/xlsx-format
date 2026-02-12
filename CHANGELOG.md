@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v1.0.2...xlsx-format-v2.0.0) (2026-02-12)
+
+
+### ⚠ BREAKING CHANGES
+
+* readFile and writeFile are no longer exported. Use `read(await readFile(path))` and `await writeFile(path, await write(wb))` from node:fs/promises instead.
+
+### Features
+
+* remove readFile/writeFile to make library fully platform-agnostic ([d8a0e11](https://github.com/sebastian-software/xlsx-format/commit/d8a0e119fbf2f87766d9ced37356a080a109936f))
+
+
+### Documentation
+
+* add browser-supported badge to README ([9e1cd48](https://github.com/sebastian-software/xlsx-format/commit/9e1cd48053668f86dd78ab269469577c33b575e5))
+
 ## [1.0.2](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v1.0.1...xlsx-format-v1.0.2) (2026-02-12)
 
 
