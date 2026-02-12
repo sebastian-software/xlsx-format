@@ -2,9 +2,6 @@ import { defineConfig } from "vite";
 import { ardo } from "ardo/vite";
 
 export default defineConfig({
-	define: {
-		__BUILD_TIME__: JSON.stringify(new Date().toISOString()),
-	},
 	plugins: [
 		ardo({
 			title: "xlsx-format",
@@ -13,11 +10,7 @@ export default defineConfig({
 
 			typedoc: true,
 
-			// GitHub Pages: base path auto-detected from git remote
-
 			themeConfig: {
-				siteTitle: "xlsx-format",
-
 				nav: [
 					{ text: "Guide", link: "/guide/getting-started" },
 					{ text: "API", link: "/api-reference" },
@@ -34,10 +27,6 @@ export default defineConfig({
 					},
 					{ text: "API Reference", link: "/api-reference" },
 				],
-
-				footer: {
-					message: "Built with Ardo",
-				},
 
 				search: {
 					enabled: true,

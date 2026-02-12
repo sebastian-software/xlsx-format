@@ -66,12 +66,9 @@ export default function Root() {
         }
         footer={
           <Footer
-            message={[
-              `<a href="https://github.com/sebastian-software/xlsx-format">xlsx-format v${config.project?.version ?? "0.0.0"}</a>`,
-              "Built with <a href='https://github.com/sebastian-software/ardo'>Ardo</a>",
-              "Sponsored by <a href='https://sebastian-software.com/oss'>Sebastian Software</a>",
-            ].join(" &middot; ")}
-            copyright={`Built on ${new Date(__BUILD_TIME__).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`}
+            project={config.project}
+            sponsor={{ text: "Sebastian Software", link: "https://sebastian-software.com/oss" }}
+            buildTime={config.buildTime}
           />
         }
       >
