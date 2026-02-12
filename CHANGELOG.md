@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.0.2](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v1.0.1...xlsx-format-v1.0.2) (2026-02-12)
+
+
+### Bug Fixes
+
+* ardo version issues ([0ea9cf9](https://github.com/sebastian-software/xlsx-format/commit/0ea9cf91a9939206491ad8701697b69231310e06))
+* read project metadata from root package.json for footer ([a85e081](https://github.com/sebastian-software/xlsx-format/commit/a85e08117f943d96049c835544bc0db1274afd24))
+* restore Shiki theme override until ardo vite plugin default is fixed ([a1fa1a5](https://github.com/sebastian-software/xlsx-format/commit/a1fa1a5b45101dba09b552a5a09eb9cede818781))
+
+
+### Documentation
+
+* add API documentation browser with GitHub Pages deployment ([4d7a033](https://github.com/sebastian-software/xlsx-format/commit/4d7a0332b9c6e00a1e0f93e9cf926f7cfbfbbb77))
+* add version display, build timestamp, and sponsor link to footer ([e19b469](https://github.com/sebastian-software/xlsx-format/commit/e19b46921a7eb73295810d1044e4a7f772ed9c0f))
+* overhaul documentation site with real content and Blue Steel theme ([e83ec4e](https://github.com/sebastian-software/xlsx-format/commit/e83ec4e9b2f1cc71a34f279b1286d28b341d5ac3))
+
 ## [1.0.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v1.0.0...xlsx-format-v1.0.1) (2026-02-11)
 
 
