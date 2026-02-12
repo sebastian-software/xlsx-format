@@ -67,16 +67,11 @@ export default function Root() {
         footer={
           <Footer
             message={[
-              config.project?.homepage
-                ? `<a href="${config.project.homepage}">${config.title}</a>`
-                : config.title,
+              `<a href="https://github.com/sebastian-software/xlsx-format">xlsx-format v${config.project?.version ?? "0.0.0"}</a>`,
               "Built with <a href='https://github.com/sebastian-software/ardo'>Ardo</a>",
+              "Sponsored by <a href='https://sebastian-software.com/oss'>Sebastian Software</a>",
             ].join(" &middot; ")}
-            copyright={
-              config.project?.author
-                ? `Copyright &copy; ${new Date().getFullYear()} ${config.project.author}`
-                : undefined
-            }
+            copyright={`Built on ${new Date(__BUILD_TIME__).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`}
           />
         }
       >

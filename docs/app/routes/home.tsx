@@ -1,5 +1,6 @@
 import { Hero, Features } from "ardo/ui"
 import { Package, Zap, ShieldCheck, Globe, TreePine, ArrowLeftRight, ArrowRight, Github } from "lucide-react"
+import config from "virtual:ardo/config"
 
 export default function HomePage() {
   return (
@@ -7,7 +8,7 @@ export default function HomePage() {
       <Hero
         name="xlsx-format"
         text="The XLSX library your bundler will thank you for."
-        tagline="Zero dependencies. Fully async. TypeScript-first. Works in Node.js and the browser."
+        tagline={`v${config.project?.version ?? "0.0.0"} · Zero dependencies. Fully async. TypeScript-first.`}
         actions={[
           { text: "Get Started", link: "/guide/getting-started", theme: "brand", icon: <ArrowRight size={16} /> },
           { text: "GitHub", link: "https://github.com/sebastian-software/xlsx-format", theme: "alt", icon: <Github size={16} /> },
