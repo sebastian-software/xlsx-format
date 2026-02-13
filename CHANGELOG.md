@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.0.0...xlsx-format-v2.0.1) (2026-02-13)
+
+
+### Bug Fixes
+
+* updated Ardo ([dbc0126](https://github.com/sebastian-software/xlsx-format/commit/dbc0126ba5463810c2a6c5745c186c5490a8f90a))
+
 ## [2.0.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v1.0.2...xlsx-format-v2.0.0) (2026-02-12)
 
 
