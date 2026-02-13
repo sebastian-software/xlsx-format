@@ -9,16 +9,16 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
-		"ardo": "^2.5.0",
+		"ardo": "^2.6.0",
 		"isbot": "*",
-		"lucide-react": "^0.563.0",
+		"lucide-react": "^0.564.0",
 		"react": "*",
 		"react-dom": "*",
 		"react-router": "*"
 	},
 	"devDependencies": {
 		"@react-router/dev": "*",
-		"@types/react": "^19.2.13",
+		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
 		"typescript": "^5.9.3",
 		"vite": "^8.0.0-beta.0"
