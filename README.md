@@ -1,5 +1,6 @@
 # xlsx-format
 
+[![Powered by Sebastian Software](https://img.shields.io/badge/Powered%20by-Sebastian%20Software-00718d?style=flat-square)](https://oss.sebastian-software.com)
 [![npm version](https://img.shields.io/npm/v/xlsx-format)](https://www.npmjs.com/package/xlsx-format)
 [![CI](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml/badge.svg)](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sebastian-software/xlsx-format/graph/badge.svg)](https://codecov.io/gh/sebastian-software/xlsx-format)
@@ -120,5 +121,19 @@ Based on the work of [SheetJS](https://github.com/SheetJS/sheetjs), originally c
 
 Apache 2.0 -- see [LICENSE](LICENSE) for details.
 
-Copyright (C) 2012-present SheetJS LLC (original work)\
-Copyright (C) 2025-present [Sebastian Software GmbH](https://sebastian-software.de) (modifications)
+Copyright (C) 2012-present SheetJS LLC (original work)
+
+---
+
+<!-- sebastian-software-branding:start -->
+<p align="center">
+  <a href="https://oss.sebastian-software.com">
+    <img src="https://sebastian-brand.vercel.app/sebastian-software/logo-software.svg" alt="Sebastian Software" width="240" />
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://oss.sebastian-software.com">Open Source at Sebastian Software</a><br />
+  Copyright &copy; 2025&ndash;2026 Sebastian Software GmbH
+</p>
+<!-- sebastian-software-branding:end -->
