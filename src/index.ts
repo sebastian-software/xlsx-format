@@ -71,7 +71,7 @@ export {
 } from "./api/book.js";
 
 // Utilities - format conversions
-export { arrayToSheet, addArrayToSheet } from "./api/aoa.js";
+export { arrayToSheet, sheetToArray, addArrayToSheet } from "./api/aoa.js";
 export { jsonToSheet, sheetToJson, addJsonToSheet } from "./api/json.js";
 export { sheetToCsv, sheetToTxt, csvToSheet } from "./api/csv.js";
 export { sheetToHtml, htmlToSheet } from "./api/html.js";
