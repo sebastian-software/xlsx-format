@@ -14,3 +14,5 @@ for (const [kind, mod] of modules) {
 		}
 	}
 }
+
+console.log("smoke: all exports OK");

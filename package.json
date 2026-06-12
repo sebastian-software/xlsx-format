@@ -71,7 +71,7 @@
 			"eslint --fix",
 			"prettier --write"
 		],
-		"*.{ts,js,mjs}": "prettier --write",
+		"*.{config,conf}.{ts,js,mjs}": "prettier --write",
 		"scripts/**/*.{js,mjs}": "prettier --write",
 		"*.{json,md,yml,yaml}": "prettier --write"
 	},
