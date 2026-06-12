@@ -1,0 +1,79 @@
+---
+title: Security Considerations
+---
+
+# Security Considerations
+
+xlsx-format is designed for modern XLSX reading and writing in Node.js and browsers. Spreadsheet files are still untrusted input: treat uploads, email attachments, partner feeds, and user-edited workbooks as data from an attacker-controlled boundary.
+
+## What xlsx-format does not execute
+
+xlsx-format parses workbook structures and cell data. It does not execute formulas, VBA macros, external entities, embedded scripts, or workbook event handlers.
+
+That avoids common execution classes such as XXE and macro execution, but it does not remove resource-exhaustion or unsafe-export risks. A malicious workbook can still try to consume excessive CPU or memory with large ZIP payloads, large XML parts, huge declared sheet ranges, or many repeated strings.
+
+## Reading untrusted files
+
+When reading files from users or external systems:
+
+- apply upload size limits before calling `read()`,
+- run parsing away from latency-sensitive request paths when possible,
+- use process, worker, or request timeouts in server environments,
+- prefer narrow conversion work instead of immediately materializing every sheet into JSON,
+- use `sheetRows` when only a preview or header sample is needed,
+- keep xlsx-format updated for ZIP, XML, and export hardening fixes.
+
+```typescript
+import { read, sheetToJson } from "xlsx-format";
+
+const workbook = await read(fileBytes, {
+	sheetRows: 1000,
+});
+
+const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+const previewRows = sheetToJson(firstSheet);
+```
+
+## Exporting CSV
+
+CSV files opened in spreadsheet applications can interpret text that starts with characters such as `=`, `+`, `-`, `@`, tab, or carriage return as formulas. This is commonly called CSV injection or formula injection.
+
+If a CSV will be opened by a human in Excel, Google Sheets, or LibreOffice, neutralize user-controlled text fields before export. A common mitigation is prefixing formula-like text with a single quote.
+
+```typescript
+function safeCsvText(value: unknown): unknown {
+	if (typeof value !== "string") {
+		return value;
+	}
+	return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
+}
+```
+
+## Exporting HTML
+
+HTML export escapes cell text. Hyperlinks can still point to unsafe targets if you render exported HTML in a browser. Use `sanitizeLinks` when exporting HTML from user-controlled sheets.
+
+```typescript
+import { sheetToHtml } from "xlsx-format";
+
+const html = sheetToHtml(sheet, {
+	sanitizeLinks: true,
+});
+```
+
+## Object keys from workbook data
+
+Spreadsheet headers and sheet names can become object keys in APIs such as `sheetToJson()` and `workbook.Sheets`. Treat keys from untrusted files as untrusted data. Avoid merging parsed row objects directly into application configuration, prototypes, or privileged domain objects.
+
+```typescript
+const rows = sheetToJson<Record<string, unknown>>(sheet);
+
+for (const row of rows) {
+	const safeName = String(row["Name"] ?? "");
+	// Copy only the fields your application expects.
+}
+```
+
+## Reporting vulnerabilities
+
+See the [Security Policy](https://github.com/sebastian-software/xlsx-format/blob/main/SECURITY.md) for supported versions, private reporting guidance, and disclosure expectations.
