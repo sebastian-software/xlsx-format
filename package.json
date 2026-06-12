@@ -37,6 +37,9 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
+		"verify": "pnpm run format:check && pnpm run lint && pnpm run check && pnpm run test:coverage && pnpm run package:check && pnpm --filter docs build",
+		"package:check": "pnpm run build && pnpm dlx publint && pnpm dlx @arethetypeswrong/cli --pack . && pnpm run smoke:exports",
+		"smoke:exports": "node scripts/smoke-exports.mjs",
 		"generate-fixtures": "tsx src/__fixtures__/generate.ts",
 		"lint": "eslint src/",
 		"lint:fix": "eslint --fix src/",
@@ -64,7 +67,12 @@
 	},
 	"packageManager": "pnpm@11.6.0+sha512.9a36518224080c6fe5165afdcfe79bfa118c29be703f3f462b1e32efe1e98e47e8750b148e08286250aad4113cc7993ca413c4e2cd447752708c2ee5751bc95f",
 	"lint-staged": {
-		"*.{ts,js}": "prettier --write",
+		"src/**/*.{ts,js}": [
+			"eslint --fix",
+			"prettier --write"
+		],
+		"*.{ts,js,mjs}": "prettier --write",
+		"scripts/**/*.{js,mjs}": "prettier --write",
 		"*.{json,md,yml,yaml}": "prettier --write"
 	},
 	"license": "Apache-2.0",

@@ -86,3 +86,19 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: pnpm run build
+            - run: pnpm dlx publint
+            - run: pnpm dlx @arethetypeswrong/cli --pack .
+            - run: pnpm run smoke:exports
+
+    docs:
+        name: Build Docs
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 24
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm --filter docs build
