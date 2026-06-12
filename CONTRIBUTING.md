@@ -19,6 +19,7 @@ pnpm run format      # Prettier (auto-fix)
 pnpm test            # Run tests once
 pnpm run test:watch  # Run tests in watch mode
 pnpm run build       # Build ESM + CJS bundles
+pnpm run verify      # Run the full local quality gate
 ```
 
 ## Making Changes
@@ -26,7 +27,7 @@ pnpm run build       # Build ESM + CJS bundles
 1. Fork the repository and create a branch from `main`.
 2. Write your code. Follow the existing style -- Prettier and ESLint enforce most of it.
 3. Add or update tests for any changed behavior.
-4. Make sure all checks pass: `pnpm run check && pnpm run lint && pnpm test`
+4. Make sure all checks pass: `pnpm run verify`
 5. Use [Conventional Commits](https://www.conventionalcommits.org/) for your commit messages (e.g. `feat: add X`, `fix: handle Y`). Release Please uses these to generate the changelog.
 6. Open a pull request against `main`.
 
