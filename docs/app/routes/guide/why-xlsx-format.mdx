@@ -19,6 +19,7 @@ xlsx-format does one thing well: read and write modern Excel files. The result i
 | **Runtime deps**    | 0                              | 7                       | 9            |
 | **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No           |
 | **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV   |
+| **Styled reports**  | Yes                            | Yes                     | Yes          |
 | **API style**       | Named exports, async           | Namespace object        | Class-based  |
 | **Test coverage**   | 91%                            | Not measured            | Not measured |
 | **License**         | Apache 2.0                     | Apache 2.0              | MIT          |
@@ -57,11 +58,14 @@ What xlsx-format can read from and write to XLSX files at a glance.
 
 ### Styles
 
-| Feature                                    | Read | Write | Notes                                            |
-| ------------------------------------------ | :--: | :---: | ------------------------------------------------ |
-| Rich text (bold, italic, underline, color) | Yes  |  Yes  | Preserved in shared strings                      |
-| Cell number format references              | Yes  |  Yes  | Style index maps to format codes                 |
-| Fonts / Fills / Borders                    |  --  |  --   | Minimal defaults only; no cell-level styling API |
+| Feature                                    | Read | Write | Notes                                                |
+| ------------------------------------------ | :--: | :---: | ---------------------------------------------------- |
+| Rich text (bold, italic, underline, color) | Yes  |  Yes  | Preserved in shared strings                          |
+| Cell number format references              | Yes  |  Yes  | Style index maps to format codes                     |
+| Cell fonts                                 | Yes  |  Yes  | Name, size, bold, and RGB/ARGB color                 |
+| Solid fills                                | Yes  |  Yes  | Foreground color for title rows, headers, and totals |
+| Borders                                    | Yes  |  Yes  | Top, right, bottom, left with `thin` or `medium`     |
+| Alignment                                  | Yes  |  Yes  | Horizontal, vertical, and wrap text                  |
 
 ### Comments
 
@@ -88,6 +92,7 @@ What xlsx-format can read from and write to XLSX files at a glance.
 | Column widths         | Yes  |  Yes  | Character-unit widths                        |
 | Row heights           | Yes  |  Yes  | Point-based heights                          |
 | Hidden columns / rows | Yes  |  Yes  | Via `hidden` flag                            |
+| Frozen panes          | Yes  |  Yes  | Top rows and/or left columns via `!views`    |
 | Auto-filter range     | Yes  |  Yes  | Filter range definition (no filter criteria) |
 | Page margins          | Yes  |  Yes  | Left, right, top, bottom, header, footer     |
 
@@ -114,6 +119,6 @@ What xlsx-format can read from and write to XLSX files at a glance.
 
 ### Not Yet Supported
 
-Conditional formatting, data validation, frozen panes, charts, images, pivot tables, sparklines, VBA macros, digital signatures, sheet/workbook protection, outline grouping.
+Conditional formatting, data validation, charts, images, pivot tables, sparklines, VBA macros, digital signatures, sheet/workbook protection, outline grouping.
 
 </div>

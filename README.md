@@ -11,6 +11,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 
 The XLSX library your bundler will thank you for. Zero dependencies. Fully async. Works in Node.js and the browser.
+Use it for simple data conversion, or replace ExcelJS for styled browser report exports without carrying a workbook framework just for formatting.
 
 **[Documentation](https://sebastian-software.github.io/xlsx-format/)** | **[API Reference](https://sebastian-software.github.io/xlsx-format/api-reference)**
 
@@ -49,6 +50,7 @@ xlsx-format does one thing well: read and write modern Excel files. The result i
 | **Runtime deps**    | 0                              | 7                       | 9            |
 | **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No           |
 | **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV   |
+| **Styled reports**  | Yes                            | Yes                     | Yes          |
 | **API style**       | Named exports, async           | Namespace object        | Class-based  |
 | **Test coverage**   | 91% ([Codecov][codecov])       | Not measured            | Not measured |
 | **License**         | Apache 2.0                     | Apache 2.0              | MIT          |
@@ -88,6 +90,57 @@ link.href = URL.createObjectURL(blob);
 link.download = "output.xlsx";
 link.click();
 ```
+
+## Styled report exports
+
+Need polished XLSX output, but not the full ExcelJS object model? xlsx-format can write styled workbook reports with fonts, fills, borders, number formats, row heights, column widths, merged title rows, and frozen panes. Styling is opt-in with `cellStyles: true`, so existing unstyled exports keep their lean output.
+
+```typescript
+import {
+	arrayToSheet,
+	createWorkbook,
+	freezePanes,
+	mergeCells,
+	setCellStyle,
+	setColumnWidth,
+	setRowHeight,
+	styleRange,
+	write,
+	type CellStyle,
+} from "xlsx-format";
+
+const titleStyle: CellStyle = {
+	font: { name: "Calibri", size: 14, bold: true, color: { argb: "FFFFFFFF" } },
+	fill: { patternType: "solid", fgColor: { argb: "FF1F4E79" } },
+	alignment: { vertical: "middle" },
+};
+
+const headerStyle: CellStyle = {
+	font: { bold: true, color: { argb: "FFFFFFFF" } },
+	fill: { patternType: "solid", fgColor: { argb: "FF2E75B6" } },
+	alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+};
+
+const ws = arrayToSheet([
+	["Northstar Solar PPA - Q2 Report", null, null],
+	["Month", "Expected MWh", "Settlement"],
+	["Apr 2026", 12400, -18350],
+]);
+
+setCellStyle(ws["A1"], titleStyle);
+styleRange(ws, "A2:C2", headerStyle);
+mergeCells(ws, "A1:C1");
+setRowHeight(ws, 0, 30);
+setColumnWidth(ws, 0, 18);
+freezePanes(ws, { ySplit: 2 });
+
+const bytes = await write(createWorkbook(ws, "Overview"), {
+	type: "array",
+	cellStyles: true,
+});
+```
+
+See the [Styled Workbooks guide](https://sebastian-software.github.io/xlsx-format/guide/styled-workbooks) for a full report export example.
 
 ## Switching from SheetJS
 

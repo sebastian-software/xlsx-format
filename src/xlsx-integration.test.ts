@@ -7,6 +7,12 @@ import {
 	arrayToSheet,
 	sheetToJson,
 	createSheet,
+	setCellStyle,
+	styleRange,
+	mergeCells,
+	setRowHeight,
+	setColumnWidth,
+	freezePanes,
 	setArrayFormula,
 	setCellHyperlink,
 	setCellInternalLink,
@@ -16,7 +22,9 @@ import {
 	type WorkBook,
 	type ReadOptions,
 	type WriteOptions,
+	type CellStyle,
 } from "./index.js";
+import { zipRead, zipReadString } from "./zip/index.js";
 
 /** Write a workbook to XLSX bytes then read it back. */
 async function roundtrip(wb: WorkBook, writeOpts?: WriteOptions, readOpts?: ReadOptions): Promise<WorkBook> {
@@ -639,7 +647,141 @@ describe("Large References", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 20. Edge Cases
+// 20. Styled XLSX Writing
+// ---------------------------------------------------------------------------
+describe("Styled XLSX Writing", () => {
+	const COLORS = {
+		navy: "FF1F4E79",
+		blue: "FF2E75B6",
+		white: "FFFFFFFF",
+		border: "FFB4B4B4",
+		totalBg: "FFE2EFDA",
+	};
+
+	const titleStyle: CellStyle = {
+		font: { name: "Calibri", size: 14, bold: true, color: { argb: COLORS.white } },
+		fill: { patternType: "solid", fgColor: { argb: COLORS.navy } },
+		alignment: { vertical: "middle" },
+	};
+
+	const headerStyle: CellStyle = {
+		font: { name: "Calibri", size: 10, bold: true, color: { argb: COLORS.white } },
+		fill: { patternType: "solid", fgColor: { argb: COLORS.blue } },
+		alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+		border: {
+			top: { style: "thin", color: { argb: COLORS.border } },
+			right: { style: "thin", color: { argb: COLORS.border } },
+			bottom: { style: "thin", color: { argb: COLORS.border } },
+			left: { style: "thin", color: { argb: COLORS.border } },
+		},
+	};
+
+	it("writes dynamic styles.xml and worksheet style indexes", async () => {
+		const ws = arrayToSheet([
+			["Northstar Solar PPA - Q2 2026 Report", null, null, null],
+			[],
+			["Month", "Expected MWh", "Actual MWh", "Settlement"],
+			["Apr 2026", 12400, 12050, -18350],
+		]);
+		setCellStyle(ws["A1"], titleStyle);
+		styleRange(ws, "A3:D3", headerStyle);
+		setCellStyle(ws["D4"], { numFmt: "$#,##0;[Red]-$#,##0" });
+		mergeCells(ws, "A1:D1");
+		setRowHeight(ws, 0, 30);
+		setColumnWidth(ws, 0, 18);
+		freezePanes(ws, { ySplit: 1 });
+
+		const bytes = await write(createWorkbook(ws, "Overview"), { type: "array", cellStyles: true });
+		const zip = await zipRead(bytes);
+		const styles = zipReadString(zip, "xl/styles.xml")!;
+		const sheet = zipReadString(zip, "xl/worksheets/sheet1.xml")!;
+
+		expect(styles).toContain('<numFmts count="1">');
+		expect(styles).toContain('formatCode="$#,##0;[Red]-$#,##0"');
+		expect(styles).toContain('rgb="FF1F4E79"');
+		expect(styles).toContain('rgb="FF2E75B6"');
+		expect(styles).toContain('style="thin"');
+		expect(styles).toContain('wrapText="1"');
+		expect(sheet).toMatch(/<c r="A1"[^>]* s="\d+"/);
+		expect(sheet).toMatch(/<c r="A3"[^>]* s="\d+"/);
+		expect(sheet).toMatch(/<c r="D4"[^>]* s="\d+"/);
+		expect(sheet).toContain('<mergeCell ref="A1:D1"/>');
+		expect(sheet).toContain('<pane state="frozen" activePane="bottomLeft" ySplit="1" topLeftCell="A2"/>');
+	});
+
+	it("roundtrips supported style metadata with cellStyles", async () => {
+		const ws = arrayToSheet([["Title"], ["Month", "Settlement"], ["Apr 2026", -18350]]);
+		setCellStyle(ws["A1"], titleStyle);
+		styleRange(ws, "A2:B2", headerStyle);
+		setCellStyle(ws["B3"], { numFmt: "$#,##0;[Red]-$#,##0" });
+
+		const wb2 = await roundtrip(createWorkbook(ws, "Overview"), { cellStyles: true }, { cellStyles: true });
+
+		expect(wb2.Sheets["Overview"]["A1"].s?.font?.bold).toBe(true);
+		expect(wb2.Sheets["Overview"]["A1"].s?.font?.color?.rgb).toBe(COLORS.white);
+		expect(wb2.Sheets["Overview"]["A2"].s?.fill?.fgColor?.rgb).toBe(COLORS.blue);
+		expect(wb2.Sheets["Overview"]["A2"].s?.border?.top?.style).toBe("thin");
+		expect(wb2.Sheets["Overview"]["A2"].s?.alignment?.wrapText).toBe(true);
+		expect(wb2.Sheets["Overview"]["B3"].s?.numFmt).toBe("$#,##0;[Red]-$#,##0");
+	});
+
+	it("helper APIs support report-style metadata and multiple sheets", async () => {
+		const overview = arrayToSheet([
+			["Northstar Solar PPA - Q2 2026 Report", null, null, null],
+			[],
+			["Month", "Expected MWh", "Actual MWh", "Settlement"],
+			["Apr 2026", 12400, 12050, -18350],
+			["Q2 Total", 39700, 40490, 39370],
+		]);
+		setCellStyle(overview["A1"], titleStyle);
+		styleRange(overview, "A3:D3", headerStyle);
+		styleRange(overview, "A5:D5", {
+			fill: { patternType: "solid", fgColor: { argb: COLORS.totalBg } },
+			font: { bold: true },
+		});
+		mergeCells(overview, "A1:D1");
+		setRowHeight(overview, 0, 30);
+		setRowHeight(overview, 2, 22);
+		setColumnWidth(overview, 0, 18);
+		setColumnWidth(overview, 1, 16);
+		freezePanes(overview, { ySplit: 1 });
+
+		const details = arrayToSheet([["Project", "Northstar Solar"]]);
+		const wb = createWorkbook(overview, "Overview");
+		appendSheet(wb, details, "Details");
+
+		const wb2 = await roundtrip(wb, { cellStyles: true }, { cellStyles: true });
+
+		expect(wb2.SheetNames).toEqual(["Overview", "Details"]);
+		expect(wb2.Sheets["Overview"]["!merges"]?.[0]).toEqual({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
+		expect(wb2.Sheets["Overview"]["!rows"]?.[0].hpt).toBe(30);
+		expect(wb2.Sheets["Overview"]["!cols"]?.[0].width).toBe(18);
+		expect(wb2.Sheets["Overview"]["!views"]?.[0].ySplit).toBe(1);
+		expect(wb2.Sheets["Overview"]["A5"].s?.fill?.fgColor?.rgb).toBe(COLORS.totalBg);
+	});
+
+	it("can write styled empty cells when styleRange creates stubs", async () => {
+		const ws = createSheet();
+		styleRange(ws, "A1:C1", { fill: { patternType: "solid", fgColor: { rgb: "EDF2F7" } } }, { createCells: true });
+		const bytes = await write(createWorkbook(ws, "S"), { type: "array", cellStyles: true });
+		const sheet = zipReadString(await zipRead(bytes), "xl/worksheets/sheet1.xml")!;
+
+		expect(sheet).toMatch(/<c r="A1"[^>]* s="\d+"\/>/);
+		expect(sheet).toMatch(/<c r="C1"[^>]* s="\d+"\/>/);
+	});
+
+	it("does not emit cell style indexes unless cellStyles is enabled", async () => {
+		const ws = arrayToSheet([["Styled but disabled"]]);
+		setCellStyle(ws["A1"], titleStyle);
+		const bytes = await write(createWorkbook(ws, "S"), { type: "array" });
+		const sheet = zipReadString(await zipRead(bytes), "xl/worksheets/sheet1.xml")!;
+
+		expect(sheet).not.toMatch(/<c r="A1"[^>]* s="\d+"/);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// 21. Edge Cases
 // ---------------------------------------------------------------------------
 describe("Edge Cases", () => {
 	it("empty sheet roundtrips", async () => {

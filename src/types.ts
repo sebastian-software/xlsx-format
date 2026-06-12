@@ -166,6 +166,70 @@ export interface Hyperlink {
 	Tooltip?: string;
 }
 
+/** RGB/ARGB color descriptor used in cell styles */
+export interface StyleColor {
+	/** 6-digit RGB color or 8-digit ARGB color */
+	rgb?: string;
+	/** 8-digit ARGB color, ExcelJS-compatible */
+	argb?: string;
+}
+
+/** Font style properties for a cell */
+export interface CellFont {
+	/** Font family name */
+	name?: string;
+	/** Font size in points */
+	size?: number;
+	/** If true, use bold weight */
+	bold?: boolean;
+	/** Font color */
+	color?: StyleColor;
+}
+
+/** Fill style properties for a cell */
+export interface CellFill {
+	/** Pattern fill type. Only "solid" is currently written. */
+	patternType?: "solid";
+	/** Foreground fill color */
+	fgColor?: StyleColor;
+}
+
+/** Supported cell border line styles */
+export type CellBorderStyle = "thin" | "medium";
+
+/** Border side descriptor */
+export interface CellBorderSide {
+	/** Border line style */
+	style: CellBorderStyle;
+	/** Border line color */
+	color?: StyleColor;
+}
+
+/** Border style properties for a cell */
+export interface CellBorder {
+	top?: CellBorderSide;
+	right?: CellBorderSide;
+	bottom?: CellBorderSide;
+	left?: CellBorderSide;
+}
+
+/** Cell alignment properties */
+export interface CellAlignment {
+	horizontal?: "left" | "center" | "right";
+	vertical?: "top" | "middle" | "bottom";
+	wrapText?: boolean;
+}
+
+/** Serializable XLSX cell style */
+export interface CellStyle {
+	font?: CellFont;
+	fill?: CellFill;
+	border?: CellBorder;
+	alignment?: CellAlignment;
+	/** Number format string or built-in format ID */
+	numFmt?: NumberFormat;
+}
+
 /** Worksheet Cell Object containing value, format, formula, and metadata */
 export interface CellObject {
 	/** Raw cell value (string, number, boolean, or Date) */
@@ -191,7 +255,7 @@ export interface CellObject {
 	/** Hyperlink on this cell */
 	l?: Hyperlink;
 	/** Style object (when cellStyles option is enabled) */
-	s?: any;
+	s?: CellStyle;
 	/** Raw XF (extended format) record data */
 	XF?: { numFmtId?: number };
 }
@@ -298,6 +362,20 @@ export interface AutoFilterInfo {
 	ref: string;
 }
 
+/** Frozen pane / sheet view metadata */
+export interface SheetView {
+	/** Sheet view state. Only "frozen" is currently written. */
+	state?: "frozen";
+	/** Number of columns frozen from the left */
+	xSplit?: number;
+	/** Number of rows frozen from the top */
+	ySplit?: number;
+	/** Top-left visible cell in the scrollable pane */
+	topLeftCell?: string;
+	/** Active pane name */
+	activePane?: "topRight" | "bottomLeft" | "bottomRight";
+}
+
 /** Dense (2D array) storage for worksheet data: rows of columns of optional cells */
 export type DenseSheetData = ((CellObject | undefined)[] | undefined)[];
 
@@ -328,6 +406,8 @@ export interface WorkSheet extends Sheet {
 	"!rows"?: RowInfo[];
 	/** Array of merged cell ranges */
 	"!merges"?: Range[];
+	/** Sheet view definitions such as frozen panes */
+	"!views"?: SheetView[];
 	/** Sheet protection settings */
 	"!protect"?: ProtectInfo;
 	/** AutoFilter definition */

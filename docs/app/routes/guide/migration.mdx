@@ -41,24 +41,24 @@ Instead of accessing everything through `XLSX.*`, import each function by name.
 
 ## Function Name Mapping
 
-| SheetJS                          | xlsx-format                                                   |
-| -------------------------------- | ------------------------------------------------------------- |
-| `XLSX.read()`                    | `read()`                                                      |
-| `XLSX.readFile(path)`            | `read(await fs.readFile(path))`                               |
-| `XLSX.write()`                   | `write()`                                                     |
-| `XLSX.writeFile(wb, path)`       | `await fs.writeFile(path, await write(wb))`                   |
-| `XLSX.utils.sheet_to_json()`     | `sheetToJson()`                                               |
-| `XLSX.utils.json_to_sheet()`     | `jsonToSheet()`                                               |
-| `XLSX.utils.sheet_to_csv()`      | `sheetToCsv()`                                                |
-| `XLSX.utils.sheet_to_html()`     | `sheetToHtml()`                                               |
-| `XLSX.utils.aoa_to_sheet()`      | `arrayToSheet()`                                              |
-| `XLSX.utils.sheet_to_formulae()` | `sheetToFormulae()`                                           |
-| `XLSX.utils.decode_cell()`       | `decodeCell()`                                                |
-| `XLSX.utils.encode_cell()`       | `encodeCell()`                                                |
-| `XLSX.utils.decode_range()`      | `decodeRange()`                                               |
-| `XLSX.utils.encode_range()`      | `encodeRange()`                                               |
-| `XLSX.utils.book_new()`          | `createWorkbook()`                                            |
-| `XLSX.utils.book_append_sheet()` | `appendSheet()`                                               |
+| SheetJS                          | xlsx-format                                 |
+| -------------------------------- | ------------------------------------------- |
+| `XLSX.read()`                    | `read()`                                    |
+| `XLSX.readFile(path)`            | `read(await fs.readFile(path))`             |
+| `XLSX.write()`                   | `write()`                                   |
+| `XLSX.writeFile(wb, path)`       | `await fs.writeFile(path, await write(wb))` |
+| `XLSX.utils.sheet_to_json()`     | `sheetToJson()`                             |
+| `XLSX.utils.json_to_sheet()`     | `jsonToSheet()`                             |
+| `XLSX.utils.sheet_to_csv()`      | `sheetToCsv()`                              |
+| `XLSX.utils.sheet_to_html()`     | `sheetToHtml()`                             |
+| `XLSX.utils.aoa_to_sheet()`      | `arrayToSheet()`                            |
+| `XLSX.utils.sheet_to_formulae()` | `sheetToFormulae()`                         |
+| `XLSX.utils.decode_cell()`       | `decodeCell()`                              |
+| `XLSX.utils.encode_cell()`       | `encodeCell()`                              |
+| `XLSX.utils.decode_range()`      | `decodeRange()`                             |
+| `XLSX.utils.encode_range()`      | `encodeRange()`                             |
+| `XLSX.utils.book_new()`          | `createWorkbook()`                          |
+| `XLSX.utils.book_append_sheet()` | `appendSheet()`                             |
 
 ## File I/O
 
@@ -85,6 +85,41 @@ const wb = await read(await readFile("data.csv", "utf-8"), { type: "string" });
 ## Cell Objects Stay the Same
 
 Cell objects keep the same shape. `{ t: "n", v: 42, w: "42" }` works exactly as before. No data migration needed.
+
+## Replacing ExcelJS for Styled Exports
+
+If you only keep ExcelJS for polished report exports, xlsx-format can cover that job without adopting the ExcelJS workbook class model. Keep your sheet-shaped data and add styles through `cell.s` or helper functions.
+
+```typescript
+import { arrayToSheet, createWorkbook, styleRange, mergeCells, freezePanes, write } from "xlsx-format";
+
+const sheet = arrayToSheet([
+	["Northstar Solar PPA - Q2 Report", null, null],
+	["Month", "Expected MWh", "Settlement"],
+	["Apr 2026", 12400, -18350],
+]);
+
+sheet["A1"].s = {
+	font: { bold: true, color: { argb: "FFFFFFFF" } },
+	fill: { patternType: "solid", fgColor: { argb: "FF1F4E79" } },
+};
+
+styleRange(sheet, "A2:C2", {
+	font: { bold: true, color: { argb: "FFFFFFFF" } },
+	fill: { patternType: "solid", fgColor: { argb: "FF2E75B6" } },
+	alignment: { horizontal: "center", wrapText: true },
+});
+
+mergeCells(sheet, "A1:C1");
+freezePanes(sheet, { ySplit: 2 });
+
+const data = await write(createWorkbook(sheet, "Overview"), {
+	type: "array",
+	cellStyles: true,
+});
+```
+
+This is intentionally not an ExcelJS compatibility layer. It is a smaller style-writing model for browser-friendly XLSX reports: fonts, fills, borders, alignment, number formats, row heights, column widths, merged cells, frozen panes, and multiple sheets.
 
 ## What's Different Under the Hood
 

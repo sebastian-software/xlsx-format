@@ -131,7 +131,7 @@ function safe_parse_sheet(
 		let _ws: WorkSheet | undefined;
 		switch (stype) {
 			case "sheet":
-				_ws = parseWorksheetXml(data, opts);
+				_ws = parseWorksheetXml(data, opts, idx, sheetRels[sheetName], wb, themes, styles);
 				break;
 			default:
 				return;

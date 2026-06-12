@@ -8,7 +8,7 @@ import { writeCoreProperties } from "../opc/core-properties.js";
 import { writeExtendedProperties } from "../opc/extended-properties.js";
 import { writeCustomProperties } from "../opc/custom-properties.js";
 import { writeSstXml } from "./shared-strings.js";
-import { writeStylesXml } from "./styles.js";
+import { buildStyleRegistry, writeStylesXml } from "./styles.js";
 import { write_theme_xml } from "./theme.js";
 import { writeWorkbookXml } from "./workbook.js";
 import { writeWorksheetXml } from "./worksheet.js";
@@ -52,6 +52,9 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 	let filePath = "";
 
 	opts.cellXfs = [];
+	if (opts.cellStyles) {
+		opts.styleRegistry = buildStyleRegistry(wb, opts);
+	}
 
 	if (!wb.Props) {
 		wb.Props = {};

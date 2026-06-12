@@ -1,4 +1,4 @@
-import type { WorkSheet, CellObject, Range, ColInfo, RowInfo, MarginInfo } from "../types.js";
+import type { WorkSheet, CellObject, Range, ColInfo, RowInfo, MarginInfo, SheetView } from "../types.js";
 import { parseXmlTag, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
@@ -9,6 +9,7 @@ import { formatTable } from "../ssf/table.js";
 import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
 import type { SST } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
+import { getCellStyleIndex, getStyleFromXf } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
 
 /** Regex patterns for extracting various worksheet XML elements */
@@ -18,6 +19,7 @@ const dimregex = /"(\w*:\w*)"/;
 const colregex = /<(?:\w+:)?col\b[^<>]*[/]?>/g;
 const afregex = /<(?:\w:)?autoFilter[^>]*([/]|>([\s\S]*)<\/(?:\w:)?autoFilter)>/g;
 const marginregex = /<(?:\w+:)?pageMargins[^<>]*\/>/g;
+const sheetViewRegex = /<(?:\w+:)?sheetView\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?sheetView>)/;
 
 /** Parse the <dimension> element to set the sheet reference range */
 function parseWorksheetXml_dim(ws: WorkSheet, s: string): void {
@@ -69,6 +71,35 @@ function parseWorksheetXml_cols(columns: ColInfo[], cols: string[]): void {
 			}
 		}
 	}
+}
+
+function parseWorksheetXml_views(data: string): SheetView[] | undefined {
+	const match = data.match(sheetViewRegex);
+	if (!match) {
+		return undefined;
+	}
+	const pane = match[0].match(/<(?:\w+:)?pane\b[^>]*\/>/);
+	if (!pane) {
+		return undefined;
+	}
+	const tag = parseXmlTag(pane[0]);
+	if (tag.state !== "frozen") {
+		return undefined;
+	}
+	const view: SheetView = { state: "frozen" };
+	if (tag.xSplit) {
+		view.xSplit = parseFloat(tag.xSplit);
+	}
+	if (tag.ySplit) {
+		view.ySplit = parseFloat(tag.ySplit);
+	}
+	if (tag.topLeftCell) {
+		view.topLeftCell = tag.topLeftCell;
+	}
+	if (tag.activePane === "topRight" || tag.activePane === "bottomLeft" || tag.activePane === "bottomRight") {
+		view.activePane = tag.activePane;
+	}
+	return [view];
 }
 
 /** Parse <hyperlink> elements and attach link objects to the corresponding cells */
@@ -287,6 +318,12 @@ function parseSheetData(
 				const xf = styles.CellXf[cellStyle];
 				if (xf) {
 					cell.XF = { numFmtId: xf.numFmtId };
+					if (opts.cellStyles) {
+						const style = getStyleFromXf(styles, cellStyle);
+						if (style) {
+							cell.s = style;
+						}
+					}
 					if (opts.cellNF) {
 						const nf = styles.NumberFmt[xf.numFmtId] || formatTable[xf.numFmtId];
 						if (nf) {
@@ -469,6 +506,10 @@ export function parseWorksheetXml(
 		if (cols) {
 			parseWorksheetXml_cols(columns, cols);
 		}
+		const views = parseWorksheetXml_views(data1);
+		if (views) {
+			s["!views"] = views;
+		}
 	}
 
 	// SheetData (cells)
@@ -563,6 +604,52 @@ function writeWorksheetXml_merges(merges: Range[]): string {
 	return lines.join("");
 }
 
+function getFrozenPaneTopLeftCell(view: SheetView): string | undefined {
+	if (view.topLeftCell) {
+		return view.topLeftCell;
+	}
+	const xSplit = view.xSplit || 0;
+	const ySplit = view.ySplit || 0;
+	if (xSplit <= 0 && ySplit <= 0) {
+		return undefined;
+	}
+	return encodeCell({ r: ySplit, c: xSplit });
+}
+
+function getFrozenPaneActivePane(view: SheetView): "topRight" | "bottomLeft" | "bottomRight" {
+	if (view.activePane) {
+		return view.activePane;
+	}
+	if (view.xSplit && view.ySplit) {
+		return "bottomRight";
+	}
+	return view.xSplit ? "topRight" : "bottomLeft";
+}
+
+function writeWorksheetXml_sheetViews(ws: WorkSheet, idx: number): string {
+	const view = ws["!views"]?.find(
+		(item) => item?.state === "frozen" && ((item.xSplit || 0) > 0 || (item.ySplit || 0) > 0),
+	);
+	const attrs = idx === 0 ? ' tabSelected="1"' : "";
+	if (!view) {
+		return '<sheetViews><sheetView workbookViewId="0"' + attrs + "/></sheetViews>";
+	}
+	const paneAttrs: Record<string, string> = { state: "frozen", activePane: getFrozenPaneActivePane(view) };
+	if (view.xSplit) {
+		paneAttrs.xSplit = String(view.xSplit);
+	}
+	if (view.ySplit) {
+		paneAttrs.ySplit = String(view.ySplit);
+	}
+	const topLeftCell = getFrozenPaneTopLeftCell(view);
+	if (topLeftCell) {
+		paneAttrs.topLeftCell = topLeftCell;
+	}
+	const pane = writeXmlElement("pane", null, paneAttrs);
+	const selection = writeXmlElement("selection", null, { pane: paneAttrs.activePane });
+	return '<sheetViews><sheetView workbookViewId="0"' + attrs + ">" + pane + selection + "</sheetView></sheetViews>";
+}
+
 /**
  * Write a worksheet as XML.
  *
@@ -588,12 +675,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	const ref = ws["!ref"] || "A1";
 	lines.push('<dimension ref="' + ref + '"/>');
 
-	lines.push('<sheetViews><sheetView workbookViewId="0"');
-	// Mark the first sheet as the active/selected tab
-	if (_idx === 0) {
-		lines.push(' tabSelected="1"');
-	}
-	lines.push("/></sheetViews>");
+	lines.push(writeWorksheetXml_sheetViews(ws, _idx));
 
 	lines.push('<sheetFormatPr defaultRowHeight="15"/>');
 
@@ -638,8 +720,9 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 				const addr = encodeCell({ r: rowIdx, c: colIdx });
 				cell = ws[addr] as CellObject | undefined;
 			}
-			// Skip empty and "z" (stub) cells
-			if (!cell || cell.t === "z") {
+			const styleIndex = cell ? getCellStyleIndex(opts, cell) : undefined;
+			// Skip empty and unstyled "z" (stub) cells
+			if (!cell || (cell.t === "z" && styleIndex == null)) {
 				continue;
 			}
 
@@ -677,6 +760,14 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 			let cellXml = '<c r="' + addr + '"';
 			if (cellTypeAttr) {
 				cellXml += ' t="' + cellTypeAttr + '"';
+			}
+			if (styleIndex != null && styleIndex > 0) {
+				cellXml += ' s="' + styleIndex + '"';
+			}
+			if (!cell.f && cellValueStr === "") {
+				cellXml += "/>";
+				row_cells.push(cellXml);
+				continue;
 			}
 			cellXml += ">";
 			if (cell.f) {

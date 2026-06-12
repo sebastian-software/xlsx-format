@@ -34,8 +34,8 @@ const rows = sheetToJson(workbook.Sheets[workbook.SheetNames[0]]);
 
 // Write JSON back to Excel
 const sheet = jsonToSheet([
-  { Name: "Alice", Revenue: 48000 },
-  { Name: "Bob", Revenue: 52000 },
+	{ Name: "Alice", Revenue: 48000 },
+	{ Name: "Bob", Revenue: 52000 },
 ]);
 await writeFile("output.xlsx", await write(createWorkbook(sheet, "Q4 Sales")));
 ```
@@ -98,7 +98,7 @@ import { write } from "xlsx-format";
 // Trigger a download
 const data = await write(workbook, { type: "array" });
 const blob = new Blob([data], {
-  type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+	type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 });
 
 const link = document.createElement("a");
@@ -128,7 +128,10 @@ const html = sheetToHtml(sheet);
 
 // JSON / arrays / CSV / HTML -> Sheet
 const sheet1 = jsonToSheet([{ Name: "Alice", Age: 30 }]);
-const sheet2 = arrayToSheet([["Name", "Age"], ["Alice", 30]]);
+const sheet2 = arrayToSheet([
+	["Name", "Age"],
+	["Alice", 30],
+]);
 const sheet3 = csvToSheet("Name,Age\nAlice,30");
 const sheet4 = htmlToSheet("<table><tr><td>Name</td></tr></table>");
 ```
@@ -140,7 +143,7 @@ import { createWorkbook, appendSheet, setSheetVisibility } from "xlsx-format";
 
 const wb = createWorkbook(firstSheet, "Sheet1");
 appendSheet(wb, secondSheet, "Sheet2");
-setSheetVisibility(wb, 1, "hidden");
+setSheetVisibility(wb, 1, 1);
 ```
 
 ## Cell Utilities
@@ -148,21 +151,56 @@ setSheetVisibility(wb, 1, "hidden");
 ```typescript
 import { setCellNumberFormat, setCellHyperlink, addCellComment, setArrayFormula } from "xlsx-format";
 
-setCellNumberFormat(sheet, "B2", "#,##0.00");
-setCellHyperlink(sheet, "A1", "https://example.com");
-addCellComment(sheet, "C3", "Check this value", "Alice");
+setCellNumberFormat(sheet["B2"], "#,##0.00");
+setCellHyperlink(sheet["A1"], "https://example.com");
+addCellComment(sheet["C3"], "Check this value", "Alice");
 setArrayFormula(sheet, "D1:D10", "=A1:A10*B1:B10");
 ```
+
+## Styled Workbooks
+
+Use styled writing when you need polished report exports: branded title rows, table headers, totals, merged cells, row heights, column widths, and frozen panes. This is the lightweight path for replacing ExcelJS in browser exports without cloning the ExcelJS class API.
+
+```typescript
+import { arrayToSheet, createWorkbook, styleRange, mergeCells, freezePanes, write } from "xlsx-format";
+
+const sheet = arrayToSheet([
+	["Northstar Solar PPA - Q2 Report", null, null],
+	["Month", "Expected MWh", "Settlement"],
+	["Apr 2026", 12400, -18350],
+]);
+
+sheet["A1"].s = {
+	font: { bold: true, color: { argb: "FFFFFFFF" } },
+	fill: { patternType: "solid", fgColor: { argb: "FF1F4E79" } },
+};
+
+styleRange(sheet, "A2:C2", {
+	font: { bold: true, color: { argb: "FFFFFFFF" } },
+	fill: { patternType: "solid", fgColor: { argb: "FF2E75B6" } },
+	alignment: { horizontal: "center", wrapText: true },
+});
+
+mergeCells(sheet, "A1:C1");
+freezePanes(sheet, { ySplit: 2 });
+
+const data = await write(createWorkbook(sheet, "Overview"), {
+	type: "array",
+	cellStyles: true,
+});
+```
+
+See [Styled Workbooks](/guide/styled-workbooks) for a full report export example.
 
 ## Cell Addresses
 
 ```typescript
 import { decodeCell, encodeCell, decodeRange, encodeRange } from "xlsx-format";
 
-decodeCell("B3");       // { r: 2, c: 1 }
+decodeCell("B3"); // { r: 2, c: 1 }
 encodeCell({ r: 2, c: 1 }); // "B3"
-decodeRange("A1:C5");   // { s: { r: 0, c: 0 }, e: { r: 4, c: 2 } }
-encodeRange(range);      // "A1:C5"
+decodeRange("A1:C5"); // { s: { r: 0, c: 0 }, e: { r: 4, c: 2 } }
+encodeRange(range); // "A1:C5"
 ```
 
 ## Runtime Support
@@ -173,6 +211,7 @@ encodeRange(range);      // "A1:C5"
 
 ## Next Steps
 
+- [Styled Workbooks](/guide/styled-workbooks) -- Build report exports that can replace ExcelJS styling flows
 - [Why xlsx-format?](/guide/why-xlsx-format) -- See how xlsx-format compares to SheetJS and ExcelJS
 - [Migration Guide](/guide/migration) -- Step-by-step guide for switching from SheetJS
 - [API Reference](/api-reference) -- Full API documentation

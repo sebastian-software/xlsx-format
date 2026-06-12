@@ -28,6 +28,7 @@ export default defineConfig({
 						text: "Guide",
 						items: [
 							{ text: "Getting Started", link: "/guide/getting-started" },
+							{ text: "Styled Workbooks", link: "/guide/styled-workbooks" },
 							{ text: "Why xlsx-format?", link: "/guide/why-xlsx-format" },
 							{ text: "Migration from SheetJS", link: "/guide/migration" },
 						],

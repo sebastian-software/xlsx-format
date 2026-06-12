@@ -1,6 +1,6 @@
-import type { WorkBook, WorkSheet, CellObject, Hyperlink } from "../types.js";
+import type { WorkBook, WorkSheet, CellObject, Hyperlink, CellStyle, Range } from "../types.js";
 import { validateSheetName } from "../xlsx/workbook.js";
-import { encodeCol, encodeRow, encodeRange, decodeRange, safeDecodeRange } from "../utils/cell.js";
+import { encodeCol, encodeRow, encodeRange, decodeRange, safeDecodeRange, encodeCell } from "../utils/cell.js";
 
 /**
  * Create a new blank workbook, optionally containing an initial worksheet.
@@ -145,6 +145,128 @@ export function setSheetVisibility(wb: WorkBook, sh: number | string, vis: 0 | 1
 export function setCellNumberFormat(cell: CellObject, fmt: string | number): CellObject {
 	cell.z = fmt;
 	return cell;
+}
+
+/** Set or replace the style object on a cell. */
+export function setCellStyle(cell: CellObject, style: CellStyle): CellObject {
+	cell.s = style;
+	return cell;
+}
+
+function expandSheetRef(ws: WorkSheet, range: Range): void {
+	if (!ws["!ref"]) {
+		ws["!ref"] = encodeRange(range);
+		return;
+	}
+	const current = decodeRange(ws["!ref"]);
+	if (current.s.r > range.s.r) {
+		current.s.r = range.s.r;
+	}
+	if (current.s.c > range.s.c) {
+		current.s.c = range.s.c;
+	}
+	if (current.e.r < range.e.r) {
+		current.e.r = range.e.r;
+	}
+	if (current.e.c < range.e.c) {
+		current.e.c = range.e.c;
+	}
+	ws["!ref"] = encodeRange(current);
+}
+
+function getOrCreateCell(ws: WorkSheet, row: number, col: number, create: boolean): CellObject | undefined {
+	if (ws["!data"]) {
+		if (!ws["!data"][row]) {
+			if (!create) {
+				return undefined;
+			}
+			ws["!data"][row] = [];
+		}
+		const cells = ws["!data"][row];
+		let cell = cells[col];
+		if (!cell && create) {
+			cell = { t: "z" };
+			cells[col] = cell;
+		}
+		return cell;
+	}
+	const ref = encodeCell({ r: row, c: col });
+	let cell = ws[ref] as CellObject | undefined;
+	if (!cell && create) {
+		cell = { t: "z" };
+		ws[ref] = cell;
+	}
+	return cell;
+}
+
+/** Apply a style to every existing cell in a range, optionally creating styled stub cells. */
+export function styleRange(
+	ws: WorkSheet,
+	range: string | Range,
+	style: CellStyle,
+	opts?: { createCells?: boolean },
+): WorkSheet {
+	const rng = typeof range === "string" ? safeDecodeRange(range) : range;
+	const createCells = !!opts?.createCells;
+	for (let R = rng.s.r; R <= rng.e.r; ++R) {
+		for (let C = rng.s.c; C <= rng.e.c; ++C) {
+			const cell = getOrCreateCell(ws, R, C, createCells);
+			if (cell) {
+				cell.s = style;
+			}
+		}
+	}
+	if (createCells) {
+		expandSheetRef(ws, rng);
+	}
+	return ws;
+}
+
+/** Add a merged-cell range and expand `!ref` to include it. */
+export function mergeCells(ws: WorkSheet, range: string | Range): WorkSheet {
+	const rng = typeof range === "string" ? safeDecodeRange(range) : range;
+	if (!ws["!merges"]) {
+		ws["!merges"] = [];
+	}
+	ws["!merges"].push(rng);
+	expandSheetRef(ws, rng);
+	return ws;
+}
+
+/** Set a row height in points. Row indexes are zero-based. */
+export function setRowHeight(ws: WorkSheet, row: number, hpt: number): WorkSheet {
+	if (!ws["!rows"]) {
+		ws["!rows"] = [];
+	}
+	if (!ws["!rows"][row]) {
+		ws["!rows"][row] = {};
+	}
+	ws["!rows"][row].hpt = hpt;
+	return ws;
+}
+
+/** Set a column width. Column indexes are zero-based. */
+export function setColumnWidth(ws: WorkSheet, col: number, width: number): WorkSheet {
+	if (!ws["!cols"]) {
+		ws["!cols"] = [];
+	}
+	if (!ws["!cols"][col]) {
+		ws["!cols"][col] = {};
+	}
+	ws["!cols"][col].width = width;
+	return ws;
+}
+
+/** Freeze rows and/or columns in a worksheet view. */
+export function freezePanes(ws: WorkSheet, pane: { xSplit?: number; ySplit?: number }): WorkSheet {
+	ws["!views"] = [
+		{
+			state: "frozen",
+			xSplit: pane.xSplit,
+			ySplit: pane.ySplit,
+		},
+	];
+	return ws;
 }
 
 /**

@@ -1,0 +1,173 @@
+---
+title: Styled Workbooks
+---
+
+# Styled Workbooks
+
+Use styled workbook writing when the export needs to look like a report, not just a data dump. This is the path for replacing the last ExcelJS export in an app that already uses xlsx-format for simpler XLSX work.
+
+xlsx-format does not clone the ExcelJS class API. It keeps the SheetJS-shaped workbook model and adds a typed style layer around `cell.s`, plus helper functions for the report details teams usually need: title rows, table headers, totals, merged cells, row heights, column widths, and frozen panes.
+
+## When to use styled writing
+
+Styled writing is a good fit for:
+
+- Quarterly reports and invoice exports
+- Branded workbooks with title rows and section rows
+- Tables with header fills, borders, totals, and number formats
+- Browser-generated XLSX downloads where ExcelJS would add too much bundle and runtime weight
+
+For plain data exports, keep using `write(workbook)` without `cellStyles`. Style writing is opt-in:
+
+```typescript
+const data = await write(workbook, {
+	type: "array",
+	cellStyles: true,
+});
+```
+
+## Style model
+
+You can assign styles directly on cells:
+
+```typescript
+sheet["A1"] = {
+	t: "s",
+	v: "Northstar Solar PPA - Q2 Report",
+	s: {
+		font: { name: "Calibri", size: 14, bold: true, color: { argb: "FFFFFFFF" } },
+		fill: { patternType: "solid", fgColor: { argb: "FF1F4E79" } },
+		alignment: { vertical: "middle" },
+	},
+};
+```
+
+Or use helpers when the code is easier to read that way:
+
+```typescript
+setCellStyle(sheet["A1"], titleStyle);
+styleRange(sheet, "A3:D3", headerStyle);
+mergeCells(sheet, "A1:D1");
+setRowHeight(sheet, 0, 30);
+setColumnWidth(sheet, 0, 18);
+freezePanes(sheet, { ySplit: 2 });
+```
+
+Supported style properties cover the common report surface:
+
+- Fonts: name, size, bold, color
+- Fills: solid foreground color
+- Borders: top, right, bottom, left with `thin` or `medium`
+- Alignment: horizontal, vertical, wrap text
+- Number formats: built-in or custom format strings
+
+## Report export example
+
+This example builds a fake quarterly report with a merged title, styled table header, totals row, column widths, row heights, and frozen header rows.
+
+```typescript
+import {
+	appendSheet,
+	arrayToSheet,
+	createWorkbook,
+	freezePanes,
+	mergeCells,
+	setCellStyle,
+	setColumnWidth,
+	setRowHeight,
+	styleRange,
+	write,
+	type CellStyle,
+} from "xlsx-format";
+
+const COLORS = {
+	navy: "FF1F4E79",
+	blue: "FF2E75B6",
+	white: "FFFFFFFF",
+	border: "FFB4B4B4",
+	totalBg: "FFE2EFDA",
+};
+
+const titleStyle: CellStyle = {
+	font: { name: "Calibri", size: 14, bold: true, color: { argb: COLORS.white } },
+	fill: { patternType: "solid", fgColor: { argb: COLORS.navy } },
+	alignment: { vertical: "middle" },
+};
+
+const headerStyle: CellStyle = {
+	font: { name: "Calibri", size: 10, bold: true, color: { argb: COLORS.white } },
+	fill: { patternType: "solid", fgColor: { argb: COLORS.blue } },
+	alignment: { horizontal: "center", vertical: "middle", wrapText: true },
+	border: {
+		top: { style: "thin", color: { argb: COLORS.border } },
+		right: { style: "thin", color: { argb: COLORS.border } },
+		bottom: { style: "thin", color: { argb: COLORS.border } },
+		left: { style: "thin", color: { argb: COLORS.border } },
+	},
+};
+
+const totalStyle: CellStyle = {
+	font: { bold: true },
+	fill: { patternType: "solid", fgColor: { argb: COLORS.totalBg } },
+	border: headerStyle.border,
+};
+
+const currencyStyle: CellStyle = {
+	numFmt: "$#,##0;[Red]-$#,##0",
+};
+
+const overview = arrayToSheet([
+	["Northstar Solar PPA - Q2 2026 Report", null, null, null],
+	[],
+	["Month", "Expected MWh", "Actual MWh", "Settlement"],
+	["Apr 2026", 12400, 12050, -18350],
+	["May 2026", 13100, 13980, 44200],
+	["Jun 2026", 14200, 14460, 13520],
+	["Q2 Total", 39700, 40490, 39370],
+]);
+
+setCellStyle(overview["A1"], titleStyle);
+styleRange(overview, "A3:D3", headerStyle);
+styleRange(overview, "A7:D7", totalStyle);
+styleRange(overview, "D4:D7", currencyStyle);
+
+mergeCells(overview, "A1:D1");
+setRowHeight(overview, 0, 30);
+setRowHeight(overview, 2, 22);
+setColumnWidth(overview, 0, 18);
+setColumnWidth(overview, 1, 16);
+setColumnWidth(overview, 2, 16);
+setColumnWidth(overview, 3, 16);
+freezePanes(overview, { ySplit: 3 });
+
+const wb = createWorkbook(overview, "Overview");
+appendSheet(wb, arrayToSheet([["Project", "Northstar Solar"]]), "Details");
+
+const data = await write(wb, {
+	type: "array",
+	cellStyles: true,
+});
+```
+
+## Browser download
+
+The writer stays browser-compatible. Wrap the `Uint8Array` in a Blob and trigger the download from your UI.
+
+```typescript
+const blob = new Blob([data], {
+	type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+});
+
+const link = document.createElement("a");
+link.href = URL.createObjectURL(blob);
+link.download = "northstar-q2-report.xlsx";
+link.click();
+URL.revokeObjectURL(link.href);
+```
+
+## Notes and limits
+
+- Style writing only runs when `cellStyles: true` is passed to `write`.
+- Equivalent styles are deduplicated into shared XLSX style tables.
+- `read(..., { cellStyles: true })` restores enough style metadata for verification and editing flows.
+- This is not ExcelJS compatibility. It is a lightweight XLSX style-writing model for teams that want styled report output without keeping ExcelJS in the bundle.

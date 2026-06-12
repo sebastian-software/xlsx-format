@@ -1,5 +1,5 @@
 import { Hero, Features } from "ardo/ui"
-import { Package, Zap, ShieldCheck, Globe, TreePine, ArrowLeftRight, ArrowRight, Github } from "lucide-react"
+import { Package, Zap, ShieldCheck, Globe, Paintbrush, ArrowLeftRight, ArrowRight, Github } from "lucide-react"
 import config from "virtual:ardo/config"
 
 export default function HomePage() {
@@ -37,9 +37,10 @@ export default function HomePage() {
             details: "Works with Uint8Array and ArrayBuffer. No Node.js APIs needed, no separate browser bundle required.",
           },
           {
-            title: "Tree-Shakeable",
-            icon: <TreePine size={28} strokeWidth={1.5} />,
-            details: "ESM + CJS with named exports. Your bundler drops what you don't use — ship only what you need.",
+            title: "Styled XLSX Reports",
+            icon: <Paintbrush size={28} strokeWidth={1.5} />,
+            details:
+              "Write branded report exports with table headers, totals, merged titles, column widths, row heights, and frozen panes — without carrying ExcelJS just for styling.",
           },
           {
             title: "Drop-In Migration",
