@@ -1,6 +1,14 @@
 import type { WorkBook, WorkSheet, CellObject, Hyperlink, CellStyle, Range } from "../types.js";
 import { validateSheetName } from "../xlsx/workbook.js";
-import { encodeCol, encodeRow, encodeRange, decodeRange, safeDecodeRange, encodeCell } from "../utils/cell.js";
+import {
+	encodeCol,
+	encodeRow,
+	encodeRange,
+	decodeRange,
+	safeDecodeRange,
+	getCell,
+	getOrCreateCell,
+} from "../utils/cell.js";
 
 /**
  * Create a new blank workbook, optionally containing an initial worksheet.
@@ -147,7 +155,11 @@ export function setCellNumberFormat(cell: CellObject, fmt: string | number): Cel
 	return cell;
 }
 
-/** Set or replace the style object on a cell. */
+/**
+ * Set or replace the style object on a cell.
+ *
+ * Mutates `cell` in place and returns the same object for chaining.
+ */
 export function setCellStyle(cell: CellObject, style: CellStyle): CellObject {
 	cell.s = style;
 	return cell;
@@ -174,32 +186,12 @@ function expandSheetRef(ws: WorkSheet, range: Range): void {
 	ws["!ref"] = encodeRange(current);
 }
 
-function getOrCreateCell(ws: WorkSheet, row: number, col: number, create: boolean): CellObject | undefined {
-	if (ws["!data"]) {
-		if (!ws["!data"][row]) {
-			if (!create) {
-				return undefined;
-			}
-			ws["!data"][row] = [];
-		}
-		const cells = ws["!data"][row];
-		let cell = cells[col];
-		if (!cell && create) {
-			cell = { t: "z" };
-			cells[col] = cell;
-		}
-		return cell;
-	}
-	const ref = encodeCell({ r: row, c: col });
-	let cell = ws[ref] as CellObject | undefined;
-	if (!cell && create) {
-		cell = { t: "z" };
-		ws[ref] = cell;
-	}
-	return cell;
-}
-
-/** Apply a style to every existing cell in a range, optionally creating styled stub cells. */
+/**
+ * Apply a style to every existing cell in a range.
+ *
+ * Mutates `ws` in place and returns the same worksheet for chaining. When
+ * `createCells` is true, missing cells in the range are created as styled stubs.
+ */
 export function styleRange(
 	ws: WorkSheet,
 	range: string | Range,
@@ -210,7 +202,7 @@ export function styleRange(
 	const createCells = !!opts?.createCells;
 	for (let R = rng.s.r; R <= rng.e.r; ++R) {
 		for (let C = rng.s.c; C <= rng.e.c; ++C) {
-			const cell = getOrCreateCell(ws, R, C, createCells);
+			const cell = createCells ? getOrCreateCell(ws, R, C) : getCell(ws, R, C);
 			if (cell) {
 				cell.s = style;
 			}
@@ -222,7 +214,11 @@ export function styleRange(
 	return ws;
 }
 
-/** Add a merged-cell range and expand `!ref` to include it. */
+/**
+ * Add a merged-cell range and expand `!ref` to include it.
+ *
+ * Mutates `ws` in place and returns the same worksheet for chaining.
+ */
 export function mergeCells(ws: WorkSheet, range: string | Range): WorkSheet {
 	const rng = typeof range === "string" ? safeDecodeRange(range) : range;
 	if (!ws["!merges"]) {
@@ -233,7 +229,12 @@ export function mergeCells(ws: WorkSheet, range: string | Range): WorkSheet {
 	return ws;
 }
 
-/** Set a row height in points. Row indexes are zero-based. */
+/**
+ * Set a row height in points.
+ *
+ * Mutates `ws` in place and returns the same worksheet for chaining. Row indexes
+ * are zero-based.
+ */
 export function setRowHeight(ws: WorkSheet, row: number, hpt: number): WorkSheet {
 	if (!ws["!rows"]) {
 		ws["!rows"] = [];
@@ -245,7 +246,12 @@ export function setRowHeight(ws: WorkSheet, row: number, hpt: number): WorkSheet
 	return ws;
 }
 
-/** Set a column width. Column indexes are zero-based. */
+/**
+ * Set a column width.
+ *
+ * Mutates `ws` in place and returns the same worksheet for chaining. Column
+ * indexes are zero-based.
+ */
 export function setColumnWidth(ws: WorkSheet, col: number, width: number): WorkSheet {
 	if (!ws["!cols"]) {
 		ws["!cols"] = [];
@@ -257,7 +263,11 @@ export function setColumnWidth(ws: WorkSheet, col: number, width: number): WorkS
 	return ws;
 }
 
-/** Freeze rows and/or columns in a worksheet view. */
+/**
+ * Freeze rows and/or columns in a worksheet view.
+ *
+ * Mutates `ws` in place and returns the same worksheet for chaining.
+ */
 export function freezePanes(ws: WorkSheet, pane: { xSplit?: number; ySplit?: number }): WorkSheet {
 	ws["!views"] = [
 		{
@@ -317,9 +327,9 @@ export function setCellInternalLink(cell: CellObject, range: string, tooltip?: s
  */
 export function addCellComment(cell: CellObject, text: string, author?: string): void {
 	if (!cell.c) {
-		cell.c = [] as any;
+		cell.c = [];
 	}
-	cell.c!.push({ t: text, a: author || "SheetJS" });
+	cell.c.push({ t: text, a: author || "SheetJS" });
 }
 
 /**
@@ -346,17 +356,7 @@ export function setArrayFormula(
 
 	for (let R = rng.s.r; R <= rng.e.r; ++R) {
 		for (let C = rng.s.c; C <= rng.e.c; ++C) {
-			const ref = encodeCol(C) + encodeRow(R);
-			const dense = (ws as any)["!data"] != null;
-			let cell: any;
-			if (dense) {
-				if (!(ws as any)["!data"][R]) {
-					(ws as any)["!data"][R] = [];
-				}
-				cell = (ws as any)["!data"][R][C] || ((ws as any)["!data"][R][C] = { t: "z" });
-			} else {
-				cell = (ws as any)[ref] || ((ws as any)[ref] = { t: "z" });
-			}
+			const cell = getOrCreateCell(ws, R, C);
 			cell.t = "n";
 			cell.F = rngstr; // array formula range shared by all cells in the group
 			delete cell.v;
@@ -407,7 +407,6 @@ export function sheetToFormulae(ws: WorkSheet): string[] {
 	const r = safeDecodeRange(ws["!ref"]);
 	const cols: string[] = [];
 	const cmds: string[] = [];
-	const dense = (ws as any)["!data"] != null;
 
 	// Pre-compute column letters for the range
 	for (let C = r.s.c; C <= r.e.c; ++C) {
@@ -418,7 +417,7 @@ export function sheetToFormulae(ws: WorkSheet): string[] {
 		const rr = encodeRow(R);
 		for (let C = r.s.c; C <= r.e.c; ++C) {
 			const y = cols[C] + rr;
-			const x: any = dense ? ((ws as any)["!data"][R] || [])[C] : (ws as any)[y];
+			const x = getCell(ws, R, C);
 			if (x === undefined) {
 				continue;
 			}

@@ -112,14 +112,23 @@ link.click();
 xlsx-format converts between sheets and common data formats in both directions.
 
 ```typescript
-import { sheetToJson, jsonToSheet, arrayToSheet, sheetToCsv, sheetToHtml, csvToSheet, htmlToSheet } from "xlsx-format";
+import {
+	sheetToJson,
+	jsonToSheet,
+	arrayToSheet,
+	sheetToArray,
+	sheetToCsv,
+	sheetToHtml,
+	csvToSheet,
+	htmlToSheet,
+} from "xlsx-format";
 
 // Sheet -> JSON objects (first row = headers)
 const rows = sheetToJson(sheet);
 // [{ Name: "Alice", Age: 30 }, { Name: "Bob", Age: 25 }]
 
 // Sheet -> array of arrays
-const arrays = sheetToJson(sheet, { header: 1 });
+const arrays = sheetToArray(sheet);
 // [["Name", "Age"], ["Alice", 30], ["Bob", 25]]
 
 // Sheet -> CSV / HTML
@@ -155,6 +164,15 @@ setCellNumberFormat(sheet["B2"], "#,##0.00");
 setCellHyperlink(sheet["A1"], "https://example.com");
 addCellComment(sheet["C3"], "Check this value", "Alice");
 setArrayFormula(sheet, "D1:D10", "=A1:A10*B1:B10");
+```
+
+Use `formatCell` when you need the displayed value for one cell without
+converting a whole sheet.
+
+```typescript
+import { formatCell } from "xlsx-format";
+
+const displayValue = formatCell(sheet["B2"]);
 ```
 
 ## Styled Workbooks

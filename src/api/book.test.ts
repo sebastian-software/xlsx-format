@@ -175,6 +175,23 @@ describe("setArrayFormula", () => {
 		expect((ws as any)["C2"].F).toBe("C1:C2");
 		expect((ws as any)["C2"].f).toBeUndefined();
 	});
+
+	it("should set formula cells in dense worksheets", () => {
+		const ws = arrayToSheet(
+			[
+				[1, 2],
+				[3, 4],
+			],
+			{ dense: true },
+		);
+
+		setArrayFormula(ws, "C1:C2", "=A1:A2*B1:B2");
+
+		expect(ws["!data"]![0]![2]!.f).toBe("=A1:A2*B1:B2");
+		expect(ws["!data"]![0]![2]!.F).toBe("C1:C2");
+		expect(ws["!data"]![1]![2]!.F).toBe("C1:C2");
+		expect(ws["!data"]![1]![2]!.f).toBeUndefined();
+	});
 });
 
 describe("sheetToFormulae", () => {

@@ -1,8 +1,9 @@
-import type { WorkSheet, AOA2SheetOpts, Range } from "../types.js";
-import { decodeCell, encodeCol, encodeRange, safeDecodeRange } from "../utils/cell.js";
+import type { WorkSheet, AOA2SheetOpts, Range, Sheet2JSONOpts } from "../types.js";
+import { decodeCell, encodeRange, safeDecodeRange, getCell, setCell } from "../utils/cell.js";
 import { dateToSerialNumber, localToUtc } from "../utils/date.js";
 import { formatNumber } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
+import { sheetToJson } from "./json.js";
 
 /**
  * Add an array-of-arrays to an existing worksheet, or create a new one.
@@ -17,9 +18,9 @@ import { formatTable } from "../ssf/table.js";
  * @returns The updated or newly created worksheet
  */
 export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts?: AOA2SheetOpts): WorkSheet {
-	const options = opts || ({} as any);
-	const dense = worksheet ? (worksheet as any)["!data"] != null : !!options.dense;
-	const ws: any = worksheet || (dense ? { "!data": [] } : {});
+	const options = opts || {};
+	const dense = worksheet ? worksheet["!data"] != null : !!options.dense;
+	const ws: WorkSheet = worksheet || (dense ? { "!data": [] } : {});
 	if (dense && !ws["!data"]) {
 		ws["!data"] = [];
 	}
@@ -54,7 +55,6 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
 		range.s.c = range.e.c = range.s.r = range.e.r = 0;
 	}
 
-	let row: any[] = [];
 	let seen = false;
 	for (let rowIdx = 0; rowIdx < data.length; ++rowIdx) {
 		if (!data[rowIdx]) {
@@ -64,12 +64,6 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
 			throw new Error("arrayToSheet expects an array of arrays");
 		}
 		const targetRow = originRow + rowIdx;
-		if (dense) {
-			if (!ws["!data"][targetRow]) {
-				ws["!data"][targetRow] = [];
-			}
-			row = ws["!data"][targetRow];
-		}
 		const rowData = data[rowIdx];
 		for (let colIdx = 0; colIdx < rowData.length; ++colIdx) {
 			if (typeof rowData[colIdx] === "undefined") {
@@ -149,26 +143,19 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
 				}
 			}
 
-			if (dense) {
-				// Preserve any existing number format from a prior cell at this position
-				if (row[targetCol] && row[targetCol].z) {
-					cell.z = row[targetCol].z;
-				}
-				row[targetCol] = cell;
-			} else {
-				const cell_ref = encodeCol(targetCol) + (targetRow + 1);
-				if (ws[cell_ref] && ws[cell_ref].z) {
-					cell.z = ws[cell_ref].z;
-				}
-				ws[cell_ref] = cell;
+			// Preserve any existing number format from a prior cell at this position
+			const existingCell = getCell(ws, targetRow, targetCol);
+			if (existingCell?.z) {
+				cell.z = existingCell.z;
 			}
+			setCell(ws, targetRow, targetCol, cell);
 		}
 	}
 	// Only write the ref if we actually saw data (sentinel check: 10000000 > max valid column)
 	if (seen && range.s.c < 10400000) {
 		ws["!ref"] = encodeRange(range);
 	}
-	return ws as WorkSheet;
+	return ws;
 }
 
 /**
@@ -183,4 +170,19 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
  */
 export function arrayToSheet(data: any[][], opts?: AOA2SheetOpts): WorkSheet {
 	return addArrayToSheet(null, data, opts);
+}
+
+/**
+ * Convert a worksheet to an array-of-arrays.
+ *
+ * This is a convenience wrapper around `sheetToJson(sheet, { header: 1 })`
+ * that mirrors `arrayToSheet` for callers that prefer explicit conversion
+ * pairs.
+ *
+ * @param sheet - The worksheet to convert
+ * @param opts - Optional conversion settings, except `header` which is fixed to array output
+ * @returns A two-dimensional array of worksheet values
+ */
+export function sheetToArray<T = unknown>(sheet: WorkSheet, opts?: Omit<Sheet2JSONOpts, "header">): T[][] {
+	return sheetToJson<T[]>(sheet, { ...opts, header: 1 });
 }

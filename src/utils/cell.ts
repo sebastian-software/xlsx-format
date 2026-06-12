@@ -244,13 +244,32 @@ export function safeDecodeRange(range: string): Range {
 	return result;
 }
 
-/** Retrieve a cell from a worksheet, handling both dense (array) and sparse (object) storage */
+/** Retrieve a cell from a worksheet, handling both dense (array) and sparse (object) storage. */
 export function getCell(sheet: WorkSheet, row: number, col: number): CellObject | undefined {
-	const data = (sheet as any)["!data"];
+	const data = sheet["!data"];
 	if (data != null) {
-		return (data[row] || [])[col];
+		return data[row]?.[col];
 	}
-	return (sheet as any)[encodeCol(col) + encodeRow(row)];
+	return sheet[encodeCol(col) + encodeRow(row)] as CellObject | undefined;
+}
+
+/** Store a cell in a worksheet, handling both dense and sparse storage. */
+export function setCell(sheet: WorkSheet, row: number, col: number, cell: CellObject): CellObject {
+	const data = sheet["!data"];
+	if (data != null) {
+		if (!data[row]) {
+			data[row] = [];
+		}
+		data[row][col] = cell;
+		return cell;
+	}
+	sheet[encodeCell({ r: row, c: col })] = cell;
+	return cell;
+}
+
+/** Retrieve a cell or create a blank stub cell at the requested position. */
+export function getOrCreateCell(sheet: WorkSheet, row: number, col: number): CellObject {
+	return getCell(sheet, row, col) || setCell(sheet, row, col, { t: "z" });
 }
 
 /**
