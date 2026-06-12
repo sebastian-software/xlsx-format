@@ -1,6 +1,7 @@
 import type { WorkSheet, Sheet2HTMLOpts, Range } from "../types.js";
 import { BErr } from "../types.js";
-import { encodeCol, encodeRow, decodeRange, decodeCell, getCell } from "../utils/cell.js";
+import { encodeCol, encodeRow, decodeRange, getCell } from "../utils/cell.js";
+import { clampLargeExportRange } from "../utils/export-range.js";
 import { escapeHtml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { formatCell } from "./format.js";
@@ -10,90 +11,31 @@ import { arrayToSheet } from "./aoa.js";
 const HTML_BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
 /** Default HTML document suffix closing the body and html tags */
 const HTML_END = "</body></html>";
-const CELL_REF_RE = /^[A-Z]+[1-9][0-9]*$/;
-const MAX_EXPORT_CELLS = 1000000;
+const UNSAFE_LINK_TARGET_RE = /^(?:javascript|vbscript|data):/;
 
-function rangeCellCount(range: Range): number {
-	const rows = range.e.r - range.s.r + 1;
-	const cols = range.e.c - range.s.c + 1;
-	return rows > 0 && cols > 0 ? rows * cols : 0;
-}
-
-function occupiedRangeEnd(sheet: WorkSheet, range: Range): { r: number; c: number } | null {
-	let maxRow = -1;
-	let maxCol = -1;
-	const data = (sheet as any)["!data"];
-	if (data != null) {
-		for (const rowKey of Object.keys(data)) {
-			const rowIdx = Number(rowKey);
-			if (!Number.isInteger(rowIdx) || rowIdx < range.s.r || rowIdx > range.e.r) {
-				continue;
-			}
-			const row = data[rowIdx];
-			if (!row) {
-				continue;
-			}
-			for (const colKey of Object.keys(row)) {
-				const colIdx = Number(colKey);
-				if (!Number.isInteger(colIdx) || colIdx < range.s.c || colIdx > range.e.c || row[colIdx] == null) {
-					continue;
-				}
-				if (rowIdx > maxRow) {
-					maxRow = rowIdx;
-				}
-				if (colIdx > maxCol) {
-					maxCol = colIdx;
-				}
-			}
-		}
-	} else {
-		for (const ref of Object.keys(sheet)) {
-			if (!CELL_REF_RE.test(ref) || (sheet as any)[ref] == null) {
-				continue;
-			}
-			const cell = decodeCell(ref);
-			if (cell.r < range.s.r || cell.r > range.e.r || cell.c < range.s.c || cell.c > range.e.c) {
-				continue;
-			}
-			if (cell.r > maxRow) {
-				maxRow = cell.r;
-			}
-			if (cell.c > maxCol) {
-				maxCol = cell.c;
-			}
-		}
-	}
-	return maxRow === -1 ? null : { r: maxRow, c: maxCol };
-}
-
-function clampLargeExportRange(sheet: WorkSheet, range: Range): Range | null {
-	if (rangeCellCount(range) <= MAX_EXPORT_CELLS) {
-		return range;
-	}
-	const end = occupiedRangeEnd(sheet, range);
-	if (!end) {
-		return null;
-	}
-	return {
-		s: { r: range.s.r, c: range.s.c },
-		e: {
-			r: Math.max(range.s.r, Math.min(range.e.r, end.r)),
-			c: Math.max(range.s.c, Math.min(range.e.c, end.c)),
-		},
-	};
+function isIgnorableLinkTargetCode(code: number): boolean {
+	return (
+		code <= 0x20 ||
+		code === 0x7f ||
+		code === 0xad ||
+		code === 0x61c ||
+		code === 0x180e ||
+		(code >= 0x200b && code <= 0x200f) ||
+		(code >= 0x202a && code <= 0x202e) ||
+		(code >= 0x2060 && code <= 0x206f) ||
+		code === 0xfeff
+	);
 }
 
 function isSanitizedLinkTarget(target: string): boolean {
 	let normalized = "";
 	for (let i = 0; i < target.length; ++i) {
-		const code = target.charCodeAt(i);
-		if (code <= 0x20 || code === 0x7f) {
-			continue;
+		if (!isIgnorableLinkTargetCode(target.charCodeAt(i))) {
+			normalized += target[i];
 		}
-		normalized += target[i];
 	}
 	normalized = normalized.toLowerCase();
-	return normalized.slice(0, 11) !== "javascript:";
+	return !UNSAFE_LINK_TARGET_RE.test(normalized);
 }
 
 /**
@@ -172,7 +114,7 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 				cellAttrs["data-f"] = escapeHtml(cell.f);
 			}
 			// Wrap in an anchor tag if the cell has a non-internal hyperlink,
-			// filtering out javascript: URIs when sanitizeLinks is enabled
+			// filtering out unsafe URI schemes when sanitizeLinks is enabled
 			if (
 				cell.l &&
 				(cell.l.Target || "#").charAt(0) !== "#" &&

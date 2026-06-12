@@ -72,6 +72,26 @@ describe("export security guards", () => {
 		expect(sheetToHtml(ws, { sanitizeLinks: true })).not.toContain("href=");
 	});
 
+	it("sanitizes script links with invisible unicode characters", () => {
+		const ws = {
+			"!ref": "A1",
+			A1: { t: "s", v: "Bad", l: { Target: "java\u200bscript:alert(1)" } },
+		} as WorkSheet;
+
+		expect(sheetToHtml(ws, { sanitizeLinks: true })).not.toContain("href=");
+	});
+
+	it("sanitizes data and vbscript links", () => {
+		for (const target of ["data:text/html,<script>alert(1)</script>", "vbscript:msgbox(1)"]) {
+			const ws = {
+				"!ref": "A1",
+				A1: { t: "s", v: "Bad", l: { Target: target } },
+			} as WorkSheet;
+
+			expect(sheetToHtml(ws, { sanitizeLinks: true })).not.toContain("href=");
+		}
+	});
+
 	it("clamps oversized declared ranges to occupied cells for exporters", () => {
 		const ws = {
 			"!ref": "A1:XFD1048576",
@@ -90,5 +110,36 @@ describe("export security guards", () => {
 		expect(html.match(/<tr>/g)).toHaveLength(2);
 		expect(html).toContain("Name");
 		expect(html).toContain("Done");
+	});
+
+	it("clamps oversized dense worksheet ranges to occupied cells", () => {
+		const ws = arrayToSheet([["Name"], [undefined, "Done"]], { dense: true });
+		ws["!ref"] = "A1:XFD1048576";
+
+		expect(sheetToCsv(ws)).toBe("Name,\n,Done");
+		expect(sheetToJson<unknown[]>(ws, { header: 1 })[1][1]).toBe("Done");
+		expect(sheetToHtml(ws)).toContain("Done");
+	});
+
+	it("ignores occupied cells outside a numeric oversized JSON range", () => {
+		const ws = {
+			"!ref": "A1:XFD1048576",
+			A1: { t: "s", v: "Skip" },
+			B2: { t: "s", v: "Done" },
+		} as WorkSheet;
+
+		const rows = sheetToJson<unknown[]>(ws, { header: 1, range: 1 });
+
+		expect(rows).toHaveLength(1);
+		expect(rows[0][0]).toBeUndefined();
+		expect(rows[0][1]).toBe("Done");
+	});
+
+	it("skips oversized declared ranges with no occupied cells", () => {
+		const ws = { "!ref": "A1:XFD1048576" } as WorkSheet;
+
+		expect(sheetToCsv(ws)).toBe("");
+		expect(sheetToJson(ws)).toEqual([]);
+		expect(sheetToHtml(ws)).not.toContain("<tr>");
 	});
 });
