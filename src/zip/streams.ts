@@ -3,7 +3,7 @@
  *
  * Collects chunks incrementally, then copies them into a contiguous buffer.
  */
-async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint8Array> {
+async function collectStream(readable: ReadableStream<Uint8Array>, maxBytes = Infinity): Promise<Uint8Array> {
 	const reader = readable.getReader();
 	const chunks: Uint8Array[] = [];
 	let totalLength = 0;
@@ -14,6 +14,9 @@ async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint
 		}
 		chunks.push(value);
 		totalLength += value.length;
+		if (totalLength > maxBytes) {
+			throw new Error(`Invalid ZIP: decompressed data exceeds limit (${maxBytes} bytes)`);
+		}
 	}
 	const result = new Uint8Array(totalLength);
 	let offset = 0;
@@ -31,14 +34,24 @@ async function collectStream(readable: ReadableStream<Uint8Array>): Promise<Uint
  * the compression used inside ZIP archives (method 8).
  *
  * @param data - Compressed bytes (raw deflate, no zlib/gzip wrapper)
+ * @param maxBytes - Maximum allowed decompressed size
  * @returns Decompressed bytes
  */
-export async function inflate(data: Uint8Array): Promise<Uint8Array> {
+export async function inflate(data: Uint8Array, maxBytes = Infinity): Promise<Uint8Array> {
 	const ds = new DecompressionStream("deflate-raw");
 	const writer = ds.writable.getWriter();
-	void writer.write(data as Uint8Array<ArrayBuffer>);
-	void writer.close();
-	return collectStream(ds.readable);
+	const writePromise = writer.write(data as Uint8Array<ArrayBuffer>).then(() => writer.close());
+	try {
+		const [result] = await Promise.all([collectStream(ds.readable, maxBytes), writePromise]);
+		return result;
+	} catch (err) {
+		try {
+			await writer.abort(err);
+		} catch {
+			/* ignore abort errors while preserving the original stream error */
+		}
+		throw err;
+	}
 }
 
 /**
@@ -53,7 +66,16 @@ export async function inflate(data: Uint8Array): Promise<Uint8Array> {
 export async function deflate(data: Uint8Array): Promise<Uint8Array> {
 	const cs = new CompressionStream("deflate-raw");
 	const writer = cs.writable.getWriter();
-	void writer.write(data as Uint8Array<ArrayBuffer>);
-	void writer.close();
-	return collectStream(cs.readable);
+	const writePromise = writer.write(data as Uint8Array<ArrayBuffer>).then(() => writer.close());
+	try {
+		const [result] = await Promise.all([collectStream(cs.readable), writePromise]);
+		return result;
+	} catch (err) {
+		try {
+			await writer.abort(err);
+		} catch {
+			/* ignore abort errors while preserving the original stream error */
+		}
+		throw err;
+	}
 }

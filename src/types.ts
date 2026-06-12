@@ -111,6 +111,12 @@ export interface ReadOptions extends CommonOptions {
 	dense?: boolean;
 	/** If true, all dates are interpreted as UTC (no timezone adjustment) */
 	UTC?: boolean;
+	/** Maximum number of ZIP central-directory entries to parse */
+	maxZipEntries?: number;
+	/** Maximum total uncompressed ZIP payload size across file entries */
+	maxTotalUncompressedBytes?: number;
+	/** Maximum uncompressed ZIP payload size for a single file entry */
+	maxEntryUncompressedBytes?: number;
 }
 
 /** Options for writing/serializing workbook files */

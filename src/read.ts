@@ -97,7 +97,7 @@ export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 
 	// 0x504B = "PK" -- ZIP file magic number (Phil Katz)
 	if (u8[0] === 0x50 && u8[1] === 0x4b) {
-		const zip = await zipRead(u8);
+		const zip = await zipRead(u8, options);
 		return parseZip(zip, options);
 	}
 
