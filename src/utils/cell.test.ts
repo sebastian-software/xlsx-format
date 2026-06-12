@@ -10,6 +10,8 @@ import {
 	encodeRow,
 } from "./cell.js";
 
+import { quoteSheetName, getCell } from "./cell.js";
+
 describe("decodeCol / encodeCol", () => {
 	it("should decode single-letter columns", () => {
 		expect(decodeCol("A")).toBe(0);
@@ -137,5 +139,51 @@ describe("decodeRange / encodeRange", () => {
 		for (const range of ranges) {
 			expect(encodeRange(decodeRange(range))).toBe(range);
 		}
+	});
+});
+
+describe("cell utils: quoteSheetName", () => {
+	it("returns unquoted name for simple names", () => {
+		expect(quoteSheetName("Sheet1")).toBe("Sheet1");
+	});
+
+	it("quotes name with spaces", () => {
+		expect(quoteSheetName("Sheet 1")).toBe("'Sheet 1'");
+	});
+
+	it("escapes single quotes in name", () => {
+		expect(quoteSheetName("It's")).toBe("'It''s'");
+	});
+
+	it("quotes name with special characters", () => {
+		expect(quoteSheetName("Data+Summary")).toBe("'Data+Summary'");
+	});
+
+	it("throws for empty name", () => {
+		expect(() => quoteSheetName("")).toThrow("empty sheet name");
+	});
+
+	it("does not quote CJK names", () => {
+		expect(quoteSheetName("データ")).toBe("データ");
+	});
+});
+
+describe("cell utils: getCell", () => {
+	it("gets cell from dense worksheet", () => {
+		const ws: any = { "!data": [[{ t: "n", v: 42 }]] };
+		const cell = getCell(ws, 0, 0);
+		expect(cell?.v).toBe(42);
+	});
+
+	it("returns undefined for missing row in dense mode", () => {
+		const ws: any = { "!data": [] };
+		const cell = getCell(ws, 5, 0);
+		expect(cell).toBeUndefined();
+	});
+
+	it("gets cell from sparse worksheet", () => {
+		const ws: any = { A1: { t: "n", v: 42 } };
+		const cell = getCell(ws, 0, 0);
+		expect(cell?.v).toBe(42);
 	});
 });

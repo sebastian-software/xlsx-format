@@ -15,6 +15,8 @@ import {
 import { arrayToSheet } from "./aoa.js";
 import type { CellObject } from "../types.js";
 
+import { jsonToSheet } from "../index.js";
+
 describe("createWorkbook", () => {
 	it("should create an empty workbook", () => {
 		const wb = createWorkbook();
@@ -190,5 +192,226 @@ describe("sheetToFormulae", () => {
 		expect(formulae).toContain("B1='Age");
 		expect(formulae).toContain("A2='Alice");
 		expect(formulae).toContain("B2=30");
+	});
+});
+
+describe("book.ts: API edge cases", () => {
+	it("appendSheet auto-generates name", () => {
+		const wb = createWorkbook();
+		appendSheet(wb, arrayToSheet([["A"]]));
+		expect(wb.SheetNames).toContain("Sheet1");
+		appendSheet(wb, arrayToSheet([["B"]]));
+		expect(wb.SheetNames).toContain("Sheet2");
+	});
+
+	it("appendSheet with roll option", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "Sheet1");
+		const name = appendSheet(wb, arrayToSheet([["B"]]), "Sheet1", true);
+		expect(name).toBe("Sheet2");
+		expect(wb.SheetNames).toContain("Sheet2");
+	});
+
+	it("appendSheet rejects duplicate without roll", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "Sheet1");
+		expect(() => appendSheet(wb, arrayToSheet([["B"]]), "Sheet1")).toThrow("already exists");
+	});
+
+	it("getSheetIndex finds by name", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "MySheet");
+		expect(getSheetIndex(wb, "MySheet")).toBe(0);
+	});
+
+	it("getSheetIndex finds by index", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "Sheet1");
+		expect(getSheetIndex(wb, 0)).toBe(0);
+	});
+
+	it("getSheetIndex throws for missing name", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "Sheet1");
+		expect(() => getSheetIndex(wb, "NoSuchSheet")).toThrow("Cannot find");
+	});
+
+	it("getSheetIndex throws for out-of-range index", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "Sheet1");
+		expect(() => getSheetIndex(wb, 99)).toThrow("Cannot find");
+	});
+
+	it("setSheetVisibility rejects invalid value", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "Sheet1");
+		expect(() => {
+			setSheetVisibility(wb, 0, 99 as any);
+		}).toThrow("Bad sheet visibility");
+	});
+
+	it("setSheetVisibility initializes Workbook metadata", () => {
+		const wb = createWorkbook(arrayToSheet([["A"]]), "Sheet1");
+		setSheetVisibility(wb, 0, 1);
+		expect(wb.Workbook).toBeDefined();
+		expect(wb.Workbook!.Sheets![0].Hidden).toBe(1);
+	});
+
+	it("createSheet creates empty sheet", () => {
+		const ws = createSheet();
+		expect(ws).toBeDefined();
+	});
+
+	it("createSheet dense mode", () => {
+		const ws = createSheet({ dense: true });
+		expect(ws["!data"]).toBeDefined();
+	});
+
+	it("setCellNumberFormat sets z property", () => {
+		const cell: any = { t: "n", v: 42 };
+		setCellNumberFormat(cell, "#,##0.00");
+		expect(cell.z).toBe("#,##0.00");
+	});
+
+	it("setCellHyperlink sets link", () => {
+		const cell: any = { t: "s", v: "Click" };
+		setCellHyperlink(cell, "https://example.com", "Example");
+		expect(cell.l.Target).toBe("https://example.com");
+		expect(cell.l.Tooltip).toBe("Example");
+	});
+
+	it("setCellHyperlink removes link when falsy", () => {
+		const cell: any = { t: "s", v: "Click", l: { Target: "https://example.com" } };
+		setCellHyperlink(cell);
+		expect(cell.l).toBeUndefined();
+	});
+
+	it("setCellInternalLink adds # prefix", () => {
+		const cell: any = { t: "s", v: "Click" };
+		setCellInternalLink(cell, "Sheet2!A1");
+		expect(cell.l.Target).toBe("#Sheet2!A1");
+	});
+
+	it("addCellComment adds comment", () => {
+		const cell: any = { t: "s", v: "Value" };
+		addCellComment(cell, "Check this", "Alice");
+		expect(cell.c).toHaveLength(1);
+		expect(cell.c[0].t).toBe("Check this");
+		expect(cell.c[0].a).toBe("Alice");
+	});
+
+	it("addCellComment uses default author", () => {
+		const cell: any = { t: "s", v: "Value" };
+		addCellComment(cell, "Note");
+		expect(cell.c[0].a).toBe("SheetJS");
+	});
+
+	it("sheetToFormulae extracts formulas", () => {
+		const ws: any = {
+			A1: { t: "n", v: 42 },
+			A2: { t: "s", v: "Hello" },
+			A3: { t: "b", v: true },
+			A4: { t: "n", v: 10, f: "SUM(A1:A1)" },
+			"!ref": "A1:A4",
+		};
+		const formulae = sheetToFormulae(ws);
+		expect(formulae.length).toBeGreaterThanOrEqual(4);
+		expect(formulae).toContain("A1=42");
+		expect(formulae).toContain("A2='Hello");
+		expect(formulae).toContain("A3=TRUE");
+		expect(formulae).toContain("A4=SUM(A1:A1)");
+	});
+
+	it("sheetToFormulae handles array formulas", () => {
+		const ws = arrayToSheet([[1], [2], [3]]);
+		setArrayFormula(ws, "B1:B3", "A1:A3*2");
+		const formulae = sheetToFormulae(ws);
+		const arrayFmla = formulae.find((f) => f.includes("A1:A3*2"));
+		expect(arrayFmla).toBeDefined();
+		expect(arrayFmla).toContain("B1:B3");
+	});
+
+	it("sheetToFormulae with dense mode", () => {
+		const ws = arrayToSheet([["A", 1]], { dense: true } as any);
+		const formulae = sheetToFormulae(ws);
+		expect(formulae.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it("sheetToFormulae returns empty for null sheet", () => {
+		expect(sheetToFormulae(null as any)).toEqual([]);
+		expect(sheetToFormulae({} as any)).toEqual([]);
+	});
+
+	it("sheetToFormulae with w property", () => {
+		const ws: any = {
+			A1: { t: "n", v: 42, w: "42.00" },
+			"!ref": "A1:A1",
+		};
+		// When v is present, it uses v for numeric
+		const formulae = sheetToFormulae(ws);
+		expect(formulae).toContain("A1=42");
+	});
+
+	it("setArrayFormula dense mode", () => {
+		const ws = createSheet({ dense: true });
+		ws["!ref"] = "A1:A1";
+		(ws as any)["!data"] = [[{ t: "n", v: 1 }]];
+		setArrayFormula(ws, "B1:B2", "A1*2", true);
+		expect((ws as any)["!data"][0][1].f).toBe("A1*2");
+		expect((ws as any)["!data"][0][1].D).toBe(true);
+	});
+
+	it("setArrayFormula expands ref", () => {
+		const ws = arrayToSheet([[1]]);
+		setArrayFormula(ws, "C5:D6", "A1*2");
+		const ref = ws["!ref"];
+		expect(ref).toContain("D6");
+	});
+});
+
+describe("book.ts: additional API coverage", () => {
+	it("sheetToFormulae returns formula strings", () => {
+		const ws: any = {};
+		ws["!ref"] = "A1:B1";
+		ws["A1"] = { t: "n", v: 1 };
+		ws["B1"] = { t: "n", v: 2, f: "A1+1" };
+		const formulae = sheetToFormulae(ws);
+		expect(formulae.some((f: string) => f.includes("A1+1"))).toBe(true);
+	});
+
+	it("setArrayFormula sets formula on range", () => {
+		const ws: any = {};
+		ws["!ref"] = "A1:B2";
+		ws["A1"] = { t: "n", v: 1 };
+		ws["A2"] = { t: "n", v: 2 };
+		setArrayFormula(ws, "B1:B2", "A1:A2*2");
+		expect(ws["B1"]?.f).toBe("A1:A2*2");
+		expect(ws["B1"]?.F).toBe("B1:B2");
+	});
+
+	it("setCellHyperlink sets external link", () => {
+		const cell: any = { t: "s", v: "click" };
+		setCellHyperlink(cell, "https://example.com");
+		expect(cell.l?.Target).toBe("https://example.com");
+	});
+
+	it("setCellInternalLink sets internal link", () => {
+		const cell: any = { t: "s", v: "go" };
+		setCellInternalLink(cell, "Sheet2!A1");
+		expect(cell.l?.Target).toBe("#Sheet2!A1");
+	});
+
+	it("appendSheet with roll option handles duplicates", () => {
+		const wb = createWorkbook(jsonToSheet([{ a: 1 }]), "Sheet1");
+		appendSheet(wb, jsonToSheet([{ b: 2 }]), "Sheet1", true);
+		expect(wb.SheetNames).toHaveLength(2);
+		expect(wb.SheetNames[1]).not.toBe("Sheet1");
+	});
+
+	it("addCellComment adds comment to cell", () => {
+		const cell: any = { t: "n", v: 1 };
+		addCellComment(cell, "A comment", "Author");
+		expect(cell.c).toBeDefined();
+		expect(cell.c?.[0]?.t).toBe("A comment");
+		expect(cell.c?.[0]?.a).toBe("Author");
+	});
+
+	it("setCellNumberFormat sets format", () => {
+		const cell: any = { t: "n", v: 1.5 };
+		setCellNumberFormat(cell, "#,##0.00");
+		expect(cell.z).toBe("#,##0.00");
 	});
 });
