@@ -93,4 +93,4 @@ export {
 export { formatNumber } from "./ssf/format.js";
 
 // Version
-export const version = "1.0.0-alpha.0";
+export const version = "2.0.0"; // x-release-please-version
