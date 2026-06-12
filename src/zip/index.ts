@@ -7,8 +7,22 @@ export interface ZipArchive {
 	files: Record<string, Uint8Array>;
 }
 
+/** Limits applied while reading untrusted ZIP archives. */
+export interface ZipReadOptions {
+	/** Maximum number of central-directory entries to parse. */
+	maxZipEntries?: number;
+	/** Maximum total uncompressed size across file entries. */
+	maxTotalUncompressedBytes?: number;
+	/** Maximum uncompressed size for a single file entry. */
+	maxEntryUncompressedBytes?: number;
+}
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
+
+const DEFAULT_MAX_ZIP_ENTRIES = 10000;
+const DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES = 512 * 1024 * 1024;
+const DEFAULT_MAX_ENTRY_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
 // -- ZIP format signatures (little-endian magic numbers) --
 /** Local file header signature: "PK\x03\x04" */
@@ -17,6 +31,46 @@ const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;
 /** End of Central Directory record signature: "PK\x05\x06" */
 const SIG_EOCD = 0x06054b50;
+
+const ZIP64_U16 = 0xffff;
+const ZIP64_U32 = 0xffffffff;
+
+function optionLimit(value: number | undefined, fallback: number, name: string): number {
+	if (value == null) {
+		return fallback;
+	}
+	if (!Number.isFinite(value) || value < 0) {
+		throw new Error(`Invalid ZIP option: ${name} must be a non-negative finite number`);
+	}
+	return value;
+}
+
+function assertRange(data: Uint8Array, off: number, len: number, what: string): void {
+	if (!Number.isInteger(off) || !Number.isInteger(len) || off < 0 || len < 0 || off > data.length - len) {
+		throw new Error(`Invalid ZIP: ${what} out of bounds`);
+	}
+}
+
+function readU16At(buf: Uint8Array, off: number, what: string): number {
+	assertRange(buf, off, 2, what);
+	return readU16(buf, off);
+}
+
+function readU32At(buf: Uint8Array, off: number, what: string): number {
+	assertRange(buf, off, 4, what);
+	return readU32(buf, off);
+}
+
+function rejectZip64(): never {
+	throw new Error("Unsupported ZIP: Zip64 archives are not supported");
+}
+
+function assertCrc(name: string, data: Uint8Array, expected: number): void {
+	const actual = crc32(data);
+	if (actual !== expected) {
+		throw new Error(`Invalid ZIP: CRC mismatch for ${name}`);
+	}
+}
 
 /** Read an unsigned 16-bit little-endian integer from a buffer */
 function readU16(buf: Uint8Array, off: number): number {
@@ -47,29 +101,63 @@ function writeU32(buf: Uint8Array, off: number, val: number): void {
  *
  * Locates the End of Central Directory (EOCD) record by scanning backward,
  * then reads the central directory to find all file entries. Deflated entries
- * are decompressed in parallel using {@link DecompressionStream}.
+ * are decompressed one at a time to keep peak memory bounded by entry limits.
  *
  * @param data - Raw ZIP file bytes
  * @returns Parsed archive with decompressed file contents
  * @throws Error if the ZIP structure is invalid or uses an unsupported compression method
  */
-export async function zipRead(data: Uint8Array): Promise<ZipArchive> {
+export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<ZipArchive> {
+	const maxZipEntries = optionLimit(opts?.maxZipEntries, DEFAULT_MAX_ZIP_ENTRIES, "maxZipEntries");
+	const maxTotalUncompressedBytes = optionLimit(
+		opts?.maxTotalUncompressedBytes,
+		DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES,
+		"maxTotalUncompressedBytes",
+	);
+	const maxEntryUncompressedBytes = optionLimit(
+		opts?.maxEntryUncompressedBytes,
+		DEFAULT_MAX_ENTRY_UNCOMPRESSED_BYTES,
+		"maxEntryUncompressedBytes",
+	);
+
 	// Scan backward for EOCD signature; EOCD is at least 22 bytes, max 65557 with comment
 	let eocdOffset = -1;
 	for (let i = data.length - 22; i >= 0 && i >= data.length - 65557; i--) {
 		if (readU32(data, i) === SIG_EOCD) {
-			eocdOffset = i;
-			break;
+			const commentLen = readU16(data, i + 20);
+			if (i + 22 + commentLen === data.length) {
+				eocdOffset = i;
+				break;
+			}
 		}
 	}
 	if (eocdOffset === -1) {
 		throw new Error("Invalid ZIP: EOCD not found");
 	}
 
-	// EOCD layout: +8 = total entries on disk, +10 = total entries, +12 = CD size, +16 = CD offset
-	const cdEntries = readU16(data, eocdOffset + 10);
-	const _cdSize = readU32(data, eocdOffset + 12);
-	const cdOffset = readU32(data, eocdOffset + 16);
+	assertRange(data, eocdOffset, 22, "EOCD");
+	const eocdCommentLen = readU16At(data, eocdOffset + 20, "EOCD comment length");
+	assertRange(data, eocdOffset, 22 + eocdCommentLen, "EOCD comment");
+
+	const diskNumber = readU16At(data, eocdOffset + 4, "EOCD disk number");
+	const cdDiskNumber = readU16At(data, eocdOffset + 6, "EOCD central directory disk number");
+	const cdEntriesOnDisk = readU16At(data, eocdOffset + 8, "EOCD disk entry count");
+	const cdEntries = readU16At(data, eocdOffset + 10, "EOCD entry count");
+	const cdSize = readU32At(data, eocdOffset + 12, "EOCD central directory size");
+	const cdOffset = readU32At(data, eocdOffset + 16, "EOCD central directory offset");
+	if (cdEntriesOnDisk === ZIP64_U16 || cdEntries === ZIP64_U16 || cdSize === ZIP64_U32 || cdOffset === ZIP64_U32) {
+		rejectZip64();
+	}
+	if (diskNumber !== 0 || cdDiskNumber !== 0 || cdEntriesOnDisk !== cdEntries) {
+		throw new Error("Unsupported ZIP: multi-disk archives are not supported");
+	}
+	if (cdEntries > maxZipEntries) {
+		throw new Error(`Invalid ZIP: entry count ${cdEntries} exceeds limit ${maxZipEntries}`);
+	}
+	assertRange(data, cdOffset, cdSize, "central directory");
+	if (cdOffset + cdSize > eocdOffset) {
+		throw new Error("Invalid ZIP: central directory overlaps EOCD");
+	}
 
 	// Parse central directory entries
 	interface CdEntry {
@@ -77,64 +165,130 @@ export async function zipRead(data: Uint8Array): Promise<ZipArchive> {
 		crc: number;
 		compSize: number;
 		uncompSize: number;
-		nameBytes: Uint8Array;
+		name: string;
 		localOffset: number;
 	}
 	const entries: CdEntry[] = [];
 	let pos = cdOffset;
+	const cdEnd = cdOffset + cdSize;
 	for (let i = 0; i < cdEntries; i++) {
-		if (readU32(data, pos) !== SIG_CENTRAL) {
+		assertRange(data, pos, 46, "central directory entry");
+		if (pos + 46 > cdEnd) {
+			throw new Error("Invalid ZIP: central directory entry exceeds declared size");
+		}
+		if (readU32At(data, pos, "central directory signature") !== SIG_CENTRAL) {
 			throw new Error("Invalid ZIP: bad central directory entry");
 		}
-		const method = readU16(data, pos + 10); // compression method (0=stored, 8=deflate)
-		const crcVal = readU32(data, pos + 16);
-		const compSize = readU32(data, pos + 20);
-		const uncompSize = readU32(data, pos + 24);
-		const nameLen = readU16(data, pos + 28);
-		const extraLen = readU16(data, pos + 30);
-		const commentLen = readU16(data, pos + 32);
-		const localOffset = readU32(data, pos + 42); // offset to local file header
+		const method = readU16At(data, pos + 10, "central directory compression method");
+		const crcVal = readU32At(data, pos + 16, "central directory CRC");
+		const compSize = readU32At(data, pos + 20, "central directory compressed size");
+		const uncompSize = readU32At(data, pos + 24, "central directory uncompressed size");
+		const nameLen = readU16At(data, pos + 28, "central directory file name length");
+		const extraLen = readU16At(data, pos + 30, "central directory extra length");
+		const commentLen = readU16At(data, pos + 32, "central directory comment length");
+		const diskStart = readU16At(data, pos + 34, "central directory disk start");
+		const localOffset = readU32At(data, pos + 42, "central directory local header offset");
+		if (
+			compSize === ZIP64_U32 ||
+			uncompSize === ZIP64_U32 ||
+			localOffset === ZIP64_U32 ||
+			diskStart === ZIP64_U16
+		) {
+			rejectZip64();
+		}
+		if (diskStart !== 0) {
+			throw new Error("Unsupported ZIP: multi-disk archives are not supported");
+		}
+		const entryEnd = pos + 46 + nameLen + extraLen + commentLen;
+		if (entryEnd > cdEnd) {
+			throw new Error("Invalid ZIP: central directory entry exceeds declared size");
+		}
 		const nameBytes = data.subarray(pos + 46, pos + 46 + nameLen);
-		entries.push({ method, crc: crcVal, compSize, uncompSize, nameBytes, localOffset });
-		pos += 46 + nameLen + extraLen + commentLen;
+		const name = decoder.decode(nameBytes);
+		entries.push({ method, crc: crcVal, compSize, uncompSize, name, localOffset });
+		pos = entryEnd;
 	}
 
-	// Read file data from local headers -- collect inflate promises for parallel decompression
-	const files: Record<string, Uint8Array> = {};
-	const inflateJobs: { name: string; compressed: Uint8Array }[] = [];
+	// Read file data from local headers -- collect deflated entries for bounded decompression
+	const files: Record<string, Uint8Array> = Object.create(null);
+	const seenNames = new Set<string>();
+	const inflateJobs: { name: string; compressed: Uint8Array; expectedSize: number; crc: number }[] = [];
+	let totalUncompressedBytes = 0;
 
 	for (const entry of entries) {
-		const loc = entry.localOffset;
-		if (readU32(data, loc) !== SIG_LOCAL) {
-			throw new Error("Invalid ZIP: bad local file header");
-		}
-		const localNameLen = readU16(data, loc + 26);
-		const localExtraLen = readU16(data, loc + 28);
-		const dataStart = loc + 30 + localNameLen + localExtraLen;
-		const name = decoder.decode(entry.nameBytes);
+		const name = entry.name;
 
 		// Skip directory entries (paths ending with "/")
 		if (name.endsWith("/")) {
 			continue;
 		}
+		if (seenNames.has(name)) {
+			throw new Error(`Invalid ZIP: duplicate entry ${name}`);
+		}
+		seenNames.add(name);
+
+		const loc = entry.localOffset;
+		assertRange(data, loc, 30, `local file header for ${entry.name}`);
+		if (readU32At(data, loc, "local file header signature") !== SIG_LOCAL) {
+			throw new Error("Invalid ZIP: bad local file header");
+		}
+		const localMethod = readU16At(data, loc + 8, "local file header compression method");
+		const localNameLen = readU16At(data, loc + 26, "local file header file name length");
+		const localExtraLen = readU16At(data, loc + 28, "local file header extra length");
+		const dataStart = loc + 30 + localNameLen + localExtraLen;
+		assertRange(data, dataStart, entry.compSize, `file data for ${entry.name}`);
+		const dataEnd = dataStart + entry.compSize;
+		if (localMethod !== entry.method) {
+			throw new Error(`Invalid ZIP: local header method mismatch for ${entry.name}`);
+		}
+		const localName = decoder.decode(data.subarray(loc + 30, loc + 30 + localNameLen));
+		if (localName !== name) {
+			throw new Error(`Invalid ZIP: local header file name mismatch for ${name}`);
+		}
+		if (entry.uncompSize > maxEntryUncompressedBytes) {
+			throw new Error(
+				`Invalid ZIP: entry ${name} uncompressed size ${entry.uncompSize} exceeds limit ${maxEntryUncompressedBytes}`,
+			);
+		}
+		totalUncompressedBytes += entry.uncompSize;
+		if (totalUncompressedBytes > maxTotalUncompressedBytes) {
+			throw new Error(
+				`Invalid ZIP: total uncompressed size ${totalUncompressedBytes} exceeds limit ${maxTotalUncompressedBytes}`,
+			);
+		}
 
 		if (entry.method === 0) {
+			if (entry.compSize !== entry.uncompSize) {
+				throw new Error(`Invalid ZIP: stored entry ${name} has mismatched compressed and uncompressed sizes`);
+			}
 			// Method 0: Stored (no compression)
-			files[name] = data.subarray(dataStart, dataStart + entry.uncompSize);
+			const fileData = data.subarray(dataStart, dataEnd);
+			assertCrc(name, fileData, entry.crc);
+			files[name] = fileData;
 		} else if (entry.method === 8) {
-			// Method 8: Deflated -- batch for parallel decompression
-			inflateJobs.push({ name, compressed: data.subarray(dataStart, dataStart + entry.compSize) });
+			// Method 8: Deflated -- decompress after all structural checks pass
+			inflateJobs.push({
+				name,
+				compressed: data.subarray(dataStart, dataEnd),
+				expectedSize: entry.uncompSize,
+				crc: entry.crc,
+			});
 		} else {
 			throw new Error(`Unsupported ZIP compression method: ${entry.method}`);
 		}
 	}
 
-	// Decompress all deflated entries in parallel
-	if (inflateJobs.length > 0) {
-		const results = await Promise.all(inflateJobs.map((j) => inflate(j.compressed)));
-		for (let i = 0; i < inflateJobs.length; i++) {
-			files[inflateJobs[i].name] = results[i];
+	// Decompress deflated entries sequentially so a failing archive cannot keep
+	// multiple max-sized decompressed buffers alive after the first rejection.
+	for (const job of inflateJobs) {
+		const result = await inflate(job.compressed, job.expectedSize);
+		if (result.length !== job.expectedSize) {
+			throw new Error(
+				`Invalid ZIP: entry ${job.name} inflated to ${result.length} bytes, expected ${job.expectedSize}`,
+			);
 		}
+		assertCrc(job.name, result, job.crc);
+		files[job.name] = result;
 	}
 
 	return { files };
