@@ -101,7 +101,7 @@ function writeU32(buf: Uint8Array, off: number, val: number): void {
  *
  * Locates the End of Central Directory (EOCD) record by scanning backward,
  * then reads the central directory to find all file entries. Deflated entries
- * are decompressed in parallel using {@link DecompressionStream}.
+ * are decompressed one at a time to keep peak memory bounded by entry limits.
  *
  * @param data - Raw ZIP file bytes
  * @returns Parsed archive with decompressed file contents
@@ -209,7 +209,7 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 		pos = entryEnd;
 	}
 
-	// Read file data from local headers -- collect inflate promises for parallel decompression
+	// Read file data from local headers -- collect deflated entries for bounded decompression
 	const files: Record<string, Uint8Array> = Object.create(null);
 	const seenNames = new Set<string>();
 	const inflateJobs: { name: string; compressed: Uint8Array; expectedSize: number; crc: number }[] = [];
@@ -266,7 +266,7 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 			assertCrc(name, fileData, entry.crc);
 			files[name] = fileData;
 		} else if (entry.method === 8) {
-			// Method 8: Deflated -- batch for parallel decompression
+			// Method 8: Deflated -- decompress after all structural checks pass
 			inflateJobs.push({
 				name,
 				compressed: data.subarray(dataStart, dataEnd),
@@ -278,18 +278,17 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 		}
 	}
 
-	// Decompress all deflated entries in parallel
-	if (inflateJobs.length > 0) {
-		const results = await Promise.all(inflateJobs.map((j) => inflate(j.compressed, j.expectedSize)));
-		for (let i = 0; i < inflateJobs.length; i++) {
-			if (results[i].length !== inflateJobs[i].expectedSize) {
-				throw new Error(
-					`Invalid ZIP: entry ${inflateJobs[i].name} inflated to ${results[i].length} bytes, expected ${inflateJobs[i].expectedSize}`,
-				);
-			}
-			assertCrc(inflateJobs[i].name, results[i], inflateJobs[i].crc);
-			files[inflateJobs[i].name] = results[i];
+	// Decompress deflated entries sequentially so a failing archive cannot keep
+	// multiple max-sized decompressed buffers alive after the first rejection.
+	for (const job of inflateJobs) {
+		const result = await inflate(job.compressed, job.expectedSize);
+		if (result.length !== job.expectedSize) {
+			throw new Error(
+				`Invalid ZIP: entry ${job.name} inflated to ${result.length} bytes, expected ${job.expectedSize}`,
+			);
 		}
+		assertCrc(job.name, result, job.crc);
+		files[job.name] = result;
 	}
 
 	return { files };

@@ -89,6 +89,23 @@ describe("zipRead security guards", () => {
 		);
 	});
 
+	it("rejects invalid budget options", async () => {
+		const archive = await zipWrite({ files: { "a.txt": bytes("a") } });
+
+		await expect(zipRead(archive, { maxZipEntries: -1 })).rejects.toThrow(/maxZipEntries/);
+		await expect(zipRead(archive, { maxTotalUncompressedBytes: Number.POSITIVE_INFINITY })).rejects.toThrow(
+			/maxTotalUncompressedBytes/,
+		);
+	});
+
+	it("rejects multi-disk archives", async () => {
+		const archive = await zipWrite({ files: { "a.txt": bytes("a") } });
+		const corrupted = archive.slice();
+		writeU16(corrupted, findEocd(corrupted) + 4, 1);
+
+		await expect(zipRead(corrupted)).rejects.toThrow(/multi-disk archives are not supported/);
+	});
+
 	it("rejects duplicate central-directory names", async () => {
 		const archive = await zipWrite({
 			files: {
@@ -110,6 +127,36 @@ describe("zipRead security guards", () => {
 		corrupted.set(bytes("b.txt"), entry + 46);
 
 		await expect(zipRead(corrupted)).rejects.toThrow(/local header file name mismatch for b\.txt/);
+	});
+
+	it("rejects local-header method mismatches", async () => {
+		const archive = await zipWrite({ files: { "a.txt": bytes("a") } });
+		const corrupted = archive.slice();
+		const [entry] = centralDirectoryEntryOffsets(corrupted);
+		const localOffset = readU32(corrupted, entry + 42);
+		writeU16(corrupted, localOffset + 8, 8);
+
+		await expect(zipRead(corrupted)).rejects.toThrow(/local header method mismatch for a\.txt/);
+	});
+
+	it("rejects unsupported compression methods", async () => {
+		const archive = await zipWrite({ files: { "a.txt": bytes("a") } });
+		const corrupted = archive.slice();
+		const [entry] = centralDirectoryEntryOffsets(corrupted);
+		const localOffset = readU32(corrupted, entry + 42);
+		writeU16(corrupted, entry + 10, 99);
+		writeU16(corrupted, localOffset + 8, 99);
+
+		await expect(zipRead(corrupted)).rejects.toThrow(/Unsupported ZIP compression method: 99/);
+	});
+
+	it("rejects stored entries with mismatched sizes", async () => {
+		const archive = await zipWrite({ files: { "a.txt": bytes("a") } });
+		const corrupted = archive.slice();
+		const [entry] = centralDirectoryEntryOffsets(corrupted);
+		writeU32(corrupted, entry + 20, 0);
+
+		await expect(zipRead(corrupted)).rejects.toThrow(/stored entry a\.txt has mismatched/);
 	});
 
 	it("rejects CRC mismatches", async () => {
