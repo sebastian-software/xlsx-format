@@ -145,7 +145,7 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
 
 			// Preserve any existing number format from a prior cell at this position
 			const existingCell = getCell(ws, targetRow, targetCol);
-			if (existingCell?.z) {
+			if (existingCell?.z && !cell.z) {
 				cell.z = existingCell.z;
 			}
 			setCell(ws, targetRow, targetCol, cell);

@@ -127,6 +127,17 @@ describe("aoa.ts — addArrayToSheet edge cases", () => {
 		expect(ws["A1"].z).toBe("0.00");
 	});
 
+	it("keeps caller number formats on pre-built sparse cells", () => {
+		const ws = arrayToSheet([[1]]);
+		ws["A1"].z = "0.00";
+		const cell = { t: "n" as const, v: 42, z: "$#,##0.00" };
+
+		addArrayToSheet(ws, [[cell]]);
+
+		expect(ws["A1"].z).toBe("$#,##0.00");
+		expect(cell.z).toBe("$#,##0.00");
+	});
+
 	it("preserves existing number formats in dense worksheets", () => {
 		const ws = arrayToSheet([[1]], { dense: true });
 		ws["!data"]![0]![0]!.z = "0.00";
@@ -135,5 +146,16 @@ describe("aoa.ts — addArrayToSheet edge cases", () => {
 
 		expect(ws["!data"]![0]![0]!.v).toBe(2);
 		expect(ws["!data"]![0]![0]!.z).toBe("0.00");
+	});
+
+	it("keeps caller number formats on pre-built dense cells", () => {
+		const ws = arrayToSheet([[1]], { dense: true });
+		ws["!data"]![0]![0]!.z = "0.00";
+		const cell = { t: "n" as const, v: 42, z: "$#,##0.00" };
+
+		addArrayToSheet(ws, [[cell]]);
+
+		expect(ws["!data"]![0]![0]!.z).toBe("$#,##0.00");
+		expect(cell.z).toBe("$#,##0.00");
 	});
 });
