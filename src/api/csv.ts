@@ -5,6 +5,106 @@ import { arrayToSheet } from "./aoa.js";
 
 /** Regex to match double-quote characters for CSV escaping (doubled inside quoted fields) */
 const qreg = /"/g;
+const CELL_REF_RE = /^[A-Z]+[1-9][0-9]*$/;
+const MAX_EXPORT_CELLS = 1000000;
+
+function rangeCellCount(range: Range): number {
+	const rows = range.e.r - range.s.r + 1;
+	const cols = range.e.c - range.s.c + 1;
+	return rows > 0 && cols > 0 ? rows * cols : 0;
+}
+
+function occupiedRangeEnd(sheet: WorkSheet, range: Range): { r: number; c: number } | null {
+	let maxRow = -1;
+	let maxCol = -1;
+	const data = (sheet as any)["!data"];
+	if (data != null) {
+		for (const rowKey of Object.keys(data)) {
+			const rowIdx = Number(rowKey);
+			if (!Number.isInteger(rowIdx) || rowIdx < range.s.r || rowIdx > range.e.r) {
+				continue;
+			}
+			const row = data[rowIdx];
+			if (!row) {
+				continue;
+			}
+			for (const colKey of Object.keys(row)) {
+				const colIdx = Number(colKey);
+				if (!Number.isInteger(colIdx) || colIdx < range.s.c || colIdx > range.e.c || row[colIdx] == null) {
+					continue;
+				}
+				if (rowIdx > maxRow) {
+					maxRow = rowIdx;
+				}
+				if (colIdx > maxCol) {
+					maxCol = colIdx;
+				}
+			}
+		}
+	} else {
+		for (const ref of Object.keys(sheet)) {
+			if (!CELL_REF_RE.test(ref) || (sheet as any)[ref] == null) {
+				continue;
+			}
+			let rowIdx = 0;
+			let colIdx = 0;
+			for (let i = 0; i < ref.length; ++i) {
+				const charCode = ref.charCodeAt(i);
+				if (charCode >= 65 && charCode <= 90) {
+					colIdx = 26 * colIdx + charCode - 64;
+				} else {
+					rowIdx = 10 * rowIdx + charCode - 48;
+				}
+			}
+			--rowIdx;
+			--colIdx;
+			if (rowIdx < range.s.r || rowIdx > range.e.r || colIdx < range.s.c || colIdx > range.e.c) {
+				continue;
+			}
+			if (rowIdx > maxRow) {
+				maxRow = rowIdx;
+			}
+			if (colIdx > maxCol) {
+				maxCol = colIdx;
+			}
+		}
+	}
+	return maxRow === -1 ? null : { r: maxRow, c: maxCol };
+}
+
+function clampLargeExportRange(sheet: WorkSheet, range: Range): Range | null {
+	if (rangeCellCount(range) <= MAX_EXPORT_CELLS) {
+		return range;
+	}
+	const end = occupiedRangeEnd(sheet, range);
+	if (!end) {
+		return null;
+	}
+	return {
+		s: { r: range.s.r, c: range.s.c },
+		e: {
+			r: Math.max(range.s.r, Math.min(range.e.r, end.r)),
+			c: Math.max(range.s.c, Math.min(range.e.c, end.c)),
+		},
+	};
+}
+
+function escapeFormulaText(txt: string, options: any): string {
+	if (!options.escapeFormulae || txt.length === 0) {
+		return txt;
+	}
+	switch (txt.charCodeAt(0)) {
+		case 0x09:
+		case 0x0d:
+		case 0x2b:
+		case 0x2d:
+		case 0x3d:
+		case 0x40:
+			return "'" + txt;
+		default:
+			return txt;
+	}
+}
 
 /**
  * Build a single CSV row string from a worksheet row.
@@ -41,6 +141,7 @@ function buildCsvRow(
 		} else if (val.v != null) {
 			isempty = false;
 			txt = "" + (options.rawNumbers && val.t === "n" ? val.v : formatCell(val, null, options));
+			txt = escapeFormulaText(txt, options);
 			// Check each character: if the text contains the field separator,
 			// record separator, LF (10), CR (13), or double-quote (34), wrap in quotes
 			for (let i = 0, charCode = 0; i !== txt.length; ++i) {
@@ -64,6 +165,7 @@ function buildCsvRow(
 			// Cell has a formula but no cached value and is not part of an array formula
 			isempty = false;
 			txt = "=" + val.f;
+			txt = escapeFormulaText(txt, options);
 			if (txt.indexOf(",") >= 0) {
 				txt = '"' + txt.replace(qreg, '""') + '"';
 			}
@@ -100,7 +202,10 @@ export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 	if (sheet == null || sheet["!ref"] == null) {
 		return "";
 	}
-	const range = safeDecodeRange(sheet["!ref"]);
+	const range = clampLargeExportRange(sheet, safeDecodeRange(sheet["!ref"]));
+	if (!range) {
+		return "";
+	}
 	const fieldSeparator = options.FS !== undefined ? options.FS : ",";
 	const fieldSepCode = fieldSeparator.charCodeAt(0);
 	const recordSeparator = options.RS !== undefined ? options.RS : "\n";

@@ -500,6 +500,8 @@ export interface Sheet2CSVOpts {
 	forceQuotes?: boolean;
 	/** If true, emit raw numeric values instead of formatted text */
 	rawNumbers?: boolean;
+	/** If true, prefix formula-like text fields with a single quote */
+	escapeFormulae?: boolean;
 	/** Override date format for date cells */
 	dateNF?: NumberFormat;
 }
