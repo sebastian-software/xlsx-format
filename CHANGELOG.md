@@ -1,5 +1,29 @@
 # Changelog
 
+## [2.1.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.0.0...xlsx-format-v2.1.0) (2026-06-12)
+
+
+### Features
+
+* add styled xlsx report writing ([d24aa64](https://github.com/sebastian-software/xlsx-format/commit/d24aa64c6e08d38dbaf96ee9216505c8a546a934))
+* **api:** add sheetToArray and typed cell helpers ([ef1b2c8](https://github.com/sebastian-software/xlsx-format/commit/ef1b2c8fa8314630368d96c3148de854ca4978eb))
+
+
+### Bug Fixes
+
+* **api:** harden spreadsheet exports against malicious data ([1fbce35](https://github.com/sebastian-software/xlsx-format/commit/1fbce35abef484d2e446265eb865711737e61aed))
+* synchronize exported package version ([b38259d](https://github.com/sebastian-software/xlsx-format/commit/b38259d2a79895d0c8423a07b99e87335ceca76b))
+* updated Ardo ([dbc0126](https://github.com/sebastian-software/xlsx-format/commit/dbc0126ba5463810c2a6c5745c186c5490a8f90a))
+* updated deps ([cba8dd7](https://github.com/sebastian-software/xlsx-format/commit/cba8dd7c0ff310c0826669c4655465ee9b51b440))
+* **zip:** harden parsing against malicious archives ([ff2a1d3](https://github.com/sebastian-software/xlsx-format/commit/ff2a1d333188a63c9cf09acaa173085737dc4d08))
+
+
+### Documentation
+
+* add Sebastian Software branding to README ([68d7661](https://github.com/sebastian-software/xlsx-format/commit/68d7661acf90b70b1e6c8ba40133244f21ac8f2a))
+* add Sebastian Software README branding ([e130c84](https://github.com/sebastian-software/xlsx-format/commit/e130c84841cf4d47d941f5e8d3c50c93a9a003bc))
+* **security:** add policy and guidance ([3d09f8b](https://github.com/sebastian-software/xlsx-format/commit/3d09f8b9fbebf40113e3c2ef69361f039a96f2f5))
+
 ## [2.0.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v1.0.2...xlsx-format-v2.0.0) (2026-02-12)
 
 
