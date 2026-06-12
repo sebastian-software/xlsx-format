@@ -320,7 +320,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		}
 	}
 
-	const sheets: Record<string, WorkSheet> = {};
+	const sheets: Record<string, WorkSheet> = Object.create(null);
 
 	// Calculation chain (dependency order for formula recalc)
 	if (options.bookDeps && dir.calcchain) {
@@ -328,7 +328,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	}
 
 	// Build the sheet name list from the workbook
-	const sheetRels: Record<string, Relationships> = {};
+	const sheetRels: Record<string, Relationships> = Object.create(null);
 	const wbsheets = wb.Sheets;
 	props.Worksheets = wbsheets.length;
 	props.SheetNames = [];

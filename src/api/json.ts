@@ -1,9 +1,18 @@
 import type { WorkSheet, Sheet2JSONOpts, JSON2SheetOpts, CellObject, Range } from "../types.js";
 import { decodeCell, encodeCol, encodeRow, encodeRange, safeDecodeRange, getCell } from "../utils/cell.js";
 import { dateToSerialNumber, serialNumberToDate, utcToLocal, localToUtc } from "../utils/date.js";
+import { clampLargeExportRange } from "../utils/export-range.js";
 import { isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { formatCell } from "./format.js";
+
+function setRowValue(row: any, key: any, value: any): void {
+	if (key === "__proto__" || key === "constructor" || key === "prototype") {
+		Object.defineProperty(row, key, { value, enumerable: true, configurable: true, writable: true });
+	} else {
+		row[key] = value;
+	}
+}
 
 /**
  * Build a single JSON row object (or array) from a worksheet row.
@@ -45,7 +54,7 @@ function buildJsonRow(
 				continue;
 			}
 			if (headers[colIdx] != null) {
-				row[headers[colIdx]] = defval;
+				setRowValue(row, headers[colIdx], defval);
 			}
 			continue;
 		}
@@ -84,21 +93,23 @@ function buildJsonRow(
 		if (headers[colIdx] != null) {
 			if (cellValue == null) {
 				if (val.t === "e" && cellValue === null) {
-					row[headers[colIdx]] = null;
+					setRowValue(row, headers[colIdx], null);
 				} else if (defval !== undefined) {
-					row[headers[colIdx]] = defval;
+					setRowValue(row, headers[colIdx], defval);
 				} else if (raw && cellValue === null) {
-					row[headers[colIdx]] = null;
+					setRowValue(row, headers[colIdx], null);
 				} else {
 					continue;
 				}
 			} else {
 				// Use raw value when rawNumbers/raw is set, otherwise format for display
-				row[headers[colIdx]] = (
-					val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw
-				)
-					? cellValue
-					: formatCell(val, cellValue, options);
+				setRowValue(
+					row,
+					headers[colIdx],
+					(val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw)
+						? cellValue
+						: formatCell(val, cellValue, options),
+				);
 			}
 			if (cellValue != null) {
 				isempty = false;
@@ -157,6 +168,13 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		default:
 			decodedRange = range;
 	}
+	if (options.range == null || typeof options.range === "number") {
+		const clampedRange = clampLargeExportRange(sheet, decodedRange);
+		if (!clampedRange) {
+			return [];
+		}
+		decodedRange = clampedRange;
+	}
 	// When headers are explicitly provided, data starts at the first row (no offset)
 	if (header > 0) {
 		offset = 0;
@@ -165,7 +183,7 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 	const out: any[] = [];
 	let outputIndex = 0;
 	let rowIdx = decodedRange.s.r;
-	const header_cnt: Record<string, number> = {};
+	const header_cnt: Record<string, number> = Object.create(null);
 	const colinfo: any[] = (options.skipHidden && sheet["!cols"]) || [];
 	const rowinfo: any[] = (options.skipHidden && sheet["!rows"]) || [];
 

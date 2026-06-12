@@ -1,10 +1,28 @@
 import type { WorkSheet, Sheet2CSVOpts, Range } from "../types.js";
 import { encodeCol, safeDecodeRange, getCell } from "../utils/cell.js";
+import { clampLargeExportRange } from "../utils/export-range.js";
 import { formatCell } from "./format.js";
 import { arrayToSheet } from "./aoa.js";
 
 /** Regex to match double-quote characters for CSV escaping (doubled inside quoted fields) */
 const qreg = /"/g;
+
+function escapeFormulaText(txt: string, options: any): string {
+	if (!options.escapeFormulae || txt.length === 0) {
+		return txt;
+	}
+	switch (txt.charCodeAt(0)) {
+		case 0x09:
+		case 0x0d:
+		case 0x2b:
+		case 0x2d:
+		case 0x3d:
+		case 0x40:
+			return "'" + txt;
+		default:
+			return txt;
+	}
+}
 
 /**
  * Build a single CSV row string from a worksheet row.
@@ -41,6 +59,7 @@ function buildCsvRow(
 		} else if (val.v != null) {
 			isempty = false;
 			txt = "" + (options.rawNumbers && val.t === "n" ? val.v : formatCell(val, null, options));
+			txt = escapeFormulaText(txt, options);
 			// Check each character: if the text contains the field separator,
 			// record separator, LF (10), CR (13), or double-quote (34), wrap in quotes
 			for (let i = 0, charCode = 0; i !== txt.length; ++i) {
@@ -64,6 +83,7 @@ function buildCsvRow(
 			// Cell has a formula but no cached value and is not part of an array formula
 			isempty = false;
 			txt = "=" + val.f;
+			txt = escapeFormulaText(txt, options);
 			if (txt.indexOf(",") >= 0) {
 				txt = '"' + txt.replace(qreg, '""') + '"';
 			}
@@ -100,7 +120,10 @@ export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 	if (sheet == null || sheet["!ref"] == null) {
 		return "";
 	}
-	const range = safeDecodeRange(sheet["!ref"]);
+	const range = clampLargeExportRange(sheet, safeDecodeRange(sheet["!ref"]));
+	if (!range) {
+		return "";
+	}
 	const fieldSeparator = options.FS !== undefined ? options.FS : ",";
 	const fieldSepCode = fieldSeparator.charCodeAt(0);
 	const recordSeparator = options.RS !== undefined ? options.RS : "\n";

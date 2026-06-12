@@ -1,6 +1,7 @@
 import type { WorkSheet, Sheet2HTMLOpts, Range } from "../types.js";
 import { BErr } from "../types.js";
 import { encodeCol, encodeRow, decodeRange, getCell } from "../utils/cell.js";
+import { clampLargeExportRange } from "../utils/export-range.js";
 import { escapeHtml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { formatCell } from "./format.js";
@@ -10,6 +11,32 @@ import { arrayToSheet } from "./aoa.js";
 const HTML_BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
 /** Default HTML document suffix closing the body and html tags */
 const HTML_END = "</body></html>";
+const UNSAFE_LINK_TARGET_RE = /^(?:javascript|vbscript|data):/;
+
+function isIgnorableLinkTargetCode(code: number): boolean {
+	return (
+		code <= 0x20 ||
+		code === 0x7f ||
+		code === 0xad ||
+		code === 0x61c ||
+		code === 0x180e ||
+		(code >= 0x200b && code <= 0x200f) ||
+		(code >= 0x202a && code <= 0x202e) ||
+		(code >= 0x2060 && code <= 0x206f) ||
+		code === 0xfeff
+	);
+}
+
+function isSanitizedLinkTarget(target: string): boolean {
+	let normalized = "";
+	for (let i = 0; i < target.length; ++i) {
+		if (!isIgnorableLinkTargetCode(target.charCodeAt(i))) {
+			normalized += target[i];
+		}
+	}
+	normalized = normalized.toLowerCase();
+	return !UNSAFE_LINK_TARGET_RE.test(normalized);
+}
 
 /**
  * Build a single HTML `<tr>` row from a worksheet row, handling merged cells,
@@ -87,11 +114,11 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 				cellAttrs["data-f"] = escapeHtml(cell.f);
 			}
 			// Wrap in an anchor tag if the cell has a non-internal hyperlink,
-			// filtering out javascript: URIs when sanitizeLinks is enabled
+			// filtering out unsafe URI schemes when sanitizeLinks is enabled
 			if (
 				cell.l &&
 				(cell.l.Target || "#").charAt(0) !== "#" &&
-				(!options.sanitizeLinks || (cell.l.Target || "").slice(0, 11).toLowerCase() !== "javascript:")
+				(!options.sanitizeLinks || isSanitizedLinkTarget(cell.l.Target || ""))
 			) {
 				cellContent = '<a href="' + escapeHtml(cell.l.Target) + '">' + cellContent + "</a>";
 			}
@@ -120,9 +147,9 @@ export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
 	const header = options.header != null ? options.header : HTML_BEGIN;
 	const footer = options.footer != null ? options.footer : HTML_END;
 	const out: string[] = [header];
-	const range = decodeRange(ws["!ref"] || "A1");
+	const range = clampLargeExportRange(ws, decodeRange(ws["!ref"] || "A1"));
 	out.push("<table" + (options.id ? ' id="' + options.id + '"' : "") + ">");
-	if (ws["!ref"]) {
+	if (ws["!ref"] && range) {
 		for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
 			out.push(buildHtmlRow(ws, range, rowIdx, options));
 		}
