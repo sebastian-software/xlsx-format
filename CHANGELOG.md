@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.1.0...xlsx-format-v2.1.1) (2026-06-13)
+
+
+### Bug Fixes
+
+* add XML parser safety limits ([4c94073](https://github.com/sebastian-software/xlsx-format/commit/4c9407363de4ff15ccabae8449dab893a3a6ce52)), closes [#25](https://github.com/sebastian-software/xlsx-format/issues/25)
+
 ## [2.1.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.0.0...xlsx-format-v2.1.0) (2026-06-12)
 
 
