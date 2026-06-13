@@ -21,6 +21,7 @@ When reading files from users or external systems:
 - use process, worker, or request timeouts in server environments,
 - prefer narrow conversion work instead of immediately materializing every sheet into JSON,
 - use `sheetRows` when only a preview or header sample is needed,
+- tune ZIP and XML parser limits for public upload paths,
 - keep xlsx-format updated for ZIP, XML, and export hardening fixes.
 
 ```typescript
@@ -28,11 +29,19 @@ import { read, sheetToJson } from "xlsx-format";
 
 const workbook = await read(fileBytes, {
 	sheetRows: 1000,
+	maxXmlPartBytes: 32 * 1024 * 1024,
+	maxXmlTags: 500_000,
+	maxXmlNestingDepth: 128,
+	maxSharedStringItems: 100_000,
+	maxWorksheetRows: 100_000,
+	maxWorksheetCells: 1_000_000,
 });
 
 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
 const previewRows = sheetToJson(firstSheet);
 ```
+
+The default ZIP and XML limits are intentionally high enough for ordinary workbooks. Lower them when a service receives arbitrary uploads and does not need to parse very large sheets.
 
 ## Exporting CSV
 
