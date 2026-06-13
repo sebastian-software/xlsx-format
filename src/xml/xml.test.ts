@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { escapeXml, unescapeXml, escapeHtml, htmlDecode, escapeXmlTag } from "./escape.js";
 import { parseXmlTag, parseXmlBoolean, stripNamespace } from "./parser.js";
+import { assertXmlPartLimits } from "./limits.js";
 
 describe("escapeXml", () => {
 	it("should escape ampersand", () => {
@@ -127,6 +128,44 @@ describe("parseXmlTag", () => {
 	it("should strip namespace prefixes from attributes", () => {
 		const result = parseXmlTag('tag r:id="rId1"');
 		expect(result["id"]).toBe("rId1");
+	});
+
+	it("should enforce the configured attribute limit", () => {
+		expect(() =>
+			parseXmlTag('tag first="1" second="2"', undefined, undefined, { maxXmlAttributesPerTag: 1 }),
+		).toThrow(/XML attribute count 2 exceeds limit 1/);
+	});
+
+	it("should reject invalid XML limit options", () => {
+		expect(() => parseXmlTag('tag id="1"', undefined, undefined, { maxXmlAttributesPerTag: -1 })).toThrow(
+			/maxXmlAttributesPerTag/,
+		);
+	});
+});
+
+describe("assertXmlPartLimits", () => {
+	it("should enforce decoded XML part size", () => {
+		expect(() => {
+			assertXmlPartLimits("sheet.xml", "<a/>", { maxXmlPartBytes: 3 });
+		}).toThrow(/sheet\.xml size 4 exceeds limit 3/);
+	});
+
+	it("should enforce XML tag count", () => {
+		expect(() => {
+			assertXmlPartLimits("sheet.xml", "<a/><b/>", { maxXmlTags: 1 });
+		}).toThrow(/sheet\.xml tag count 2 exceeds limit 1/);
+	});
+
+	it("should enforce XML nesting depth", () => {
+		expect(() => {
+			assertXmlPartLimits("sheet.xml", "<a><b></b></a>", { maxXmlNestingDepth: 1 });
+		}).toThrow(/sheet\.xml nesting depth 2 exceeds limit 1/);
+	});
+
+	it("should enforce XML tag length", () => {
+		expect(() => {
+			assertXmlPartLimits("sheet.xml", `<${"a".repeat(8)}>`, { maxXmlTagLength: 4 });
+		}).toThrow(/sheet\.xml tag length 10 exceeds limit 4/);
 	});
 });
 

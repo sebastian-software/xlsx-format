@@ -193,6 +193,28 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 		expect(ws["!autofilter"]).toBeDefined();
 	});
 
+	it("enforces worksheet row and cell scan limits", () => {
+		const rowsXml = `<?xml version="1.0"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetData>
+<row r="1"><c r="A1"><v>1</v></c></row>
+<row r="2"><c r="A2"><v>2</v></c></row>
+</sheetData>
+</worksheet>`;
+		const cellsXml = `<?xml version="1.0"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetData>
+<row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row>
+</sheetData>
+</worksheet>`;
+		expect(() => parseWorksheetXml(rowsXml, { maxWorksheetRows: 1 })).toThrow(
+			/worksheet row count 2 exceeds limit 1/,
+		);
+		expect(() => parseWorksheetXml(cellsXml, { maxWorksheetCells: 1 })).toThrow(
+			/worksheet cell count 2 exceeds limit 1/,
+		);
+	});
+
 	it("parses worksheet with cols (cellStyles)", () => {
 		const xml = `<?xml version="1.0"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">

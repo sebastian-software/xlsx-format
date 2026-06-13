@@ -2,6 +2,7 @@ import { parseXmlTag, XML_HEADER, XML_TAG_REGEX } from "../xml/parser.js";
 import { unescapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS, RELS } from "../xml/namespaces.js";
+import type { XmlLimitOptions } from "../xml/limits.js";
 
 /** A single relationship entry from a .rels file */
 export interface RelEntry {
@@ -65,7 +66,11 @@ export function getRelsPath(file: string): string {
  * @param currentFilePath - the path of the file that owns this .rels (used for path resolution)
  * @returns the parsed Relationships object
  */
-export function parseRelationships(data: string | null | undefined, currentFilePath: string): Relationships {
+export function parseRelationships(
+	data: string | null | undefined,
+	currentFilePath: string,
+	opts?: XmlLimitOptions,
+): Relationships {
 	const rels = { "!id": {} } as any as Relationships;
 	if (!data) {
 		return rels;
@@ -77,7 +82,7 @@ export function parseRelationships(data: string | null | undefined, currentFileP
 
 	const matches = data.match(XML_TAG_REGEX) || [];
 	for (const x of matches) {
-		const y = parseXmlTag(x);
+		const y = parseXmlTag(x, undefined, undefined, opts);
 		if (y[0] === "<Relationship") {
 			const rel: RelEntry = {
 				Type: y.Type,

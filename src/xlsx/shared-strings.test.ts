@@ -366,6 +366,17 @@ describe("xlsx/shared-strings", () => {
 		expect(parseSstXml("")).toHaveLength(0);
 	});
 
+	it("parseSstXml should enforce XML size and shared string count limits", () => {
+		const xml = `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+			<si><t>Hello</t></si>
+			<si><t>World</t></si>
+		</sst>`;
+		expect(() => parseSstXml(xml, { maxXmlPartBytes: 8 })).toThrow(/sharedStrings\.xml size/);
+		expect(() => parseSstXml(xml, { maxSharedStringItems: 1 })).toThrow(
+			/shared string item count .* exceeds limit 1/,
+		);
+	});
+
 	it("writeSstXml should return empty when bookSST is false", () => {
 		expect(writeSstXml([] as any, { bookSST: false })).toBe("");
 	});

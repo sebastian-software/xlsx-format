@@ -1,6 +1,7 @@
 import { parseXmlTag, XML_HEADER, XML_TAG_REGEX } from "../xml/parser.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS } from "../xml/namespaces.js";
+import type { XmlLimitOptions } from "../xml/limits.js";
 
 // Extracts the namespace prefix from the first tag in a string (e.g., "w" from "<w:Types>")
 const nsregex = /<(\w+):/;
@@ -153,7 +154,7 @@ export function createContentTypes(): ContentTypes {
  * @returns a populated ContentTypes object
  * @throws if the root namespace is not the expected OPC content-types namespace
  */
-export function parseContentTypes(data: string | null | undefined): ContentTypes {
+export function parseContentTypes(data: string | null | undefined, opts?: XmlLimitOptions): ContentTypes {
 	const ct = createContentTypes();
 	if (!data) {
 		return ct;
@@ -161,7 +162,7 @@ export function parseContentTypes(data: string | null | undefined): ContentTypes
 	const ctext: Record<string, string> = {};
 	const matches = data.match(XML_TAG_REGEX) || [];
 	for (const x of matches) {
-		const y = parseXmlTag(x);
+		const y = parseXmlTag(x, undefined, undefined, opts);
 		// Strip namespace prefix from tag name for uniform matching
 		switch ((y[0] as string).replace(nsregex, "<")) {
 			case "<?xml":

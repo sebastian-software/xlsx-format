@@ -117,6 +117,22 @@ export interface ReadOptions extends CommonOptions {
 	maxTotalUncompressedBytes?: number;
 	/** Maximum uncompressed ZIP payload size for a single file entry */
 	maxEntryUncompressedBytes?: number;
+	/** Maximum decoded XML part size */
+	maxXmlPartBytes?: number;
+	/** Maximum number of raw XML tags in a single XML part */
+	maxXmlTags?: number;
+	/** Maximum XML element nesting depth in a single XML part */
+	maxXmlNestingDepth?: number;
+	/** Maximum number of characters in a single XML tag */
+	maxXmlTagLength?: number;
+	/** Maximum number of attributes in a single XML tag */
+	maxXmlAttributesPerTag?: number;
+	/** Maximum number of shared string entries to parse */
+	maxSharedStringItems?: number;
+	/** Maximum number of worksheet row elements to scan */
+	maxWorksheetRows?: number;
+	/** Maximum number of worksheet cell elements to scan */
+	maxWorksheetCells?: number;
 }
 
 /** Options for writing/serializing workbook files */

@@ -3,6 +3,13 @@ import { parseXmlTag, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main } from "../xml/namespaces.js";
+import {
+	assertXmlCountWithinLimit,
+	assertXmlPartLimits,
+	DEFAULT_MAX_WORKSHEET_CELLS,
+	DEFAULT_MAX_WORKSHEET_ROWS,
+	xmlOptionLimit,
+} from "../xml/limits.js";
 import { safeDecodeRange, encodeRange, encodeCell } from "../utils/cell.js";
 import { formatNumber, isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
@@ -42,15 +49,15 @@ function parseWorksheetXml_margins(tag: Record<string, any>): MarginInfo {
 }
 
 /** Parse <autoFilter> element extracting the filter reference range */
-function parseWorksheetXml_autofilter(data: string): { ref: string } {
-	const tag = parseXmlTag(data.match(/<[^>]*>/)?.[0] || "");
+function parseWorksheetXml_autofilter(data: string, opts?: any): { ref: string } {
+	const tag = parseXmlTag(data.match(/<[^>]*>/)?.[0] || "", undefined, undefined, opts);
 	return { ref: tag.ref || "" };
 }
 
 /** Parse <col> elements to populate column width and hidden state */
-function parseWorksheetXml_cols(columns: ColInfo[], cols: string[]): void {
+function parseWorksheetXml_cols(columns: ColInfo[], cols: string[], opts?: any): void {
 	for (let i = 0; i < cols.length; ++i) {
-		const tag = parseXmlTag(cols[i]);
+		const tag = parseXmlTag(cols[i], undefined, undefined, opts);
 		if (!tag.min || !tag.max) {
 			continue;
 		}
@@ -73,7 +80,7 @@ function parseWorksheetXml_cols(columns: ColInfo[], cols: string[]): void {
 	}
 }
 
-function parseWorksheetXml_views(data: string): SheetView[] | undefined {
+function parseWorksheetXml_views(data: string, opts?: any): SheetView[] | undefined {
 	const match = data.match(sheetViewRegex);
 	if (!match) {
 		return undefined;
@@ -82,7 +89,7 @@ function parseWorksheetXml_views(data: string): SheetView[] | undefined {
 	if (!pane) {
 		return undefined;
 	}
-	const tag = parseXmlTag(pane[0]);
+	const tag = parseXmlTag(pane[0], undefined, undefined, opts);
 	if (tag.state !== "frozen") {
 		return undefined;
 	}
@@ -103,9 +110,9 @@ function parseWorksheetXml_views(data: string): SheetView[] | undefined {
 }
 
 /** Parse <hyperlink> elements and attach link objects to the corresponding cells */
-function parseWorksheetXml_hlinks(s: WorkSheet, hlinks: string[], rels: Relationships): void {
+function parseWorksheetXml_hlinks(s: WorkSheet, hlinks: string[], rels: Relationships, opts?: any): void {
 	for (let i = 0; i < hlinks.length; ++i) {
-		const tag = parseXmlTag(hlinks[i]);
+		const tag = parseXmlTag(hlinks[i], undefined, undefined, opts);
 		if (!tag.ref) {
 			continue;
 		}
@@ -170,6 +177,10 @@ function parseSheetData(
 ): void {
 	const dense = s["!data"] != null;
 	const date1904 = wb?.WBProps?.date1904;
+	const maxWorksheetRows = xmlOptionLimit(opts.maxWorksheetRows, DEFAULT_MAX_WORKSHEET_ROWS, "maxWorksheetRows");
+	const maxWorksheetCells = xmlOptionLimit(opts.maxWorksheetCells, DEFAULT_MAX_WORKSHEET_CELLS, "maxWorksheetCells");
+	let rowCount = 0;
+	let cellCount = 0;
 
 	// Split by </row> boundaries to isolate each row's content
 	const rows = sdata.split(/<\/(?:\w+:)?row>/);
@@ -185,7 +196,8 @@ function parseSheetData(
 		if (!rowTagMatch) {
 			continue;
 		}
-		const rowTag = parseXmlTag(rowTagMatch[0]);
+		assertXmlCountWithinLimit("worksheet row", ++rowCount, maxWorksheetRows);
+		const rowTag = parseXmlTag(rowTagMatch[0], undefined, undefined, opts);
 		// Row numbers in XML are 1-based
 		const R = parseInt(rowTag.r, 10) - 1;
 		if (isNaN(R)) {
@@ -217,7 +229,13 @@ function parseSheetData(
 		cellregex.lastIndex = 0;
 		let cellMatch;
 		while ((cellMatch = cellregex.exec(rowStr))) {
-			const cellTag = parseXmlTag(cellMatch[0].match(/<(?:\w+:)?c\b[^>]*/)?.[0] + ">" || "");
+			assertXmlCountWithinLimit("worksheet cell", ++cellCount, maxWorksheetCells);
+			const cellTag = parseXmlTag(
+				cellMatch[0].match(/<(?:\w+:)?c\b[^>]*/)?.[0] + ">" || "",
+				undefined,
+				undefined,
+				opts,
+			);
 			const ref = cellTag.r;
 			if (!ref) {
 				continue;
@@ -336,7 +354,12 @@ function parseSheetData(
 			// Extract formula
 			if (fMatch && opts.cellFormula !== false) {
 				cell.f = unescapeXml(fMatch[1]);
-				const fTag = parseXmlTag(cellValue.match(/<(?:\w+:)?f[^>]*/)?.[0] + ">" || "");
+				const fTag = parseXmlTag(
+					cellValue.match(/<(?:\w+:)?f[^>]*/)?.[0] + ">" || "",
+					undefined,
+					undefined,
+					opts,
+				);
 				if (fTag.t === "shared" && fTag.si != null) {
 					// Shared formula (master or reference)
 				}
@@ -471,6 +494,7 @@ export function parseWorksheetXml(
 	if (!opts) {
 		opts = {};
 	}
+	assertXmlPartLimits("worksheet.xml", data, opts);
 	if (!rels) {
 		rels = { "!id": {} } as any;
 	}
@@ -504,9 +528,9 @@ export function parseWorksheetXml(
 	if (opts.cellStyles) {
 		const cols = data1.match(colregex);
 		if (cols) {
-			parseWorksheetXml_cols(columns, cols);
+			parseWorksheetXml_cols(columns, cols, opts);
 		}
-		const views = parseWorksheetXml_views(data1);
+		const views = parseWorksheetXml_views(data1, opts);
 		if (views) {
 			s["!views"] = views;
 		}
@@ -520,7 +544,7 @@ export function parseWorksheetXml(
 	// AutoFilter
 	const afilter = data2.match(afregex);
 	if (afilter) {
-		s["!autofilter"] = parseWorksheetXml_autofilter(afilter[0]);
+		s["!autofilter"] = parseWorksheetXml_autofilter(afilter[0], opts);
 	}
 
 	// Merged cells
@@ -536,13 +560,13 @@ export function parseWorksheetXml(
 	// Hyperlinks
 	const hlink = data2.match(hlinkregex);
 	if (hlink) {
-		parseWorksheetXml_hlinks(s, hlink, rels!);
+		parseWorksheetXml_hlinks(s, hlink, rels!, opts);
 	}
 
 	// Page margins
 	const margins = data2.match(marginregex);
 	if (margins) {
-		s["!margins"] = parseWorksheetXml_margins(parseXmlTag(margins[0]));
+		s["!margins"] = parseWorksheetXml_margins(parseXmlTag(margins[0], undefined, undefined, opts));
 	}
 
 	// Legacy drawing reference (for VML comment shapes)

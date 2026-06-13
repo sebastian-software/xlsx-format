@@ -24,6 +24,7 @@ import { parseCalcChainXml } from "./calc-chain.js";
 import { resetFormatTable } from "../ssf/table.js";
 import { utf8read } from "../utils/buffer.js";
 import { RELS as RELTYPE } from "../xml/namespaces.js";
+import { assertXmlPartLimits } from "../xml/limits.js";
 
 /** Strip a leading "/" from a path (ZIP entries don't use leading slashes) */
 function stripLeadingSlash(x: string): string {
@@ -55,17 +56,20 @@ function resolve_path(target: string, basePath: string): string {
  * Read a file from the ZIP as a string.
  * Throws if the file is not found and safe is not set.
  */
-function getZipString(zip: ZipArchive, path: string, safe?: boolean): string | null {
+function getZipString(zip: ZipArchive, path: string, safe?: boolean, opts?: ReadOptions): string | null {
 	const p = zipReadString(zip, path);
 	if (p == null && !safe) {
 		throw new Error("Could not find " + path);
+	}
+	if (p != null) {
+		assertXmlPartLimits(path, p, opts);
 	}
 	return p;
 }
 
 /** Read ZIP entry data as string (alias for XML-based files) */
-function getZipData(zip: ZipArchive, path: string, safe?: boolean): string | null {
-	return getZipString(zip, path, safe);
+function getZipData(zip: ZipArchive, path: string, safe?: boolean, opts?: ReadOptions): string | null {
+	return getZipString(zip, path, safe, opts);
 }
 
 /** Recognized relationship types for worksheets (standard and transitional) */
@@ -122,8 +126,8 @@ function safe_parse_sheet(
 	strs: SST,
 ): void {
 	try {
-		sheetRels[sheetName] = parseRelationships(getZipString(zip, relsPath, true), path);
-		const data = getZipData(zip, path);
+		sheetRels[sheetName] = parseRelationships(getZipString(zip, relsPath, true, opts), path, opts);
+		const data = getZipData(zip, path, false, opts);
 		if (!data) {
 			return;
 		}
@@ -162,7 +166,7 @@ function safe_parse_sheet(
 				// Parse legacy comments (ECMA-376 18.7)
 				if (rel.Type === RELTYPE.CMNT) {
 					const dfile = resolve_path(rel.Target, path);
-					const cmntData = getZipData(zip, dfile, true);
+					const cmntData = getZipData(zip, dfile, true, opts);
 					if (cmntData) {
 						const parsedComments = parseCommentsXml(cmntData, opts);
 						if (parsedComments && parsedComments.length > 0) {
@@ -173,7 +177,7 @@ function safe_parse_sheet(
 				// Parse threaded comments (MS-XLSX extension)
 				if (rel.Type === RELTYPE.TCMNT) {
 					const dfile = resolve_path(rel.Target, path);
-					const tcData = getZipData(zip, dfile, true);
+					const tcData = getZipData(zip, dfile, true, opts);
 					if (tcData) {
 						tcomments = tcomments.concat(parseTcmntXml(tcData, opts));
 					}
@@ -187,7 +191,7 @@ function safe_parse_sheet(
 		// Parse legacy VML drawings (comment anchor shapes)
 		if ((_ws as any)["!legdrawel"] && sheetRels[sheetName]) {
 			const dfile = resolve_path((_ws as any)["!legdrawel"].Target, path);
-			const draw = getZipString(zip, dfile, true);
+			const draw = getZipString(zip, dfile, true, opts);
 			if (draw) {
 				parseVml(utf8read(draw), _ws, comments);
 			}
@@ -219,12 +223,12 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		throw new Error("Unsupported ZIP file");
 	}
 
-	const dir: ContentTypes = parseContentTypes(getZipString(zip, "[Content_Types].xml"));
+	const dir: ContentTypes = parseContentTypes(getZipString(zip, "[Content_Types].xml", false, options), options);
 
 	// Fallback: if no workbook found in content types, try the default path
 	if (dir.workbooks.length === 0) {
 		const binname = "xl/workbook.xml";
-		if (getZipData(zip, binname, true)) {
+		if (getZipData(zip, binname, true, options)) {
 			dir.workbooks.push(binname);
 		}
 	}
@@ -241,7 +245,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		// Shared String Table
 		if (dir.sst) {
 			try {
-				const sstData = getZipData(zip, stripLeadingSlash(dir.sst));
+				const sstData = getZipData(zip, stripLeadingSlash(dir.sst), false, options);
 				if (sstData) {
 					strs = parseSstXml(sstData, options);
 				}
@@ -254,7 +258,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 		// Theme (color scheme for styled cells)
 		if (dir.themes.length) {
-			const themeData = getZipString(zip, dir.themes[0].replace(/^\//, ""), true);
+			const themeData = getZipString(zip, dir.themes[0].replace(/^\//, ""), true, options);
 			if (themeData) {
 				const parsed = parse_theme_xml(themeData);
 				Object.assign(themes, parsed);
@@ -263,7 +267,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 		// Styles (number formats, cell xf entries)
 		if (dir.style) {
-			const styData = getZipData(zip, stripLeadingSlash(dir.style));
+			const styData = getZipData(zip, stripLeadingSlash(dir.style), false, options);
 			if (styData) {
 				styles = parseStylesXml(styData, themes, options);
 			}
@@ -271,17 +275,20 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	}
 
 	// Parse the workbook XML (sheet list, defined names, properties)
-	const wb: WorkbookFile = parseWorkbookXml(getZipData(zip, stripLeadingSlash(dir.workbooks[0]))!, options);
+	const wb: WorkbookFile = parseWorkbookXml(
+		getZipData(zip, stripLeadingSlash(dir.workbooks[0]), false, options)!,
+		options,
+	);
 
 	// Parse document properties
 	const props: any = {};
 	if (dir.coreprops.length) {
-		const propdata = getZipData(zip, stripLeadingSlash(dir.coreprops[0]), true);
+		const propdata = getZipData(zip, stripLeadingSlash(dir.coreprops[0]), true, options);
 		if (propdata) {
 			Object.assign(props, parseCoreProperties(propdata));
 		}
 		if (dir.extprops.length) {
-			const extdata = getZipData(zip, stripLeadingSlash(dir.extprops[0]), true);
+			const extdata = getZipData(zip, stripLeadingSlash(dir.extprops[0]), true, options);
 			if (extdata) {
 				parseExtendedProperties(extdata, props);
 			}
@@ -292,7 +299,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	let custprops: Record<string, any> = {};
 	if (!options.bookSheets || options.bookProps) {
 		if (dir.custprops.length) {
-			const custdata = getZipString(zip, stripLeadingSlash(dir.custprops[0]), true);
+			const custdata = getZipString(zip, stripLeadingSlash(dir.custprops[0]), true, options);
 			if (custdata) {
 				custprops = parseCustomProperties(custdata, options);
 			}
@@ -324,7 +331,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 	// Calculation chain (dependency order for formula recalc)
 	if (options.bookDeps && dir.calcchain) {
-		parseCalcChainXml(getZipData(zip, stripLeadingSlash(dir.calcchain), true) || "");
+		parseCalcChainXml(getZipData(zip, stripLeadingSlash(dir.calcchain), true, options) || "");
 	}
 
 	// Build the sheet name list from the workbook
@@ -347,23 +354,30 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	if (!zipHas(zip, wbrelsfile)) {
 		wbrelsfile = "xl/_rels/workbook.xml.rels";
 	}
-	const wbrels = parseRelationships(getZipString(zip, wbrelsfile, true), wbrelsfile.replace(/_rels.*/, "s5s"));
+	const wbrels = parseRelationships(
+		getZipString(zip, wbrelsfile, true, options),
+		wbrelsfile.replace(/_rels.*/, "s5s"),
+		options,
+	);
 
 	// Parse cell metadata (for dynamic arrays, rich data, etc.)
 	if ((dir.metadata || []).length >= 1) {
-		options.xlmeta = parseMetadataXml(getZipData(zip, stripLeadingSlash(dir.metadata[0]), true) || "", options);
+		options.xlmeta = parseMetadataXml(
+			getZipData(zip, stripLeadingSlash(dir.metadata[0]), true, options) || "",
+			options,
+		);
 	}
 
 	// Parse people list (for threaded comment author resolution)
 	if ((dir.people || []).length >= 1) {
-		options.people = parsePeopleXml(getZipData(zip, stripLeadingSlash(dir.people[0]), true) || "");
+		options.people = parsePeopleXml(getZipData(zip, stripLeadingSlash(dir.people[0]), true, options) || "");
 	}
 
 	// Map sheet entries to their ZIP paths via workbook relationships
 	const wbrelsArr = wbrels ? safe_parse_wbrels(wbrels, wb.Sheets) : null;
 
 	// Detect legacy naming: some files use "sheet.xml" instead of "sheet1.xml"
-	const nmode = getZipData(zip, "xl/worksheets/sheet.xml", true) ? 1 : 0;
+	const nmode = getZipData(zip, "xl/worksheets/sheet.xml", true, options) ? 1 : 0;
 
 	for (let i = 0; i < props.Worksheets; ++i) {
 		let stype = "sheet";

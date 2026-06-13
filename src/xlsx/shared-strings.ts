@@ -4,6 +4,15 @@ import { writeXmlElement } from "../xml/writer.js";
 import { XML_HEADER } from "../xml/parser.js";
 import { XMLNS_main } from "../xml/namespaces.js";
 import { utf8read } from "../utils/buffer.js";
+import type { XmlLimitOptions } from "../xml/limits.js";
+import {
+	assertXmlCountWithinLimit,
+	assertXmlPartLimits,
+	DEFAULT_MAX_SHARED_STRING_ITEMS,
+	xmlOptionLimit,
+} from "../xml/limits.js";
+
+type SstParseOptions = XmlLimitOptions & { cellHTML?: boolean };
 
 /** A single string entry from the shared string table */
 export interface XLString {
@@ -24,13 +33,13 @@ export interface SST extends Array<XLString> {
 }
 
 /** Parse rich-text run properties (<rPr>) into a font descriptor object */
-function parseRunProperties(rpr: string): Record<string, any> {
+function parseRunProperties(rpr: string, opts?: SstParseOptions): Record<string, any> {
 	const font: Record<string, any> = {};
 	const matches = rpr.match(XML_TAG_REGEX);
 	let pass = false;
 	if (matches) {
 		for (let i = 0; i < matches.length; ++i) {
-			const parsedTag = parseXmlTag(matches[i]);
+			const parsedTag = parseXmlTag(matches[i], undefined, undefined, opts);
 			switch ((parsedTag[0] as string).replace(/<\w*:/g, "<")) {
 				case "<condense":
 				case "<extend":
@@ -202,7 +211,7 @@ function str_remove_xml_ns_g_local(str: string, tag: string): string {
 }
 
 /** Parse a single rich-text run (<r>) element, extracting text and optional style */
-function parseRichTextRun(r: string): { t: string; v: string; s?: any } {
+function parseRichTextRun(r: string, opts?: SstParseOptions): { t: string; v: string; s?: any } {
 	const textMatch = str_match_xml_ns_local(r, "t");
 	if (!textMatch) {
 		return { t: "s", v: "" };
@@ -211,17 +220,17 @@ function parseRichTextRun(r: string): { t: string; v: string; s?: any } {
 	// Parse run properties (font/style) if present
 	const rpr = str_match_xml_ns_local(r, "rPr");
 	if (rpr) {
-		runObj.s = parseRunProperties(rpr[1]);
+		runObj.s = parseRunProperties(rpr[1], opts);
 	}
 	return runObj;
 }
 
 /** Split rich-text XML into individual runs and parse each one */
-function parseRichTextRuns(rs: string): { t: string; v: string; s?: any }[] {
+function parseRichTextRuns(rs: string, opts?: SstParseOptions): { t: string; v: string; s?: any }[] {
 	return rs
 		.replace(rregex, "")
 		.split(rend)
-		.map(parseRichTextRun)
+		.map((r) => parseRichTextRun(r, opts))
 		.filter((r) => r.v);
 }
 
@@ -293,7 +302,7 @@ const sirregex = /<(?:\w+:)?r\b[^<>]*>/;
  * Parse a single string item (<si>) from the shared string table.
  * Handles both plain text (<t>) and rich text (<r>) formats.
  */
-function parseStringItem(x: string, opts?: { cellHTML?: boolean }): XLString {
+function parseStringItem(x: string, opts?: SstParseOptions): XLString {
 	const html = opts ? opts.cellHTML !== false : true;
 	const result: any = {};
 	if (!x) {
@@ -317,7 +326,7 @@ function parseStringItem(x: string, opts?: { cellHTML?: boolean }): XLString {
 		// Join all <t> content and strip tags to get plain text
 		result.t = unescapeXml(utf8read(matches.join("").replace(XML_TAG_REGEX, "")), true);
 		if (html) {
-			result.h = richTextToHtml(parseRichTextRuns(result.r));
+			result.h = richTextToHtml(parseRichTextRuns(result.r, opts));
 		}
 	}
 	return result;
@@ -338,16 +347,23 @@ const sstr2 = /<\/(?:\w+:)?(?:si|sstItem)>/;
  * @param opts - Options controlling HTML generation (cellHTML)
  * @returns Array of parsed string entries with Count and Unique metadata
  */
-export function parseSstXml(data: string, opts?: { cellHTML?: boolean }): SST {
+export function parseSstXml(data: string, opts?: SstParseOptions): SST {
 	const strings: SST = [] as any;
 	if (!data) {
 		return strings;
 	}
+	assertXmlPartLimits("sharedStrings.xml", data, opts);
 
 	const sst = str_match_xml_ns_local(data, "sst");
 	if (sst) {
 		// Split the SST content by </si> boundaries to get individual string items
 		const stringItems = sst[1].replace(sstr1, "").split(sstr2);
+		const maxSharedStringItems = xmlOptionLimit(
+			opts?.maxSharedStringItems,
+			DEFAULT_MAX_SHARED_STRING_ITEMS,
+			"maxSharedStringItems",
+		);
+		assertXmlCountWithinLimit("shared string item", stringItems.length, maxSharedStringItems);
 		for (let i = 0; i < stringItems.length; ++i) {
 			const parsedItem = parseStringItem(stringItems[i].trim(), opts);
 			if (parsedItem != null) {
@@ -355,7 +371,7 @@ export function parseSstXml(data: string, opts?: { cellHTML?: boolean }): SST {
 			}
 		}
 		// Extract count/uniqueCount attributes from the <sst> opening tag
-		const tag = parseXmlTag(sst[0].slice(0, sst[0].indexOf(">")));
+		const tag = parseXmlTag(sst[0].slice(0, sst[0].indexOf(">")), undefined, undefined, opts);
 		strings.Count = tag.count;
 		strings.Unique = tag.uniquecount;
 	}
