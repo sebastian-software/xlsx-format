@@ -1,3 +1,5 @@
+import { XlsxError } from "../errors.js";
+
 /** Limits applied while reading XML-based workbook parts. */
 export interface XmlLimitOptions {
 	/** Maximum decoded XML part size. */
@@ -32,21 +34,24 @@ export function xmlOptionLimit(value: number | undefined, fallback: number, name
 		return fallback;
 	}
 	if (!Number.isFinite(value) || value < 0) {
-		throw new Error(`Invalid XML option: ${name} must be a non-negative finite number`);
+		throw new XlsxError("INVALID_ARGUMENT", `Invalid XML option: ${name} must be a non-negative finite number`);
 	}
 	return value;
 }
 
 export function assertXmlCountWithinLimit(kind: string, count: number, limit: number): void {
 	if (count > limit) {
-		throw new Error(`Invalid XML: ${kind} count ${count} exceeds limit ${limit}`);
+		throw new XlsxError("LIMIT_EXCEEDED", `Invalid XML: ${kind} count ${count} exceeds limit ${limit}`);
 	}
 }
 
 export function assertXmlPartLimits(partName: string, data: string, opts?: XmlLimitOptions): void {
 	const maxXmlPartBytes = xmlOptionLimit(opts?.maxXmlPartBytes, DEFAULT_MAX_XML_PART_BYTES, "maxXmlPartBytes");
 	if (data.length > maxXmlPartBytes) {
-		throw new Error(`Invalid XML: ${partName} size ${data.length} exceeds limit ${maxXmlPartBytes}`);
+		throw new XlsxError(
+			"LIMIT_EXCEEDED",
+			`Invalid XML: ${partName} size ${data.length} exceeds limit ${maxXmlPartBytes}`,
+		);
 	}
 
 	const maxXmlTags = xmlOptionLimit(opts?.maxXmlTags, DEFAULT_MAX_XML_TAGS, "maxXmlTags");
@@ -64,7 +69,10 @@ export function assertXmlPartLimits(partName: string, data: string, opts?: XmlLi
 		const closeOffset = data.indexOf(">", offset + 1);
 		const tagLength = closeOffset === -1 ? data.length - offset : closeOffset - offset + 1;
 		if (tagLength > maxXmlTagLength) {
-			throw new Error(`Invalid XML: ${partName} tag length ${tagLength} exceeds limit ${maxXmlTagLength}`);
+			throw new XlsxError(
+				"LIMIT_EXCEEDED",
+				`Invalid XML: ${partName} tag length ${tagLength} exceeds limit ${maxXmlTagLength}`,
+			);
 		}
 		if (closeOffset === -1) {
 			break;
@@ -81,7 +89,10 @@ export function assertXmlPartLimits(partName: string, data: string, opts?: XmlLi
 			depth = Math.max(0, depth - 1);
 		} else if (!isProcessingOrDeclaration && !isSelfClosing) {
 			if (++depth > maxXmlNestingDepth) {
-				throw new Error(`Invalid XML: ${partName} nesting depth ${depth} exceeds limit ${maxXmlNestingDepth}`);
+				throw new XlsxError(
+					"LIMIT_EXCEEDED",
+					`Invalid XML: ${partName} nesting depth ${depth} exceeds limit ${maxXmlNestingDepth}`,
+				);
 			}
 		}
 		offset = closeOffset;

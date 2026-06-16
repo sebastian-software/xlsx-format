@@ -1,3 +1,4 @@
+import { XlsxError } from "../errors.js";
 import { escapeXml } from "./escape.js";
 
 // Detects leading/trailing whitespace or embedded newlines that require xml:space="preserve"
@@ -83,7 +84,7 @@ export function writeW3cDatetime(date: Date, throwOnError?: boolean): string {
  * @param value - the value to serialize
  * @param xlsx - when true, escape double-quotes as _x0022_ (OOXML convention)
  * @returns an XML string containing the appropriate vt: element
- * @throws if value is an unsupported type
+ * @throws XlsxError if value is an unsupported type
  */
 export function writeVariantType(value: any, xlsx?: boolean): string {
 	switch (typeof value) {
@@ -104,5 +105,5 @@ export function writeVariantType(value: any, xlsx?: boolean): string {
 	if (value instanceof Date) {
 		return writeXmlElement("vt:filetime", writeW3cDatetime(value));
 	}
-	throw new Error("Unable to serialize " + value);
+	throw new XlsxError("INVALID_ARGUMENT", "Unable to serialize " + value);
 }

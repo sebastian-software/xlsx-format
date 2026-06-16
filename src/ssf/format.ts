@@ -19,6 +19,7 @@
  * - The "General" format auto-selects integer, decimal, or scientific notation.
  */
 
+import { XlsxError } from "../errors.js";
 import { dateToSerialNumber } from "../utils/date.js";
 import { formatTable, DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS } from "./table.js";
 
@@ -297,7 +298,7 @@ function SSF_general(v: any, opts: any): string {
 				return formatNumber(14, dateToSerialNumber(v, opts && opts.date1904), opts);
 			}
 	}
-	throw new Error("unsupported value in General format: " + v);
+	throw new XlsxError("UNSUPPORTED", "unsupported value in General format: " + v);
 }
 
 /**
@@ -375,7 +376,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 					outputLength = fmt.length;
 					break;
 				default:
-					throw new Error("bad hour format: " + fmt);
+					throw new XlsxError("MALFORMED", "bad hour format: " + fmt);
 			}
 			break;
 		case 72 /* 'H' 24-hour clock */:
@@ -386,7 +387,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 					outputLength = fmt.length;
 					break;
 				default:
-					throw new Error("bad hour format: " + fmt);
+					throw new XlsxError("MALFORMED", "bad hour format: " + fmt);
 			}
 			break;
 		case 77 /* 'M' minutes */:
@@ -397,12 +398,12 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 					outputLength = fmt.length;
 					break;
 				default:
-					throw new Error("bad minute format: " + fmt);
+					throw new XlsxError("MALFORMED", "bad minute format: " + fmt);
 			}
 			break;
 		case 115 /* 's' seconds */:
 			if (fmt !== "s" && fmt !== "ss" && fmt !== ".0" && fmt !== ".00" && fmt !== ".000") {
-				throw new Error("bad second format: " + fmt);
+				throw new XlsxError("MALFORMED", "bad second format: " + fmt);
 			}
 			if (val.subSeconds === 0 && (fmt === "s" || fmt === "ss")) {
 				return padWithZeros(val.seconds, fmt.length);
@@ -446,7 +447,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 						(ss0 === 0 ? Math.round(val.seconds + val.subSeconds) : val.seconds);
 					break;
 				default:
-					throw new Error("bad abstime format: " + fmt);
+					throw new XlsxError("MALFORMED", "bad abstime format: " + fmt);
 			}
 			outputLength = fmt.length === 3 ? 1 : 2;
 			break;
@@ -850,7 +851,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 		case "#,###.00":
 			return write_num_flt(type, "#,##0.00", val).replace(/^0\./, ".");
 	}
-	throw new Error("unsupported format |" + fmt + "|");
+	throw new XlsxError("UNSUPPORTED", "unsupported format |" + fmt + "|");
 }
 
 /**
@@ -1011,7 +1012,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 				);
 			}
 	}
-	throw new Error("unsupported format |" + fmt + "|");
+	throw new XlsxError("UNSUPPORTED", "unsupported format |" + fmt + "|");
 }
 
 /** Dispatch to integer or float formatter based on whether the value is an integer */
@@ -1051,7 +1052,7 @@ function SSF_split_fmt(fmt: string): string[] {
 	}
 	out[out.length] = fmt.substring(j);
 	if (in_str) {
-		throw new Error("Format |" + fmt + "| unterminated string ");
+		throw new XlsxError("MALFORMED", "Format |" + fmt + "| unterminated string ");
 	}
 	return out;
 }
@@ -1245,7 +1246,7 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 		switch ((char = fmt.charAt(i))) {
 			case "G":
 				if (!isGeneralFormat(fmt, i)) {
-					throw new Error("unrecognized character " + char + " in " + fmt);
+					throw new XlsxError("MALFORMED", "unrecognized character " + char + " in " + fmt);
 				}
 				out[out.length] = { type: "G", value: "General" };
 				i += 7;
@@ -1382,7 +1383,7 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 					tokenStr += fmt.charAt(i);
 				}
 				if (tokenStr.slice(-1) !== "]") {
-					throw new Error('unterminated "[" block: |' + tokenStr + "|");
+					throw new XlsxError("MALFORMED", 'unterminated "[" block: |' + tokenStr + "|");
 				}
 				if (tokenStr.match(SSF_abstime)) {
 					// Absolute/elapsed time token (e.g. [h], [mm], [ss])
@@ -1470,7 +1471,7 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 			default:
 				// Characters known to be safe as text: currency, punctuation, misc letters
 				if (",$-+/():!^&'~{}<>=\u20ACacfijklopqrtuvwxzP".indexOf(char) === -1) {
-					throw new Error("unrecognized character " + char + " in " + fmt);
+					throw new XlsxError("MALFORMED", "unrecognized character " + char + " in " + fmt);
 				}
 				out[out.length] = { type: "t", value: char };
 				++i;
@@ -1888,7 +1889,7 @@ function choose_fmt(fmtStr: string, value: any): [number, string] {
 		--ll;
 	}
 	if (fmt.length > 4) {
-		throw new Error("cannot find right format for |" + fmt.join("|") + "|");
+		throw new XlsxError("MALFORMED", "cannot find right format for |" + fmt.join("|") + "|");
 	}
 	// Non-numeric values use the text section (section 4) or "@"
 	if (typeof value !== "number") {

@@ -1,3 +1,4 @@
+import { XlsxError } from "../errors.js";
 import { parseXmlTag, XML_HEADER, XML_TAG_REGEX } from "../xml/parser.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS } from "../xml/namespaces.js";
@@ -152,7 +153,7 @@ export function createContentTypes(): ContentTypes {
  * override into the appropriate category array.
  * @param data - raw XML string of the [Content_Types].xml file (may be null/undefined)
  * @returns a populated ContentTypes object
- * @throws if the root namespace is not the expected OPC content-types namespace
+ * @throws XlsxError if the root namespace is not the expected OPC content-types namespace
  */
 export function parseContentTypes(data: string | null | undefined, opts?: XmlLimitOptions): ContentTypes {
 	const ct = createContentTypes();
@@ -184,7 +185,7 @@ export function parseContentTypes(data: string | null | undefined, opts?: XmlLim
 		}
 	}
 	if (ct.xmlns !== XMLNS.CT) {
-		throw new Error("Unknown Namespace: " + ct.xmlns);
+		throw new XlsxError("UNSUPPORTED", "Unknown Namespace: " + ct.xmlns);
 	}
 	// Set convenience shortcuts to the first entry in commonly-used categories
 	ct.calcchain = ct.calcchains.length > 0 ? ct.calcchains[0] : "";

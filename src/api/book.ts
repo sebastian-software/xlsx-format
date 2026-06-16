@@ -1,4 +1,5 @@
 import type { WorkBook, WorkSheet, CellObject, Hyperlink, CellStyle, Range } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { validateSheetName } from "../xlsx/workbook.js";
 import {
 	encodeCol,
@@ -49,7 +50,7 @@ export function appendSheet(wb: WorkBook, ws: WorkSheet, name?: string, roll?: b
 		}
 	}
 	if (!name || wb.SheetNames.length >= 0xffff) {
-		throw new Error("Too many worksheets");
+		throw new XlsxError("LIMIT_EXCEEDED", "Too many worksheets");
 	}
 	// When rolling, strip any trailing digits and increment to find a unique name
 	if (roll && wb.SheetNames.indexOf(name) >= 0 && name.length < 32) {
@@ -64,7 +65,7 @@ export function appendSheet(wb: WorkBook, ws: WorkSheet, name?: string, roll?: b
 	}
 	validateSheetName(name);
 	if (wb.SheetNames.indexOf(name) >= 0) {
-		throw new Error("Worksheet with name |" + name + "| already exists!");
+		throw new XlsxError("DUPLICATE", "Worksheet with name |" + name + "| already exists!");
 	}
 
 	wb.SheetNames.push(name);
@@ -99,15 +100,15 @@ export function getSheetIndex(wb: WorkBook, sh: number | string): number {
 		if (sh >= 0 && wb.SheetNames.length > sh) {
 			return sh;
 		}
-		throw new Error("Cannot find sheet # " + sh);
+		throw new XlsxError("NOT_FOUND", "Cannot find sheet # " + sh);
 	} else if (typeof sh === "string") {
 		const idx = wb.SheetNames.indexOf(sh);
 		if (idx > -1) {
 			return idx;
 		}
-		throw new Error("Cannot find sheet name |" + sh + "|");
+		throw new XlsxError("NOT_FOUND", "Cannot find sheet name |" + sh + "|");
 	}
-	throw new Error("Cannot find sheet |" + sh + "|");
+	throw new XlsxError("NOT_FOUND", "Cannot find sheet |" + sh + "|");
 }
 
 /**
@@ -138,7 +139,7 @@ export function setSheetVisibility(wb: WorkBook, sh: number | string, vis: 0 | 1
 		case 2:
 			break;
 		default:
-			throw new Error("Bad sheet visibility setting " + vis);
+			throw new XlsxError("INVALID_ARGUMENT", "Bad sheet visibility setting " + vis);
 	}
 	wb.Workbook.Sheets[idx].Hidden = vis;
 }

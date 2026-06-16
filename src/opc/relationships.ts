@@ -1,3 +1,4 @@
+import { XlsxError } from "../errors.js";
 import { parseXmlTag, XML_HEADER, XML_TAG_REGEX } from "../xml/parser.js";
 import { unescapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
@@ -135,7 +136,7 @@ export function writeRelationships(rels: Relationships): string {
  * @param type - the relationship type URI
  * @param targetmode - optional TargetMode ("External" for hyperlinks, etc.)
  * @returns the numeric rId that was assigned
- * @throws if the specified rId is already in use
+ * @throws XlsxError if the specified rId is already in use
  */
 export function addRelationship(
 	rels: Relationships,
@@ -169,7 +170,7 @@ export function addRelationship(
 		relobj.TargetMode = "External";
 	}
 	if (rels["!id"][relobj.Id]) {
-		throw new Error("Cannot rewrite rId " + rId);
+		throw new XlsxError("DUPLICATE", "Cannot rewrite rId " + rId);
 	}
 	rels["!id"][relobj.Id] = relobj;
 	// Store by normalized target path (ensure single leading slash)

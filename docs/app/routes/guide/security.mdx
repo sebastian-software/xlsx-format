@@ -43,6 +43,40 @@ const previewRows = sheetToJson(firstSheet);
 
 The default ZIP and XML limits are intentionally high enough for ordinary workbooks. Lower them when a service receives arbitrary uploads and does not need to parse very large sheets.
 
+## Handling errors
+
+xlsx-format throws `XlsxError`, a subclass of `Error`, for deterministic library failures. Existing `catch` blocks keep working, but new integrations should branch on `error.code` instead of matching message text.
+
+```typescript
+import { read, XlsxError } from "xlsx-format";
+
+try {
+	const workbook = await read(fileBytes);
+} catch (error) {
+	if (error instanceof XlsxError) {
+		if (error.code === "MALFORMED" || error.code === "CRC_MISMATCH") {
+			// Reject corrupt uploads.
+		}
+		if (error.code === "LIMIT_EXCEEDED") {
+			// Keep public upload limits low, or retry trusted files with higher ReadOptions limits.
+		}
+	}
+	throw error;
+}
+```
+
+Stable error codes:
+
+| Code               | Meaning                                                          |
+| ------------------ | ---------------------------------------------------------------- |
+| `INVALID_ARGUMENT` | Caller-supplied options or API inputs are invalid.               |
+| `MALFORMED`        | The workbook, ZIP, XML, or format structure is corrupt.          |
+| `LIMIT_EXCEEDED`   | A configured ZIP, XML, worksheet, or shared-string limit failed. |
+| `UNSUPPORTED`      | The input uses a valid but unsupported format or feature.        |
+| `CRC_MISMATCH`     | ZIP entry data failed its CRC integrity check.                   |
+| `NOT_FOUND`        | A required workbook part or worksheet reference is missing.      |
+| `DUPLICATE`        | A workbook or archive structure contains a duplicate entry.      |
+
 ## Exporting CSV
 
 CSV files opened in spreadsheet applications can interpret text that starts with characters such as `=`, `+`, `-`, `@`, tab, or carriage return as formulas. This is commonly called CSV injection or formula injection.
