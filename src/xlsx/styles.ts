@@ -10,6 +10,7 @@ import type {
 	CellBorderSide,
 	CellAlignment,
 } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { parseXmlTag, XML_TAG_REGEX, XML_HEADER } from "../xml/parser.js";
 import { escapeXml, unescapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
@@ -111,7 +112,7 @@ function normalizeColor(color?: StyleColor, opts?: any): StyleColor | undefined 
 		rgb = normalized;
 	} else {
 		if (opts?.WTF) {
-			throw new Error("Unsupported style color: " + raw);
+			throw new XlsxError("UNSUPPORTED", "Unsupported style color: " + raw);
 		}
 		return undefined;
 	}
@@ -145,7 +146,7 @@ function normalizeFill(fill?: CellFill, opts?: any): CellFill | undefined {
 	}
 	if (fill.patternType && fill.patternType !== "solid") {
 		if (opts?.WTF) {
-			throw new Error("Unsupported fill pattern: " + fill.patternType);
+			throw new XlsxError("UNSUPPORTED", "Unsupported fill pattern: " + fill.patternType);
 		}
 		return undefined;
 	}
@@ -168,7 +169,7 @@ function normalizeBorder(border?: CellBorder, opts?: any): CellBorder | undefine
 		}
 		if (input.style !== "thin" && input.style !== "medium") {
 			if (opts?.WTF) {
-				throw new Error("Unsupported border style: " + input.style);
+				throw new XlsxError("UNSUPPORTED", "Unsupported border style: " + input.style);
 			}
 			continue;
 		}
@@ -186,12 +187,12 @@ function normalizeAlignment(alignment?: CellAlignment, opts?: any): CellAlignmen
 	if (alignment.horizontal === "left" || alignment.horizontal === "center" || alignment.horizontal === "right") {
 		out.horizontal = alignment.horizontal;
 	} else if (alignment.horizontal && opts?.WTF) {
-		throw new Error("Unsupported horizontal alignment: " + alignment.horizontal);
+		throw new XlsxError("UNSUPPORTED", "Unsupported horizontal alignment: " + alignment.horizontal);
 	}
 	if (alignment.vertical === "top" || alignment.vertical === "middle" || alignment.vertical === "bottom") {
 		out.vertical = alignment.vertical;
 	} else if (alignment.vertical && opts?.WTF) {
-		throw new Error("Unsupported vertical alignment: " + alignment.vertical);
+		throw new XlsxError("UNSUPPORTED", "Unsupported vertical alignment: " + alignment.vertical);
 	}
 	if (alignment.wrapText) {
 		out.wrapText = true;

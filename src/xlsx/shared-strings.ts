@@ -1,3 +1,4 @@
+import { XlsxError } from "../errors.js";
 import { parseXmlTag, XML_TAG_REGEX } from "../xml/parser.js";
 import { unescapeXml, escapeXml, escapeHtml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
@@ -149,7 +150,7 @@ function parseRunProperties(rpr: string, opts?: SstParseOptions): Record<string,
 				default:
 					// charCodeAt(1) !== 47 means it's not a closing tag (not '/')
 					if ((parsedTag[0] as string).charCodeAt(1) !== 47 && !pass) {
-						throw new Error("Unrecognized rich format " + parsedTag[0]);
+						throw new XlsxError("UNSUPPORTED", "Unrecognized rich format " + parsedTag[0]);
 					}
 			}
 		}

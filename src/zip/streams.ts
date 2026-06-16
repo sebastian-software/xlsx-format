@@ -1,3 +1,5 @@
+import { XlsxError } from "../errors.js";
+
 /**
  * Read all chunks from a {@link ReadableStream} and concatenate them into a single {@link Uint8Array}.
  *
@@ -15,7 +17,7 @@ async function collectStream(readable: ReadableStream<Uint8Array>, maxBytes = In
 		chunks.push(value);
 		totalLength += value.length;
 		if (totalLength > maxBytes) {
-			throw new Error(`Invalid ZIP: decompressed data exceeds limit (${maxBytes} bytes)`);
+			throw new XlsxError("LIMIT_EXCEEDED", `Invalid ZIP: decompressed data exceeds limit (${maxBytes} bytes)`);
 		}
 	}
 	const result = new Uint8Array(totalLength);

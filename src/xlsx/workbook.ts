@@ -1,3 +1,4 @@
+import { XlsxError } from "../errors.js";
 import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace, parseXmlBoolean } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
@@ -179,26 +180,26 @@ const badchars = ":][*?/\\".split("");
  * @param n - Sheet name to validate
  * @param safe - If true, return false on invalid names instead of throwing
  * @returns true if valid
- * @throws Error describing the validation failure (unless safe=true)
+ * @throws XlsxError describing the validation failure (unless safe=true)
  */
 export function validateSheetName(n: string, safe?: boolean): boolean {
 	try {
 		if (n === "") {
-			throw new Error("Sheet name cannot be blank");
+			throw new XlsxError("INVALID_ARGUMENT", "Sheet name cannot be blank");
 		}
 		if (n.length > 31) {
-			throw new Error("Sheet name cannot exceed 31 chars");
+			throw new XlsxError("INVALID_ARGUMENT", "Sheet name cannot exceed 31 chars");
 		}
 		// 0x27 = apostrophe (')
 		if (n.charCodeAt(0) === 0x27 || n.charCodeAt(n.length - 1) === 0x27) {
-			throw new Error("Sheet name cannot start or end with apostrophe (')");
+			throw new XlsxError("INVALID_ARGUMENT", "Sheet name cannot start or end with apostrophe (')");
 		}
 		if (n.toLowerCase() === "history") {
-			throw new Error("Sheet name cannot be 'History'");
+			throw new XlsxError("INVALID_ARGUMENT", "Sheet name cannot be 'History'");
 		}
 		for (const c of badchars) {
 			if (n.indexOf(c) !== -1) {
-				throw new Error("Sheet name cannot contain : \\ / ? * [ ]");
+				throw new XlsxError("INVALID_ARGUMENT", "Sheet name cannot contain : \\ / ? * [ ]");
 			}
 		}
 	} catch (e) {
@@ -215,14 +216,14 @@ export function validateSheetName(n: string, safe?: boolean): boolean {
  *
  * @param sheetNames - Array of sheet names to validate
  * @param sheetEntries - Optional sheet entry metadata (reserved for future use)
- * @throws Error if any name is invalid or duplicated
+ * @throws XlsxError if any name is invalid or duplicated
  */
 export function validateWorkbookNames(sheetNames: string[], _sheetEntries?: any[]): void {
 	for (let i = 0; i < sheetNames.length; ++i) {
 		validateSheetName(sheetNames[i]);
 		for (let j = 0; j < i; ++j) {
 			if (sheetNames[i] === sheetNames[j]) {
-				throw new Error("Duplicate Sheet Name: " + sheetNames[i]);
+				throw new XlsxError("DUPLICATE", "Duplicate Sheet Name: " + sheetNames[i]);
 			}
 		}
 	}
@@ -232,14 +233,14 @@ export function validateWorkbookNames(sheetNames: string[], _sheetEntries?: any[
  * Validate that a WorkBook object has the required structure.
  *
  * @param wb - WorkBook to validate
- * @throws Error if the workbook is missing required fields or has invalid sheet names
+ * @throws XlsxError if the workbook is missing required fields or has invalid sheet names
  */
 export function validateWorkbook(wb: WorkBook): void {
 	if (!wb || !wb.SheetNames || !wb.Sheets) {
-		throw new Error("Invalid Workbook");
+		throw new XlsxError("INVALID_ARGUMENT", "Invalid Workbook");
 	}
 	if (!wb.SheetNames.length) {
-		throw new Error("Workbook is empty");
+		throw new XlsxError("INVALID_ARGUMENT", "Workbook is empty");
 	}
 	const Sheets = (wb.Workbook && wb.Workbook.Sheets) || [];
 	validateWorkbookNames(wb.SheetNames, Sheets);
@@ -257,11 +258,11 @@ const wbnsregex = /<\w+:workbook/;
  * @param data - Raw XML string of workbook.xml
  * @param opts - Parsing options
  * @returns Parsed workbook file structure
- * @throws Error if data is empty or the namespace is unrecognized
+ * @throws XlsxError if data is empty or the namespace is unrecognized
  */
 export function parseWorkbookXml(data: string, _opts?: any): WorkbookFile {
 	if (!data) {
-		throw new Error("Could not find file");
+		throw new XlsxError("NOT_FOUND", "Could not find file");
 	}
 	const workbook: WorkbookFile = {
 		AppVersion: {},
@@ -444,7 +445,7 @@ export function parseWorkbookXml(data: string, _opts?: any): WorkbookFile {
 	});
 
 	if (XMLNS_main.indexOf(workbook.xmlns) === -1) {
-		throw new Error("Unknown Namespace: " + workbook.xmlns);
+		throw new XlsxError("UNSUPPORTED", "Unknown Namespace: " + workbook.xmlns);
 	}
 
 	parse_wb_defaults(workbook);

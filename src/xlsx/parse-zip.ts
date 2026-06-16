@@ -6,6 +6,7 @@ import type { SST } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
 import type { ThemeData } from "./theme.js";
 import type { WorkbookFile, SheetEntry } from "./workbook.js";
+import { XlsxError } from "../errors.js";
 import { zipReadString, zipHas } from "../zip/index.js";
 import { parseContentTypes } from "../opc/content-types.js";
 import { parseRelationships } from "../opc/relationships.js";
@@ -59,7 +60,7 @@ function resolve_path(target: string, basePath: string): string {
 function getZipString(zip: ZipArchive, path: string, safe?: boolean, opts?: ReadOptions): string | null {
 	const p = zipReadString(zip, path);
 	if (p == null && !safe) {
-		throw new Error("Could not find " + path);
+		throw new XlsxError("NOT_FOUND", "Could not find " + path);
 	}
 	if (p != null) {
 		assertXmlPartLimits(path, p, opts);
@@ -213,14 +214,14 @@ function safe_parse_sheet(
  * @param zip - ZipArchive containing the XLSX file parts
  * @param opts - Read options controlling parsing behavior
  * @returns Parsed WorkBook with sheets, properties, and metadata
- * @throws Error if the ZIP is not a valid XLSX file or the workbook is missing
+ * @throws XlsxError if the ZIP is not a valid XLSX file or the workbook is missing
  */
 export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	resetFormatTable();
 	const options: any = opts || {};
 
 	if (!zipHas(zip, "[Content_Types].xml")) {
-		throw new Error("Unsupported ZIP file");
+		throw new XlsxError("UNSUPPORTED", "Unsupported ZIP file");
 	}
 
 	const dir: ContentTypes = parseContentTypes(getZipString(zip, "[Content_Types].xml", false, options), options);
@@ -233,7 +234,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		}
 	}
 	if (dir.workbooks.length === 0) {
-		throw new Error("Could not find workbook");
+		throw new XlsxError("NOT_FOUND", "Could not find workbook");
 	}
 
 	const themes: ThemeData = { themeElements: { clrScheme: [] } };

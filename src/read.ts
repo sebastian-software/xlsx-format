@@ -1,4 +1,5 @@
 import type { WorkBook, ReadOptions } from "./types.js";
+import { XlsxError } from "./errors.js";
 import { zipRead } from "./zip/index.js";
 import { parseZip } from "./xlsx/parse-zip.js";
 import { base64decode } from "./utils/base64.js";
@@ -36,7 +37,7 @@ function to_uint8array(data: any, opts: ReadOptions): Uint8Array {
 	if (Array.isArray(data)) {
 		return new Uint8Array(data);
 	}
-	throw new Error("Unsupported data type for read()");
+	throw new XlsxError("INVALID_ARGUMENT", "Unsupported data type for read()");
 }
 
 /**
@@ -75,7 +76,7 @@ function sheetToWorkBook(ws: any, name?: string): WorkBook {
  * @param data - File contents as Uint8Array, ArrayBuffer, Buffer, base64 string, binary string, or plain text string
  * @param opts - Read options controlling parsing behavior
  * @returns Promise resolving to a parsed WorkBook object
- * @throws Error if the input is a PDF, PNG, or other unsupported format
+ * @throws XlsxError if the input is a PDF, PNG, or other unsupported format
  */
 export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 	resetFormatTable();
@@ -103,13 +104,13 @@ export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 
 	// 0x25504446 = "%PDF" -- PDF file magic number
 	if (u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46) {
-		throw new Error("PDF File is not a spreadsheet");
+		throw new XlsxError("UNSUPPORTED", "PDF File is not a spreadsheet");
 	}
 
 	// 0x89504E47 = "\x89PNG" -- PNG file magic number
 	if (u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47) {
-		throw new Error("PNG Image File is not a spreadsheet");
+		throw new XlsxError("UNSUPPORTED", "PNG Image File is not a spreadsheet");
 	}
 
-	throw new Error("Unsupported file format. xlsx-format only supports XLSX files.");
+	throw new XlsxError("UNSUPPORTED", "Unsupported file format. xlsx-format only supports XLSX files.");
 }

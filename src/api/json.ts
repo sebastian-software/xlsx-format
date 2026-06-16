@@ -1,4 +1,5 @@
 import type { WorkSheet, Sheet2JSONOpts, JSON2SheetOpts, CellObject, Range } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { decodeCell, encodeCol, encodeRow, encodeRange, safeDecodeRange, getCell } from "../utils/cell.js";
 import { dateToSerialNumber, serialNumberToDate, utcToLocal, localToUtc } from "../utils/date.js";
 import { clampLargeExportRange } from "../utils/export-range.js";
@@ -88,7 +89,7 @@ function buildJsonRow(
 				}
 				break;
 			default:
-				throw new Error("unrecognized type " + val.t);
+				throw new XlsxError("INVALID_ARGUMENT", "unrecognized type " + val.t);
 		}
 		if (headers[colIdx] != null) {
 			if (cellValue == null) {

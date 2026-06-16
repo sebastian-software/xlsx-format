@@ -1,4 +1,5 @@
 import type { CellAddress, CellObject, Range, WorkSheet } from "../types.js";
+import { XlsxError } from "../errors.js";
 
 /**
  * Decode a row string (1-based) to a zero-based row index.
@@ -61,11 +62,11 @@ export function decodeCol(colstr: string): number {
  *
  * @param col - Zero-based column index
  * @returns Column label string
- * @throws Error if col is negative
+ * @throws XlsxError if col is negative
  */
 export function encodeCol(col: number): string {
 	if (col < 0) {
-		throw new Error("invalid column " + col);
+		throw new XlsxError("INVALID_ARGUMENT", "invalid column " + col);
 	}
 	let result = "";
 	// Convert to 1-based, then repeatedly extract bijective base-26 digits
@@ -281,11 +282,11 @@ export function getOrCreateCell(sheet: WorkSheet, row: number, col: number): Cel
  *
  * @param sname - Sheet name to quote
  * @returns Quoted sheet name safe for formula references
- * @throws Error if the sheet name is empty
+ * @throws XlsxError if the sheet name is empty
  */
 export function quoteSheetName(sname: string): string {
 	if (!sname) {
-		throw new Error("empty sheet name");
+		throw new XlsxError("INVALID_ARGUMENT", "empty sheet name");
 	}
 	// Match any character not in: word chars, CJK Unified Ideographs (4E00-9FFF), Hiragana/Katakana (3040-30FF)
 	if (/[^\w\u4E00-\u9FFF\u3040-\u30FF]/.test(sname)) {

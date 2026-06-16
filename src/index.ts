@@ -44,6 +44,8 @@ export type {
 	JSON2SheetOpts,
 	NumberFormat,
 } from "./types.js";
+export type { XlsxErrorCode } from "./errors.js";
+export { XlsxError } from "./errors.js";
 
 // Read / Write
 export { read } from "./read.js";

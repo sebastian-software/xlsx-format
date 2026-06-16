@@ -1,4 +1,5 @@
 import type { WorkSheet, AOA2SheetOpts, Range, Sheet2JSONOpts } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { decodeCell, encodeRange, safeDecodeRange, getCell, setCell } from "../utils/cell.js";
 import { dateToSerialNumber, localToUtc } from "../utils/date.js";
 import { formatNumber } from "../ssf/format.js";
@@ -61,7 +62,7 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
 			continue;
 		}
 		if (!Array.isArray(data[rowIdx])) {
-			throw new Error("arrayToSheet expects an array of arrays");
+			throw new XlsxError("INVALID_ARGUMENT", "arrayToSheet expects an array of arrays");
 		}
 		const targetRow = originRow + rowIdx;
 		const rowData = data[rowIdx];

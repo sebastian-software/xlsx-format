@@ -1,3 +1,4 @@
+import { XlsxError } from "../errors.js";
 import { crc32 } from "./crc32.js";
 import { inflate, deflate } from "./streams.js";
 
@@ -40,14 +41,14 @@ function optionLimit(value: number | undefined, fallback: number, name: string):
 		return fallback;
 	}
 	if (!Number.isFinite(value) || value < 0) {
-		throw new Error(`Invalid ZIP option: ${name} must be a non-negative finite number`);
+		throw new XlsxError("INVALID_ARGUMENT", `Invalid ZIP option: ${name} must be a non-negative finite number`);
 	}
 	return value;
 }
 
 function assertRange(data: Uint8Array, off: number, len: number, what: string): void {
 	if (!Number.isInteger(off) || !Number.isInteger(len) || off < 0 || len < 0 || off > data.length - len) {
-		throw new Error(`Invalid ZIP: ${what} out of bounds`);
+		throw new XlsxError("MALFORMED", `Invalid ZIP: ${what} out of bounds`);
 	}
 }
 
@@ -62,13 +63,13 @@ function readU32At(buf: Uint8Array, off: number, what: string): number {
 }
 
 function rejectZip64(): never {
-	throw new Error("Unsupported ZIP: Zip64 archives are not supported");
+	throw new XlsxError("UNSUPPORTED", "Unsupported ZIP: Zip64 archives are not supported");
 }
 
 function assertCrc(name: string, data: Uint8Array, expected: number): void {
 	const actual = crc32(data);
 	if (actual !== expected) {
-		throw new Error(`Invalid ZIP: CRC mismatch for ${name}`);
+		throw new XlsxError("CRC_MISMATCH", `Invalid ZIP: CRC mismatch for ${name}`);
 	}
 }
 
@@ -105,7 +106,7 @@ function writeU32(buf: Uint8Array, off: number, val: number): void {
  *
  * @param data - Raw ZIP file bytes
  * @returns Parsed archive with decompressed file contents
- * @throws Error if the ZIP structure is invalid or uses an unsupported compression method
+ * @throws XlsxError if the ZIP structure is invalid or uses an unsupported compression method
  */
 export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<ZipArchive> {
 	const maxZipEntries = optionLimit(opts?.maxZipEntries, DEFAULT_MAX_ZIP_ENTRIES, "maxZipEntries");
@@ -132,7 +133,7 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 		}
 	}
 	if (eocdOffset === -1) {
-		throw new Error("Invalid ZIP: EOCD not found");
+		throw new XlsxError("MALFORMED", "Invalid ZIP: EOCD not found");
 	}
 
 	assertRange(data, eocdOffset, 22, "EOCD");
@@ -149,14 +150,14 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 		rejectZip64();
 	}
 	if (diskNumber !== 0 || cdDiskNumber !== 0 || cdEntriesOnDisk !== cdEntries) {
-		throw new Error("Unsupported ZIP: multi-disk archives are not supported");
+		throw new XlsxError("UNSUPPORTED", "Unsupported ZIP: multi-disk archives are not supported");
 	}
 	if (cdEntries > maxZipEntries) {
-		throw new Error(`Invalid ZIP: entry count ${cdEntries} exceeds limit ${maxZipEntries}`);
+		throw new XlsxError("LIMIT_EXCEEDED", `Invalid ZIP: entry count ${cdEntries} exceeds limit ${maxZipEntries}`);
 	}
 	assertRange(data, cdOffset, cdSize, "central directory");
 	if (cdOffset + cdSize > eocdOffset) {
-		throw new Error("Invalid ZIP: central directory overlaps EOCD");
+		throw new XlsxError("MALFORMED", "Invalid ZIP: central directory overlaps EOCD");
 	}
 
 	// Parse central directory entries
@@ -174,10 +175,10 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 	for (let i = 0; i < cdEntries; i++) {
 		assertRange(data, pos, 46, "central directory entry");
 		if (pos + 46 > cdEnd) {
-			throw new Error("Invalid ZIP: central directory entry exceeds declared size");
+			throw new XlsxError("MALFORMED", "Invalid ZIP: central directory entry exceeds declared size");
 		}
 		if (readU32At(data, pos, "central directory signature") !== SIG_CENTRAL) {
-			throw new Error("Invalid ZIP: bad central directory entry");
+			throw new XlsxError("MALFORMED", "Invalid ZIP: bad central directory entry");
 		}
 		const method = readU16At(data, pos + 10, "central directory compression method");
 		const crcVal = readU32At(data, pos + 16, "central directory CRC");
@@ -197,11 +198,11 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 			rejectZip64();
 		}
 		if (diskStart !== 0) {
-			throw new Error("Unsupported ZIP: multi-disk archives are not supported");
+			throw new XlsxError("UNSUPPORTED", "Unsupported ZIP: multi-disk archives are not supported");
 		}
 		const entryEnd = pos + 46 + nameLen + extraLen + commentLen;
 		if (entryEnd > cdEnd) {
-			throw new Error("Invalid ZIP: central directory entry exceeds declared size");
+			throw new XlsxError("MALFORMED", "Invalid ZIP: central directory entry exceeds declared size");
 		}
 		const nameBytes = data.subarray(pos + 46, pos + 46 + nameLen);
 		const name = decoder.decode(nameBytes);
@@ -223,14 +224,14 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 			continue;
 		}
 		if (seenNames.has(name)) {
-			throw new Error(`Invalid ZIP: duplicate entry ${name}`);
+			throw new XlsxError("DUPLICATE", `Invalid ZIP: duplicate entry ${name}`);
 		}
 		seenNames.add(name);
 
 		const loc = entry.localOffset;
 		assertRange(data, loc, 30, `local file header for ${entry.name}`);
 		if (readU32At(data, loc, "local file header signature") !== SIG_LOCAL) {
-			throw new Error("Invalid ZIP: bad local file header");
+			throw new XlsxError("MALFORMED", "Invalid ZIP: bad local file header");
 		}
 		const localMethod = readU16At(data, loc + 8, "local file header compression method");
 		const localNameLen = readU16At(data, loc + 26, "local file header file name length");
@@ -239,27 +240,32 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 		assertRange(data, dataStart, entry.compSize, `file data for ${entry.name}`);
 		const dataEnd = dataStart + entry.compSize;
 		if (localMethod !== entry.method) {
-			throw new Error(`Invalid ZIP: local header method mismatch for ${entry.name}`);
+			throw new XlsxError("MALFORMED", `Invalid ZIP: local header method mismatch for ${entry.name}`);
 		}
 		const localName = decoder.decode(data.subarray(loc + 30, loc + 30 + localNameLen));
 		if (localName !== name) {
-			throw new Error(`Invalid ZIP: local header file name mismatch for ${name}`);
+			throw new XlsxError("MALFORMED", `Invalid ZIP: local header file name mismatch for ${name}`);
 		}
 		if (entry.uncompSize > maxEntryUncompressedBytes) {
-			throw new Error(
+			throw new XlsxError(
+				"LIMIT_EXCEEDED",
 				`Invalid ZIP: entry ${name} uncompressed size ${entry.uncompSize} exceeds limit ${maxEntryUncompressedBytes}`,
 			);
 		}
 		totalUncompressedBytes += entry.uncompSize;
 		if (totalUncompressedBytes > maxTotalUncompressedBytes) {
-			throw new Error(
+			throw new XlsxError(
+				"LIMIT_EXCEEDED",
 				`Invalid ZIP: total uncompressed size ${totalUncompressedBytes} exceeds limit ${maxTotalUncompressedBytes}`,
 			);
 		}
 
 		if (entry.method === 0) {
 			if (entry.compSize !== entry.uncompSize) {
-				throw new Error(`Invalid ZIP: stored entry ${name} has mismatched compressed and uncompressed sizes`);
+				throw new XlsxError(
+					"MALFORMED",
+					`Invalid ZIP: stored entry ${name} has mismatched compressed and uncompressed sizes`,
+				);
 			}
 			// Method 0: Stored (no compression)
 			const fileData = data.subarray(dataStart, dataEnd);
@@ -274,7 +280,7 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 				crc: entry.crc,
 			});
 		} else {
-			throw new Error(`Unsupported ZIP compression method: ${entry.method}`);
+			throw new XlsxError("UNSUPPORTED", `Unsupported ZIP compression method: ${entry.method}`);
 		}
 	}
 
@@ -283,7 +289,8 @@ export async function zipRead(data: Uint8Array, opts?: ZipReadOptions): Promise<
 	for (const job of inflateJobs) {
 		const result = await inflate(job.compressed, job.expectedSize);
 		if (result.length !== job.expectedSize) {
-			throw new Error(
+			throw new XlsxError(
+				"MALFORMED",
 				`Invalid ZIP: entry ${job.name} inflated to ${result.length} bytes, expected ${job.expectedSize}`,
 			);
 		}
