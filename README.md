@@ -91,6 +91,21 @@ link.download = "output.xlsx";
 link.click();
 ```
 
+## Security
+
+xlsx-format is designed for untrusted spreadsheets, but the safety controls are opt-in where output handling depends on your app. Start with the [security guide](https://sebastian-software.github.io/xlsx-format/guide/security) for the threat model and hardening checklist, and use [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+
+When exporting user-controlled data, enable the output guards that match the target format:
+
+```typescript
+import { sheetToCsv, sheetToHtml } from "xlsx-format";
+
+const csv = sheetToCsv(sheet, { escapeFormulae: true });
+const html = sheetToHtml(sheet, { sanitizeLinks: true });
+```
+
+Reads are also bounded by configurable `ReadOptions` limits such as `maxZipEntries`, `maxTotalUncompressedBytes`, and `maxEntryUncompressedBytes`. Keep the defaults for uploads and other untrusted files, and only raise them for large files you trust.
+
 ## Styled report exports
 
 Need polished XLSX output, but not the full ExcelJS object model? xlsx-format can write styled workbook reports with fonts, fills, borders, number formats, row heights, column widths, merged title rows, and frozen panes. Styling is opt-in with `cellStyles: true`, so existing unstyled exports keep their lean output.
