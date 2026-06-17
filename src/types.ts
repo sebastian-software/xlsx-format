@@ -136,7 +136,7 @@ export interface ReadOptions extends CommonOptions {
 }
 
 /** Options for writing/serializing workbook files */
-export interface WriteOptions extends CommonOptions {
+export interface WriteOptions extends CommonOptions, Sheet2CSVOpts, Sheet2HTMLOpts {
 	/** Output data type: "base64" for base64 string, "buffer" for Node Buffer, "array" for Uint8Array, "string" for plain text */
 	type?: "base64" | "buffer" | "array" | "string";
 	/** Output file format (default: "xlsx") */
@@ -522,7 +522,7 @@ export interface Sheet2CSVOpts {
 	forceQuotes?: boolean;
 	/** If true, emit raw numeric values instead of formatted text */
 	rawNumbers?: boolean;
-	/** If true, prefix formula-like text fields with a single quote */
+	/** If not false, prefix formula-like text fields with a single quote */
 	escapeFormulae?: boolean;
 	/** Override date format for date cells */
 	dateNF?: NumberFormat;
@@ -538,7 +538,7 @@ export interface Sheet2HTMLOpts {
 	header?: string;
 	/** HTML to append after the table */
 	footer?: string;
-	/** If true, sanitize hyperlink targets to prevent XSS */
+	/** If not false, sanitize hyperlink targets to prevent XSS */
 	sanitizeLinks?: boolean;
 }
 

@@ -8,7 +8,7 @@ import { arrayToSheet } from "./aoa.js";
 const qreg = /"/g;
 
 function escapeFormulaText(txt: string, options: any): string {
-	if (!options.escapeFormulae || txt.length === 0) {
+	if (options.escapeFormulae === false || txt.length === 0) {
 		return txt;
 	}
 	switch (txt.charCodeAt(0)) {
