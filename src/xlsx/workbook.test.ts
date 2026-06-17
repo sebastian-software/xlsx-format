@@ -301,7 +301,7 @@ describe("validateWorkbook edge cases", () => {
 
 	it("throws on empty sheet names", () => {
 		expect(() => {
-			validateWorkbook({ SheetNames: [], Sheets: {} } as any);
+			validateWorkbook({ SheetNames: [], Sheets: {} });
 		}).toThrow("empty");
 	});
 });

@@ -101,7 +101,7 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 
 	// --- Worksheets ---
 	for (let rId = 1; rId <= wb.SheetNames.length; ++rId) {
-		const wsrels: Relationships = { "!id": {} } as any;
+		const wsrels: Relationships = { "!id": {} };
 		const ws = wb.Sheets[wb.SheetNames[rId - 1]];
 
 		filePath = "xl/worksheets/sheet" + rId + ".xml";

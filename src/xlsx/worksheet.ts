@@ -1,4 +1,4 @@
-import type { WorkSheet, CellObject, Range, ColInfo, RowInfo, MarginInfo, SheetView } from "../types.js";
+import type { WorkSheet, CellObject, Range, ColInfo, MarginInfo, SheetView } from "../types.js";
 import { parseXmlTag, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
@@ -68,7 +68,7 @@ function parseWorksheetXml_cols(columns: ColInfo[], cols: string[], opts?: any):
 		const hidden = tag.hidden === "1";
 		for (let j = min; j <= max; ++j) {
 			if (!columns[j]) {
-				columns[j] = {} as ColInfo;
+				columns[j] = {};
 			}
 			if (width !== undefined) {
 				columns[j].width = width;
@@ -210,7 +210,7 @@ function parseSheetData(
 				s["!rows"] = [];
 			}
 			if (!s["!rows"][R]) {
-				s["!rows"][R] = {} as RowInfo;
+				s["!rows"][R] = {};
 			}
 			if (rowTag.ht) {
 				s["!rows"][R].hpt = parseFloat(rowTag.ht);
@@ -287,46 +287,46 @@ function parseSheetData(
 				case "s": // shared string - value is an index into the SST
 					if (v !== null) {
 						const idx = parseInt(v, 10);
-						cell = { t: "s", v: "" } as CellObject;
+						cell = { t: "s", v: "" };
 						// Store SST index for later resolution via resolveSharedStrings()
 						(cell as any)._sstIdx = idx;
 					} else {
-						cell = { t: "z" } as CellObject;
+						cell = { t: "z" };
 					}
 					break;
 				case "str": // formula result that is a string
-					cell = { t: "s", v: v ? unescapeXml(v) : "" } as CellObject;
+					cell = { t: "s", v: v ? unescapeXml(v) : "" };
 					break;
 				case "inlineStr":
 					if (isMatch) {
 						const tMatch = isMatch[1].match(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/);
-						cell = { t: "s", v: tMatch ? unescapeXml(tMatch[1]) : "" } as CellObject;
+						cell = { t: "s", v: tMatch ? unescapeXml(tMatch[1]) : "" };
 					} else {
-						cell = { t: "s", v: "" } as CellObject;
+						cell = { t: "s", v: "" };
 					}
 					break;
 				case "b": // boolean
-					cell = { t: "b", v: v === "1" } as CellObject;
+					cell = { t: "b", v: v === "1" };
 					break;
 				case "e": // error
-					cell = { t: "e", v: v ? parseInt(v, 10) || 0 : 0 } as CellObject;
+					cell = { t: "e", v: v ? parseInt(v, 10) || 0 : 0 };
 					(cell as any).w = v || "";
 					break;
 				case "d": // ISO 8601 date string
 					if (v) {
-						cell = { t: "d", v: new Date(v) } as CellObject;
+						cell = { t: "d", v: new Date(v) };
 					} else {
-						cell = { t: "z" } as CellObject;
+						cell = { t: "z" };
 					}
 					break;
 				default: // "n" (number) or unrecognized
 					if (v !== null) {
-						cell = { t: "n", v: parseFloat(v) } as CellObject;
+						cell = { t: "n", v: parseFloat(v) };
 					} else {
 						if (!opts.sheetStubs) {
 							continue;
 						}
-						cell = { t: "z" } as CellObject;
+						cell = { t: "z" };
 					}
 					break;
 			}
@@ -378,7 +378,7 @@ function parseSheetData(
 						formatTable[(cell.XF && cell.XF.numFmtId) || 0];
 					if (nfmt) {
 						try {
-							cell.w = formatNumber(nfmt, cell.v as number, { date1904 });
+							cell.w = formatNumber(nfmt, cell.v, { date1904 });
 						} catch {}
 					}
 					// Convert numeric cells with date formats to Date objects if cellDates is enabled
@@ -489,17 +489,17 @@ export function parseWorksheetXml(
 	styles?: StylesData,
 ): WorkSheet {
 	if (!data) {
-		return {} as WorkSheet;
+		return {};
 	}
 	if (!opts) {
 		opts = {};
 	}
 	assertXmlPartLimits("worksheet.xml", data, opts);
 	if (!rels) {
-		rels = { "!id": {} } as any;
+		rels = { "!id": {} };
 	}
 
-	const s: WorkSheet = opts.dense ? { "!data": [] } : ({} as any);
+	const s: WorkSheet = opts.dense ? { "!data": [] } : {};
 	// Start with an inverted range that will be narrowed as cells are found
 	const refguess: Range = { s: { r: 2000000, c: 2000000 }, e: { r: 0, c: 0 } };
 
@@ -560,7 +560,7 @@ export function parseWorksheetXml(
 	// Hyperlinks
 	const hlink = data2.match(hlinkregex);
 	if (hlink) {
-		parseWorksheetXml_hlinks(s, hlink, rels!, opts);
+		parseWorksheetXml_hlinks(s, hlink, rels, opts);
 	}
 
 	// Page margins
