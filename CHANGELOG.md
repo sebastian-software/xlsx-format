@@ -1,5 +1,22 @@
 # Changelog
 
+## [2.2.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.1.1...xlsx-format-v2.2.0) (2026-06-16)
+
+
+### Features
+
+* **api:** add typed error codes ([#46](https://github.com/sebastian-software/xlsx-format/issues/46)) ([f203e6d](https://github.com/sebastian-software/xlsx-format/commit/f203e6dae1b264ef0261b418def90861a662c977))
+
+
+### Bug Fixes
+
+* **pkg:** expose package metadata ([#44](https://github.com/sebastian-software/xlsx-format/issues/44)) ([940fa59](https://github.com/sebastian-software/xlsx-format/commit/940fa5916bf3a1a50aceeab567cf4b86caeae710))
+
+
+### Documentation
+
+* **readme:** add security section ([#45](https://github.com/sebastian-software/xlsx-format/issues/45)) ([99973aa](https://github.com/sebastian-software/xlsx-format/commit/99973aaad8329ebcb174ecc77307995f05ee6979))
+
 ## [2.1.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.1.0...xlsx-format-v2.1.1) (2026-06-13)
 
 
