@@ -40,4 +40,22 @@ describe("write.ts — output types", () => {
 		const csv = await write(emptyWb, { bookType: "csv", type: "string" });
 		expect(csv).toBe("");
 	});
+
+	it("should pass CSV export options through write", async () => {
+		const wb = createWorkbook(arrayToSheet([["=1+1"]]), "Sheet1");
+
+		await expect(write(wb, { bookType: "csv", type: "string" })).resolves.toBe("'=1+1");
+		await expect(write(wb, { bookType: "csv", type: "string", escapeFormulae: false })).resolves.toBe("=1+1");
+	});
+
+	it("should pass HTML export options through write", async () => {
+		const ws = arrayToSheet([["Bad"]]);
+		ws.A1.l = { Target: "javascript:alert(1)" };
+		const wb = createWorkbook(ws, "Sheet1");
+
+		await expect(write(wb, { bookType: "html", type: "string" })).resolves.not.toContain("href=");
+		await expect(write(wb, { bookType: "html", type: "string", sanitizeLinks: false })).resolves.toContain(
+			'href="javascript:alert(1)"',
+		);
+	});
 });

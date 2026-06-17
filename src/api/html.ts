@@ -114,11 +114,11 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 				cellAttrs["data-f"] = escapeHtml(cell.f);
 			}
 			// Wrap in an anchor tag if the cell has a non-internal hyperlink,
-			// filtering out unsafe URI schemes when sanitizeLinks is enabled
+			// filtering out unsafe URI schemes unless sanitization is disabled.
 			if (
 				cell.l &&
 				(cell.l.Target || "#").charAt(0) !== "#" &&
-				(!options.sanitizeLinks || isSanitizedLinkTarget(cell.l.Target || ""))
+				(options.sanitizeLinks === false || isSanitizedLinkTarget(cell.l.Target || ""))
 			) {
 				cellContent = '<a href="' + escapeHtml(cell.l.Target) + '">' + cellContent + "</a>";
 			}

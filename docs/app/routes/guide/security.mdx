@@ -81,27 +81,22 @@ Stable error codes:
 
 CSV files opened in spreadsheet applications can interpret text that starts with characters such as `=`, `+`, `-`, `@`, tab, or carriage return as formulas. This is commonly called CSV injection or formula injection.
 
-If a CSV will be opened by a human in Excel, Google Sheets, or LibreOffice, neutralize user-controlled text fields before export. A common mitigation is prefixing formula-like text with a single quote.
+By default, `sheetToCsv()` and CSV output from `write()` prefix formula-like text with a single quote. Pass `escapeFormulae: false` only when you need exact text fidelity and the output will not be opened as an untrusted spreadsheet.
 
 ```typescript
-function safeCsvText(value: unknown): unknown {
-	if (typeof value !== "string") {
-		return value;
-	}
-	return /^[=+\-@\t\r]/.test(value) ? `'${value}` : value;
-}
+import { sheetToCsv } from "xlsx-format";
+
+const csv = sheetToCsv(sheet);
 ```
 
 ## Exporting HTML
 
-HTML export escapes cell text. Hyperlinks can still point to unsafe targets if you render exported HTML in a browser. Use `sanitizeLinks` when exporting HTML from user-controlled sheets to block script URLs such as `javascript:` targets. If your application accepts arbitrary hyperlinks, validate links against your own allowed URL schemes and domains before publishing or embedding the exported HTML.
+HTML export escapes cell text and, by default, drops hyperlink targets with unsafe schemes such as `javascript:`, `vbscript:`, and `data:`. Pass `sanitizeLinks: false` only when you need exact hyperlink fidelity and will not render the exported HTML in a browser. If your application accepts arbitrary hyperlinks, validate links against your own allowed URL schemes and domains before publishing or embedding the exported HTML.
 
 ```typescript
 import { sheetToHtml } from "xlsx-format";
 
-const html = sheetToHtml(sheet, {
-	sanitizeLinks: true,
-});
+const html = sheetToHtml(sheet);
 ```
 
 ## Object keys from workbook data

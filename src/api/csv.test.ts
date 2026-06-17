@@ -84,7 +84,8 @@ describe("csv.ts: advanced CSV features", () => {
 	it("sheetToCsv formula with comma gets quoted", () => {
 		const ws: any = { A1: { t: "z", f: "IF(A2,B2,C2)" }, "!ref": "A1:A1" };
 		const csv = sheetToCsv(ws);
-		expect(csv).toContain('"=IF(A2,B2,C2)"');
+		expect(csv).toContain('"\'=IF(A2,B2,C2)"');
+		expect(sheetToCsv(ws, { escapeFormulae: false })).toContain('"=IF(A2,B2,C2)"');
 	});
 
 	it("sheetToTxt produces tab-separated output", () => {

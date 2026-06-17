@@ -62,15 +62,15 @@ export async function write(wb: WorkBook, opts?: WriteOptions): Promise<any> {
 	switch (bookType) {
 		case "csv": {
 			const ws = firstSheet(wb);
-			return textOutput(ws ? sheetToCsv(ws) : "", options.type);
+			return textOutput(ws ? sheetToCsv(ws, options) : "", options.type);
 		}
 		case "tsv": {
 			const ws = firstSheet(wb);
-			return textOutput(ws ? sheetToTxt(ws) : "", options.type);
+			return textOutput(ws ? sheetToTxt(ws, options) : "", options.type);
 		}
 		case "html": {
 			const ws = firstSheet(wb);
-			return textOutput(ws ? sheetToHtml(ws) : "", options.type);
+			return textOutput(ws ? sheetToHtml(ws, options) : "", options.type);
 		}
 		default: {
 			const zip = writeZipXlsx(wb, options);

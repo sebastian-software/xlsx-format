@@ -50,17 +50,18 @@ describe("export security guards", () => {
 		expect(Object.prototype).not.toHaveProperty("value");
 	});
 
-	it("escapes formula-like CSV fields when requested", () => {
+	it("escapes formula-like CSV fields by default", () => {
 		const ws = arrayToSheet([["=1+1", "+SUM(A1)", "-cmd", "@handle", "plain"]]);
 
-		expect(sheetToCsv(ws)).toBe("=1+1,+SUM(A1),-cmd,@handle,plain");
-		expect(sheetToCsv(ws, { escapeFormulae: true })).toBe("'=1+1,'+SUM(A1),'-cmd,'@handle,plain");
+		expect(sheetToCsv(ws)).toBe("'=1+1,'+SUM(A1),'-cmd,'@handle,plain");
+		expect(sheetToCsv(ws, { escapeFormulae: false })).toBe("=1+1,+SUM(A1),-cmd,@handle,plain");
 	});
 
-	it("escapes formula-only CSV cells when requested", () => {
+	it("escapes formula-only CSV cells by default", () => {
 		const ws = { A1: { t: "z", f: "SUM(B1:B10)" }, "!ref": "A1:A1" } as WorkSheet;
 
-		expect(sheetToCsv(ws, { escapeFormulae: true })).toBe("'=SUM(B1:B10)");
+		expect(sheetToCsv(ws)).toBe("'=SUM(B1:B10)");
+		expect(sheetToCsv(ws, { escapeFormulae: false })).toBe("=SUM(B1:B10)");
 	});
 
 	it("sanitizes javascript links with embedded whitespace", () => {
@@ -68,8 +69,13 @@ describe("export security guards", () => {
 			"!ref": "A1",
 			A1: { t: "s", v: "Bad", l: { Target: "java\nscript:alert(1)" } },
 		} as WorkSheet;
+		const unsafeOptOutWs = {
+			"!ref": "A1",
+			A1: { t: "s", v: "Bad", l: { Target: "javascript:alert(1)" } },
+		} as WorkSheet;
 
-		expect(sheetToHtml(ws, { sanitizeLinks: true })).not.toContain("href=");
+		expect(sheetToHtml(ws)).not.toContain("href=");
+		expect(sheetToHtml(unsafeOptOutWs, { sanitizeLinks: false })).toContain('href="javascript:alert(1)"');
 	});
 
 	it("sanitizes script links with invisible unicode characters", () => {
@@ -78,7 +84,7 @@ describe("export security guards", () => {
 			A1: { t: "s", v: "Bad", l: { Target: "java\u200bscript:alert(1)" } },
 		} as WorkSheet;
 
-		expect(sheetToHtml(ws, { sanitizeLinks: true })).not.toContain("href=");
+		expect(sheetToHtml(ws)).not.toContain("href=");
 	});
 
 	it("sanitizes data and vbscript links", () => {
@@ -88,7 +94,7 @@ describe("export security guards", () => {
 				A1: { t: "s", v: "Bad", l: { Target: target } },
 			} as WorkSheet;
 
-			expect(sheetToHtml(ws, { sanitizeLinks: true })).not.toContain("href=");
+			expect(sheetToHtml(ws)).not.toContain("href=");
 		}
 	});
 
