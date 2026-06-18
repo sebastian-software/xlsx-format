@@ -3,25 +3,47 @@
  */
 
 /* ----------------------------------------
-   Blue Steel brand tokens
+   Product brand tokens
    ---------------------------------------- */
 
 :root {
-	--ardo-color-brand: oklch(0.5 0.1 245);
-	--ardo-color-brandLight: oklch(0.62 0.09 245);
-	--ardo-color-brandDark: oklch(0.39 0.11 245);
-	--ardo-color-brandSubtle: oklch(0.955 0.025 245);
-	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.5 0.1 245) 0%, oklch(0.6 0.075 260) 100%);
-	--xlsx-docs-footer-bg: oklch(0.965 0.006 245);
+	--ardo-color-brand: oklch(0.47 0.14 162);
+	--ardo-color-brandLight: oklch(0.62 0.13 158);
+	--ardo-color-brandDark: oklch(0.34 0.12 166);
+	--ardo-color-brandSubtle: oklch(0.96 0.04 160);
+	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.47 0.14 162) 0%, oklch(0.62 0.13 158) 100%);
+	--xlsx-docs-footer-bg: oklch(0.965 0.018 162);
+	--xlsx-home-bg: oklch(0.982 0.012 103);
+	--xlsx-home-ink: oklch(0.2 0.035 245);
+	--xlsx-home-muted: oklch(0.43 0.035 235);
+	--xlsx-home-line: oklch(0.86 0.025 180);
+	--xlsx-home-panel: oklch(0.995 0.006 98);
+	--xlsx-home-code: oklch(0.18 0.035 246);
+	--xlsx-home-codeText: oklch(0.91 0.025 150);
+	--xlsx-home-accent: oklch(0.73 0.17 78);
+	--xlsx-home-accentDark: oklch(0.45 0.12 70);
+	--xlsx-home-danger: oklch(0.56 0.16 28);
+	--xlsx-home-shadow: 0 22px 70px color-mix(in oklch, var(--xlsx-home-ink) 14%, transparent);
 }
 
 .dark {
-	--ardo-color-brand: oklch(0.74 0.115 245);
-	--ardo-color-brandLight: oklch(0.84 0.1 245);
-	--ardo-color-brandDark: oklch(0.62 0.125 245);
-	--ardo-color-brandSubtle: oklch(0.275 0.06 245);
-	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.74 0.115 245) 0%, oklch(0.81 0.08 260) 100%);
-	--xlsx-docs-footer-bg: oklch(0.22 0.012 245);
+	--ardo-color-brand: oklch(0.74 0.13 158);
+	--ardo-color-brandLight: oklch(0.83 0.11 152);
+	--ardo-color-brandDark: oklch(0.58 0.14 162);
+	--ardo-color-brandSubtle: oklch(0.25 0.055 160);
+	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.74 0.13 158) 0%, oklch(0.83 0.11 152) 100%);
+	--xlsx-docs-footer-bg: oklch(0.2 0.022 190);
+	--xlsx-home-bg: oklch(0.16 0.025 230);
+	--xlsx-home-ink: oklch(0.94 0.018 115);
+	--xlsx-home-muted: oklch(0.78 0.025 145);
+	--xlsx-home-line: oklch(0.36 0.035 190);
+	--xlsx-home-panel: oklch(0.2 0.03 225);
+	--xlsx-home-code: oklch(0.13 0.035 240);
+	--xlsx-home-codeText: oklch(0.9 0.028 145);
+	--xlsx-home-accent: oklch(0.8 0.16 78);
+	--xlsx-home-accentDark: oklch(0.72 0.14 80);
+	--xlsx-home-danger: oklch(0.72 0.14 32);
+	--xlsx-home-shadow: 0 24px 80px color-mix(in oklch, black 34%, transparent);
 }
 
 main footer[class] {
@@ -47,4 +69,846 @@ main footer[class] {
 
 .feature-tables th:nth-child(4) {
 	width: 50%;
+}
+
+/* ----------------------------------------
+   Homepage
+   ---------------------------------------- */
+
+.xlsx-home {
+	position: relative;
+	isolation: isolate;
+	min-height: 100vh;
+	overflow: hidden;
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--xlsx-home-accent) 14%, transparent), transparent 34rem),
+		linear-gradient(180deg, var(--xlsx-home-bg) 0%, var(--ardo-color-bg) 78%);
+	color: var(--xlsx-home-ink);
+	padding: 4.5rem 1.5rem 0;
+}
+
+.xlsx-home *,
+.xlsx-home *::before,
+.xlsx-home *::after {
+	box-sizing: border-box;
+}
+
+.xlsx-home h1,
+.xlsx-home h2,
+.xlsx-home h3,
+.xlsx-home p,
+.xlsx-home dl,
+.xlsx-home dd,
+.xlsx-home ul {
+	margin: 0;
+}
+
+.xlsx-hero,
+.xlsx-section,
+.xlsx-final-cta {
+	width: min(100%, 76rem);
+	margin-inline: auto;
+}
+
+.xlsx-hero {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(25rem, 0.9fr);
+	gap: 3rem;
+	align-items: center;
+	padding: 1rem 0 5.5rem;
+}
+
+.xlsx-hero__content {
+	min-width: 0;
+}
+
+.xlsx-eyebrow,
+.xlsx-kicker {
+	color: var(--ardo-color-brandDark);
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.08em;
+	line-height: 1.3;
+	text-transform: uppercase;
+}
+
+.dark .xlsx-eyebrow,
+.dark .xlsx-kicker {
+	color: var(--ardo-color-brandLight);
+}
+
+.xlsx-hero h1 {
+	max-width: 12ch;
+	margin-top: 1rem;
+	color: var(--xlsx-home-ink);
+	font-size: 4.8rem;
+	font-weight: 850;
+	letter-spacing: 0;
+	line-height: 0.93;
+	overflow-wrap: break-word;
+}
+
+.xlsx-hero__lead {
+	max-width: 42rem;
+	margin-top: 1.35rem;
+	color: var(--xlsx-home-muted);
+	font-size: 1.2rem;
+	line-height: 1.65;
+}
+
+.xlsx-hero__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	align-items: center;
+	margin-top: 2rem;
+}
+
+.xlsx-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.55rem;
+	min-height: 2.9rem;
+	padding: 0.74rem 1rem;
+	border: 1px solid transparent;
+	border-radius: 7px;
+	font-size: 0.95rem;
+	font-weight: 750;
+	line-height: 1.2;
+	text-decoration: none;
+	transition:
+		transform 180ms ease,
+		border-color 180ms ease,
+		background-color 180ms ease,
+		color 180ms ease;
+}
+
+.xlsx-button:hover {
+	transform: translateY(-1px);
+	text-decoration: none;
+}
+
+.xlsx-button:focus-visible,
+.xlsx-inline-link:focus-visible {
+	outline: 3px solid color-mix(in oklch, var(--ardo-color-brand) 38%, transparent);
+	outline-offset: 3px;
+}
+
+.xlsx-button--primary {
+	background: var(--ardo-color-brand);
+	color: oklch(0.99 0.01 120);
+	box-shadow: 0 14px 34px color-mix(in oklch, var(--ardo-color-brand) 32%, transparent);
+}
+
+.xlsx-button--primary:hover {
+	background: var(--ardo-color-brandDark);
+	color: oklch(0.99 0.01 120);
+}
+
+.dark .xlsx-button--primary:hover {
+	background: var(--ardo-color-brandLight);
+	color: oklch(0.15 0.035 225);
+}
+
+.xlsx-button--secondary {
+	background: color-mix(in oklch, var(--xlsx-home-accent) 22%, var(--xlsx-home-panel));
+	border-color: color-mix(in oklch, var(--xlsx-home-accent) 46%, transparent);
+	color: var(--xlsx-home-accentDark);
+}
+
+.xlsx-button--ghost {
+	background: transparent;
+	border-color: var(--xlsx-home-line);
+	color: var(--xlsx-home-ink);
+}
+
+.xlsx-proof {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 0;
+	margin-top: 2.5rem;
+	border: 1px solid var(--xlsx-home-line);
+	border-radius: 8px;
+	background: color-mix(in oklch, var(--xlsx-home-panel) 82%, transparent);
+	box-shadow: 0 12px 38px color-mix(in oklch, var(--xlsx-home-ink) 6%, transparent);
+	overflow: hidden;
+}
+
+.xlsx-proof__item {
+	min-width: 0;
+	padding: 1rem;
+	border-right: 1px solid var(--xlsx-home-line);
+}
+
+.xlsx-proof__item:last-child {
+	border-right: 0;
+}
+
+.xlsx-proof dt {
+	color: var(--xlsx-home-muted);
+	font-size: 0.72rem;
+	font-weight: 750;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+}
+
+.xlsx-proof dd {
+	margin-top: 0.35rem;
+	color: var(--xlsx-home-ink);
+	font-size: 0.98rem;
+	font-weight: 800;
+	line-height: 1.25;
+	overflow-wrap: break-word;
+}
+
+.xlsx-product-shot {
+	position: relative;
+	min-width: 0;
+	border: 1px solid color-mix(in oklch, var(--xlsx-home-line) 78%, var(--ardo-color-brand));
+	border-radius: 8px;
+	background:
+		linear-gradient(145deg, color-mix(in oklch, var(--xlsx-home-panel) 84%, transparent), transparent),
+		var(--xlsx-home-panel);
+	box-shadow: var(--xlsx-home-shadow);
+	overflow: hidden;
+}
+
+.xlsx-product-shot::before {
+	content: "";
+	position: absolute;
+	inset: 0;
+	pointer-events: none;
+	background:
+		linear-gradient(90deg, color-mix(in oklch, var(--ardo-color-brand) 16%, transparent) 1px, transparent 1px),
+		linear-gradient(180deg, color-mix(in oklch, var(--ardo-color-brand) 10%, transparent) 1px, transparent 1px);
+	background-size: 3rem 3rem;
+	mask-image: linear-gradient(180deg, black, transparent 70%);
+	opacity: 0.4;
+}
+
+.xlsx-product-shot__header {
+	position: relative;
+	z-index: 1;
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.82rem 1rem;
+	border-bottom: 1px solid var(--xlsx-home-line);
+	color: var(--xlsx-home-muted);
+	font-family: var(--ardo-font-mono);
+	font-size: 0.75rem;
+}
+
+.xlsx-code-panel {
+	position: relative;
+	z-index: 1;
+	margin: 0;
+	padding: 1.2rem;
+	background: var(--xlsx-home-code);
+	color: var(--xlsx-home-codeText);
+	font-family: var(--ardo-font-mono);
+	font-size: 0.82rem;
+	line-height: 1.65;
+	overflow-x: auto;
+}
+
+.xlsx-code-panel code {
+	font-family: inherit;
+	white-space: pre;
+}
+
+.xlsx-workbook-preview {
+	position: relative;
+	z-index: 1;
+	margin: 1rem;
+	border: 1px solid var(--xlsx-home-line);
+	border-radius: 8px;
+	background: var(--xlsx-home-panel);
+	overflow: hidden;
+}
+
+.xlsx-workbook-preview__bar {
+	display: flex;
+	justify-content: space-between;
+	gap: 1rem;
+	padding: 0.72rem 0.85rem;
+	background: color-mix(in oklch, var(--ardo-color-brandSubtle) 70%, var(--xlsx-home-panel));
+	color: var(--xlsx-home-muted);
+	font-size: 0.76rem;
+	font-weight: 750;
+}
+
+.xlsx-sheet {
+	padding: 0.85rem;
+}
+
+.xlsx-sheet__title {
+	padding: 0.75rem;
+	background: var(--ardo-color-brandDark);
+	color: oklch(0.98 0.01 120);
+	font-size: 0.86rem;
+	font-weight: 800;
+}
+
+.dark .xlsx-sheet__title {
+	background: var(--ardo-color-brand);
+	color: oklch(0.15 0.035 225);
+}
+
+.xlsx-sheet__row {
+	display: grid;
+	grid-template-columns: 1fr 1fr 1fr 1fr;
+	min-width: 31rem;
+	border-right: 1px solid var(--xlsx-home-line);
+	border-bottom: 1px solid var(--xlsx-home-line);
+	border-left: 1px solid var(--xlsx-home-line);
+	color: var(--xlsx-home-muted);
+	font-size: 0.76rem;
+}
+
+.xlsx-sheet__row span {
+	min-width: 0;
+	padding: 0.6rem 0.65rem;
+	border-right: 1px solid var(--xlsx-home-line);
+	white-space: nowrap;
+}
+
+.xlsx-sheet__row span:last-child {
+	border-right: 0;
+}
+
+.xlsx-sheet__row--head {
+	background: color-mix(in oklch, var(--ardo-color-brand) 82%, oklch(0.2 0.03 230));
+	color: oklch(0.98 0.01 120);
+	font-weight: 800;
+}
+
+.xlsx-sheet__row--total {
+	background: color-mix(in oklch, var(--xlsx-home-accent) 18%, var(--xlsx-home-panel));
+	color: var(--xlsx-home-ink);
+	font-weight: 800;
+}
+
+.xlsx-section {
+	padding: 4.5rem 0;
+}
+
+.xlsx-section__intro {
+	max-width: 42rem;
+}
+
+.xlsx-section__intro--wide {
+	max-width: 58rem;
+}
+
+.xlsx-section h2,
+.xlsx-final-cta h2 {
+	margin-top: 0.8rem;
+	color: var(--xlsx-home-ink);
+	font-size: 2.7rem;
+	font-weight: 850;
+	letter-spacing: 0;
+	line-height: 1.04;
+	overflow-wrap: break-word;
+}
+
+.xlsx-section__intro p:not(.xlsx-kicker) {
+	margin-top: 1rem;
+	color: var(--xlsx-home-muted);
+	font-size: 1.05rem;
+	line-height: 1.7;
+}
+
+.xlsx-switch {
+	display: grid;
+	grid-template-columns: minmax(18rem, 0.55fr) minmax(0, 1fr);
+	gap: 2.5rem;
+	align-items: start;
+}
+
+.xlsx-comparison {
+	border: 1px solid var(--xlsx-home-line);
+	border-radius: 8px;
+	background: var(--xlsx-home-panel);
+	box-shadow: 0 18px 60px color-mix(in oklch, var(--xlsx-home-ink) 8%, transparent);
+	overflow: hidden;
+}
+
+.xlsx-comparison__header,
+.xlsx-comparison__row {
+	display: grid;
+	grid-template-columns: 1.15fr 1fr 0.82fr 0.82fr;
+	gap: 0;
+	align-items: stretch;
+}
+
+.xlsx-comparison__header > *,
+.xlsx-comparison__row > * {
+	min-width: 0;
+	padding: 0.9rem 1rem;
+	border-right: 1px solid var(--xlsx-home-line);
+	overflow-wrap: break-word;
+}
+
+.xlsx-comparison__header > *:last-child,
+.xlsx-comparison__row > *:last-child {
+	border-right: 0;
+}
+
+.xlsx-comparison__header {
+	background: color-mix(in oklch, var(--xlsx-home-code) 92%, var(--ardo-color-brand));
+	color: oklch(0.96 0.012 130);
+	font-size: 0.78rem;
+	font-weight: 800;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.xlsx-comparison__row {
+	border-top: 1px solid var(--xlsx-home-line);
+	color: var(--xlsx-home-muted);
+	font-size: 0.92rem;
+	line-height: 1.4;
+}
+
+.xlsx-comparison__row > span:first-child {
+	color: var(--xlsx-home-ink);
+	font-weight: 760;
+}
+
+.xlsx-comparison__row strong {
+	display: flex;
+	gap: 0.45rem;
+	align-items: center;
+	background: color-mix(in oklch, var(--ardo-color-brandSubtle) 54%, transparent);
+	color: var(--ardo-color-brandDark);
+	font-weight: 850;
+}
+
+.dark .xlsx-comparison__row strong {
+	color: var(--ardo-color-brandLight);
+}
+
+.xlsx-use-case-list {
+	display: grid;
+	gap: 0.85rem;
+	margin-top: 2rem;
+}
+
+.xlsx-use-case {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	gap: 1rem;
+	align-items: center;
+	padding: 1.2rem;
+	border: 1px solid var(--xlsx-home-line);
+	border-radius: 8px;
+	background: color-mix(in oklch, var(--xlsx-home-panel) 88%, transparent);
+}
+
+.xlsx-use-case__icon {
+	display: grid;
+	place-items: center;
+	width: 2.65rem;
+	height: 2.65rem;
+	border-radius: 8px;
+	background: color-mix(in oklch, var(--ardo-color-brand) 13%, transparent);
+	color: var(--ardo-color-brandDark);
+}
+
+.dark .xlsx-use-case__icon {
+	color: var(--ardo-color-brandLight);
+}
+
+.xlsx-use-case h3,
+.xlsx-capability h3 {
+	color: var(--xlsx-home-ink);
+	font-size: 1.05rem;
+	font-weight: 820;
+	line-height: 1.3;
+}
+
+.xlsx-use-case p {
+	margin-top: 0.38rem;
+	color: var(--xlsx-home-muted);
+	font-size: 0.95rem;
+	line-height: 1.55;
+}
+
+.xlsx-inline-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	justify-self: end;
+	color: var(--ardo-color-brandDark);
+	font-size: 0.92rem;
+	font-weight: 800;
+	line-height: 1.25;
+	text-decoration: none;
+	white-space: nowrap;
+}
+
+.xlsx-inline-link:hover {
+	color: var(--ardo-color-brand);
+	text-decoration: none;
+}
+
+.dark .xlsx-inline-link {
+	color: var(--ardo-color-brandLight);
+}
+
+.xlsx-runtime__panel {
+	display: grid;
+	grid-template-columns: minmax(0, 0.65fr) minmax(18rem, 1fr);
+	gap: 2rem;
+	align-items: center;
+	padding: 2rem;
+	border: 1px solid color-mix(in oklch, var(--ardo-color-brand) 35%, var(--xlsx-home-line));
+	border-radius: 8px;
+	background:
+		linear-gradient(135deg, color-mix(in oklch, var(--ardo-color-brand) 13%, transparent), transparent 52%),
+		color-mix(in oklch, var(--xlsx-home-panel) 92%, transparent);
+}
+
+.xlsx-runtime__grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 0.8rem;
+}
+
+.xlsx-runtime__grid > div {
+	min-width: 0;
+	padding: 1rem;
+	border: 1px solid var(--xlsx-home-line);
+	border-radius: 8px;
+	background: var(--xlsx-home-panel);
+	color: var(--xlsx-home-muted);
+}
+
+.xlsx-runtime__grid svg {
+	color: var(--ardo-color-brand);
+}
+
+.xlsx-runtime__grid strong {
+	display: block;
+	margin-top: 0.75rem;
+	color: var(--xlsx-home-ink);
+	font-size: 1rem;
+}
+
+.xlsx-runtime__grid span {
+	display: block;
+	margin-top: 0.45rem;
+	font-size: 0.88rem;
+	line-height: 1.45;
+}
+
+.xlsx-capability-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 1rem;
+	margin-top: 2rem;
+}
+
+.xlsx-capability {
+	min-width: 0;
+	padding: 1.25rem;
+	border: 1px solid var(--xlsx-home-line);
+	border-radius: 8px;
+	background: var(--xlsx-home-panel);
+}
+
+.xlsx-capability__heading {
+	display: flex;
+	gap: 0.7rem;
+	align-items: center;
+}
+
+.xlsx-capability__heading span {
+	display: inline-flex;
+	color: var(--ardo-color-brand);
+}
+
+.xlsx-capability ul {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.45rem;
+	padding: 0;
+	margin-top: 1rem;
+	list-style: none;
+}
+
+.xlsx-capability li {
+	padding: 0.38rem 0.55rem;
+	border: 1px solid color-mix(in oklch, var(--xlsx-home-line) 80%, transparent);
+	border-radius: 6px;
+	background: color-mix(in oklch, var(--ardo-color-brandSubtle) 38%, transparent);
+	color: var(--xlsx-home-muted);
+	font-size: 0.8rem;
+	font-weight: 700;
+	line-height: 1.25;
+}
+
+.xlsx-final-cta {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 2rem;
+	align-items: center;
+	margin-top: 2rem;
+	padding: 2rem;
+	border: 1px solid color-mix(in oklch, var(--xlsx-home-code) 35%, var(--ardo-color-brand));
+	border-radius: 8px 8px 0 0;
+	background: var(--xlsx-home-code);
+	color: var(--xlsx-home-codeText);
+}
+
+.xlsx-final-cta h2 {
+	max-width: 16ch;
+	color: var(--xlsx-home-codeText);
+}
+
+.xlsx-final-cta .xlsx-kicker {
+	color: var(--xlsx-home-accent);
+}
+
+.xlsx-install {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.9rem;
+	justify-content: flex-end;
+	align-items: center;
+}
+
+.xlsx-install code {
+	max-width: 100%;
+	padding: 0.85rem 1rem;
+	border: 1px solid color-mix(in oklch, var(--xlsx-home-codeText) 18%, transparent);
+	border-radius: 7px;
+	background: color-mix(in oklch, black 20%, transparent);
+	color: var(--xlsx-home-codeText);
+	font-family: var(--ardo-font-mono);
+	font-size: 0.9rem;
+	overflow-wrap: anywhere;
+}
+
+@media (max-width: 1120px) {
+	.xlsx-home {
+		padding-top: 3.25rem;
+	}
+
+	.xlsx-hero {
+		grid-template-columns: 1fr;
+		gap: 2.25rem;
+	}
+
+	.xlsx-hero h1 {
+		max-width: 13ch;
+		font-size: 4rem;
+	}
+
+	.xlsx-product-shot {
+		max-width: 44rem;
+	}
+
+	.xlsx-switch,
+	.xlsx-runtime__panel {
+		grid-template-columns: 1fr;
+	}
+}
+
+@media (max-width: 860px) {
+	.xlsx-home {
+		padding-right: 1rem;
+		padding-left: 1rem;
+	}
+
+	.xlsx-hero {
+		padding-bottom: 3.5rem;
+	}
+
+	.xlsx-hero h1 {
+		font-size: 3.1rem;
+		line-height: 0.98;
+	}
+
+	.xlsx-hero__lead {
+		font-size: 1.05rem;
+	}
+
+	.xlsx-proof {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.xlsx-proof__item:nth-child(2) {
+		border-right: 0;
+	}
+
+	.xlsx-proof__item:nth-child(n + 3) {
+		border-top: 1px solid var(--xlsx-home-line);
+	}
+
+	.xlsx-section {
+		padding: 3.25rem 0;
+	}
+
+	.xlsx-section h2,
+	.xlsx-final-cta h2 {
+		font-size: 2.15rem;
+		line-height: 1.08;
+	}
+
+	.xlsx-comparison {
+		overflow-x: auto;
+	}
+
+	.xlsx-comparison__header,
+	.xlsx-comparison__row {
+		min-width: 45rem;
+	}
+
+	.xlsx-use-case {
+		grid-template-columns: auto minmax(0, 1fr);
+		align-items: start;
+	}
+
+	.xlsx-inline-link {
+		grid-column: 2;
+		justify-self: start;
+		white-space: normal;
+	}
+
+	.xlsx-runtime__grid,
+	.xlsx-capability-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.xlsx-final-cta {
+		grid-template-columns: 1fr;
+	}
+
+	.xlsx-install {
+		justify-content: flex-start;
+	}
+}
+
+@media (max-width: 520px) {
+	.xlsx-home {
+		padding-top: 2.5rem;
+	}
+
+	.xlsx-hero h1 {
+		font-size: 2.45rem;
+	}
+
+	.xlsx-hero__actions,
+	.xlsx-button {
+		width: 100%;
+	}
+
+	.xlsx-product-shot__header,
+	.xlsx-workbook-preview__bar {
+		flex-direction: column;
+		gap: 0.25rem;
+	}
+
+	.xlsx-code-panel {
+		font-size: 0.76rem;
+	}
+
+	.xlsx-comparison {
+		overflow: visible;
+	}
+
+	.xlsx-comparison__header {
+		display: none;
+	}
+
+	.xlsx-comparison__row {
+		display: grid;
+		grid-template-columns: 1fr;
+		min-width: 0;
+	}
+
+	.xlsx-comparison__row > * {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+		padding: 0.72rem 0.85rem;
+		border-right: 0;
+		border-bottom: 1px solid var(--xlsx-home-line);
+	}
+
+	.xlsx-comparison__row > *:last-child {
+		border-bottom: 0;
+	}
+
+	.xlsx-comparison__row > span:first-child {
+		background: var(--xlsx-home-code);
+		color: var(--xlsx-home-codeText);
+		font-weight: 820;
+	}
+
+	.xlsx-comparison__row strong::before {
+		content: "xlsx-format";
+		margin-right: auto;
+		color: var(--xlsx-home-muted);
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+
+	.xlsx-comparison__row > span:nth-child(3)::before,
+	.xlsx-comparison__row > span:nth-child(4)::before {
+		color: var(--xlsx-home-muted);
+		font-size: 0.72rem;
+		font-weight: 800;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+	}
+
+	.xlsx-comparison__row > span:nth-child(3)::before {
+		content: "SheetJS";
+	}
+
+	.xlsx-comparison__row > span:nth-child(4)::before {
+		content: "ExcelJS";
+	}
+
+	.xlsx-workbook-preview {
+		margin: 0.75rem;
+		overflow-x: auto;
+	}
+
+	.xlsx-proof {
+		grid-template-columns: 1fr;
+	}
+
+	.xlsx-proof__item {
+		border-right: 0;
+	}
+
+	.xlsx-proof__item + .xlsx-proof__item {
+		border-top: 1px solid var(--xlsx-home-line);
+	}
+
+	.xlsx-use-case,
+	.xlsx-runtime__panel,
+	.xlsx-final-cta {
+		padding: 1rem;
+	}
+
+	.xlsx-use-case {
+		grid-template-columns: 1fr;
+	}
+
+	.xlsx-inline-link {
+		grid-column: 1;
+	}
+
+	.xlsx-section h2,
+	.xlsx-final-cta h2 {
+		font-size: 1.8rem;
+	}
 }
