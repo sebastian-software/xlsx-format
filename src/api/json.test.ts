@@ -158,7 +158,7 @@ describe("json.ts — addJsonToSheet edge cases", () => {
 	});
 
 	it("should handle numeric origin", () => {
-		const ws = addJsonToSheet(null, [{ a: 1 }], { origin: 5 } as any);
+		const ws = addJsonToSheet(null, [{ a: 1 }], { origin: 5 });
 		// origin=5 means header at row 5, data at row 6. Range includes row 0 start.
 		expect(ws["!ref"]).toContain("7"); // row 7 = originRow(5) + 1 data row + header offset
 	});

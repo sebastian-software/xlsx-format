@@ -14,7 +14,7 @@ describe("comments: insertCommentsIntoSheet", () => {
 	it("inserts legacy comment into sheet", () => {
 		const ws: any = { A1: { t: "n", v: 1 }, "!ref": "A1" };
 		const comments = [{ ref: "A1", author: "Alice", t: "Hello", r: "<t>Hello</t>", h: "" }];
-		insertCommentsIntoSheet(ws, comments as any, false);
+		insertCommentsIntoSheet(ws, comments, false);
 		expect(ws["A1"].c).toBeDefined();
 		expect(ws["A1"].c[0].t).toBe("Hello");
 	});
@@ -22,7 +22,7 @@ describe("comments: insertCommentsIntoSheet", () => {
 	it("inserts threaded comment and removes legacy", () => {
 		const ws: any = { A1: { t: "n", v: 1, c: [{ a: "Alice", t: "legacy", T: false }] }, "!ref": "A1" };
 		const comments = [{ ref: "A1", author: "Bob", t: "threaded", r: "<t>threaded</t>", h: "" }];
-		insertCommentsIntoSheet(ws, comments as any, true);
+		insertCommentsIntoSheet(ws, comments, true);
 		// Threaded should override legacy
 		expect(ws["A1"].c.some((c: any) => c.T === true)).toBe(true);
 	});
@@ -30,7 +30,7 @@ describe("comments: insertCommentsIntoSheet", () => {
 	it("does not add legacy when threaded exists", () => {
 		const ws: any = { A1: { t: "n", v: 1, c: [{ a: "Alice", t: "threaded", T: true }] }, "!ref": "A1" };
 		const comments = [{ ref: "A1", author: "Bob", t: "legacy", r: "<t>legacy</t>", h: "" }];
-		insertCommentsIntoSheet(ws, comments as any, false);
+		insertCommentsIntoSheet(ws, comments, false);
 		// Should not add legacy comment when threaded exists
 		expect(ws["A1"].c.length).toBe(1);
 	});
@@ -38,7 +38,7 @@ describe("comments: insertCommentsIntoSheet", () => {
 	it("creates cell when it doesn't exist and expands range", () => {
 		const ws: any = { "!ref": "A1" };
 		const comments = [{ ref: "C3", author: "Alice", t: "New", r: "<t>New</t>", h: "" }];
-		insertCommentsIntoSheet(ws, comments as any, false);
+		insertCommentsIntoSheet(ws, comments, false);
 		expect(ws["C3"]).toBeDefined();
 		expect(ws["C3"].c).toBeDefined();
 		// Range should be expanded
@@ -48,7 +48,7 @@ describe("comments: insertCommentsIntoSheet", () => {
 	it("inserts into dense mode worksheet", () => {
 		const ws: any = { "!data": [[{ t: "n", v: 1 }]], "!ref": "A1" };
 		const comments = [{ ref: "A1", author: "Alice", t: "Dense", r: "<t>Dense</t>", h: "" }];
-		insertCommentsIntoSheet(ws, comments as any, false);
+		insertCommentsIntoSheet(ws, comments, false);
 		expect(ws["!data"][0][0].c).toBeDefined();
 	});
 });

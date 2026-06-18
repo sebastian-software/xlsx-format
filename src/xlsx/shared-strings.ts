@@ -349,7 +349,7 @@ const sstr2 = /<\/(?:\w+:)?(?:si|sstItem)>/;
  * @returns Array of parsed string entries with Count and Unique metadata
  */
 export function parseSstXml(data: string, opts?: SstParseOptions): SST {
-	const strings: SST = [] as any;
+	const strings: SST = [];
 	if (!data) {
 		return strings;
 	}

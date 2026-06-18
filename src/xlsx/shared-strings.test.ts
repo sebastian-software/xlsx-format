@@ -274,12 +274,12 @@ describe("parseSstXml: rich text parsing", () => {
 
 describe("writeSstXml", () => {
 	it("returns empty when bookSST is false", () => {
-		const sst: SST = [] as any;
+		const sst: SST = [];
 		expect(writeSstXml(sst, { bookSST: false })).toBe("");
 	});
 
 	it("writes basic string entries", () => {
-		const sst: SST = [{ t: "Hello" }, { t: "World" }] as any;
+		const sst: SST = [{ t: "Hello" }, { t: "World" }];
 		sst.Count = 2;
 		sst.Unique = 2;
 		const xml = writeSstXml(sst, { bookSST: true });
@@ -290,7 +290,7 @@ describe("writeSstXml", () => {
 	});
 
 	it("preserves rich text XML", () => {
-		const sst: SST = [{ t: "Bold", r: "<r><rPr><b/></rPr><t>Bold</t></r>" }] as any;
+		const sst: SST = [{ t: "Bold", r: "<r><rPr><b/></rPr><t>Bold</t></r>" }];
 		sst.Count = 1;
 		sst.Unique = 1;
 		const xml = writeSstXml(sst, { bookSST: true });
@@ -298,7 +298,7 @@ describe("writeSstXml", () => {
 	});
 
 	it("handles whitespace preservation", () => {
-		const sst: SST = [{ t: "  leading" }, { t: "trailing  " }, { t: "has\ttab" }] as any;
+		const sst: SST = [{ t: "  leading" }, { t: "trailing  " }, { t: "has\ttab" }];
 		sst.Count = 3;
 		sst.Unique = 3;
 		const xml = writeSstXml(sst, { bookSST: true });
@@ -306,7 +306,7 @@ describe("writeSstXml", () => {
 	});
 
 	it("converts non-string types", () => {
-		const sst: SST = [{ t: 123 as any }] as any;
+		const sst: SST = [{ t: 123 as any }];
 		sst.Count = 1;
 		sst.Unique = 1;
 		const xml = writeSstXml(sst, { bookSST: true });
@@ -323,7 +323,7 @@ describe("writeSstXml", () => {
 	});
 
 	it("handles empty string entry", () => {
-		const sst: SST = [{ t: "" }] as any;
+		const sst: SST = [{ t: "" }];
 		sst.Count = 1;
 		sst.Unique = 1;
 		const xml = writeSstXml(sst, { bookSST: true });
@@ -331,7 +331,7 @@ describe("writeSstXml", () => {
 	});
 
 	it("handles entry with undefined t", () => {
-		const sst: SST = [{ t: undefined as any }] as any;
+		const sst: SST = [{ t: undefined as any }];
 		sst.Count = 1;
 		sst.Unique = 1;
 		const xml = writeSstXml(sst, { bookSST: true });

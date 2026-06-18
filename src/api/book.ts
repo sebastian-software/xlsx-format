@@ -1,4 +1,4 @@
-import type { WorkBook, WorkSheet, CellObject, Hyperlink, CellStyle, Range } from "../types.js";
+import type { WorkBook, WorkSheet, CellObject, CellStyle, Range } from "../types.js";
 import { XlsxError } from "../errors.js";
 import { validateSheetName } from "../xlsx/workbook.js";
 import {
@@ -294,7 +294,7 @@ export function setCellHyperlink(cell: CellObject, target?: string, tooltip?: st
 	if (!target) {
 		delete cell.l;
 	} else {
-		cell.l = { Target: target } as Hyperlink;
+		cell.l = { Target: target };
 		if (tooltip) {
 			cell.l.Tooltip = tooltip;
 		}

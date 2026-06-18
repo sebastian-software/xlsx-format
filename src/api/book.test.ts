@@ -342,7 +342,7 @@ describe("book.ts: API edge cases", () => {
 	});
 
 	it("sheetToFormulae with dense mode", () => {
-		const ws = arrayToSheet([["A", 1]], { dense: true } as any);
+		const ws = arrayToSheet([["A", 1]], { dense: true });
 		const formulae = sheetToFormulae(ws);
 		expect(formulae.length).toBeGreaterThanOrEqual(2);
 	});

@@ -272,7 +272,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		const wb = createWorkbook(ws1, "S1");
 		appendSheet(wb, ws2, "S2");
 		const bytes = await write(wb);
-		const wb2 = await read(bytes, { sheets: "S2" } as any);
+		const wb2 = await read(bytes, { sheets: "S2" });
 		expect(wb2.SheetNames).toContain("S2");
 		// S1 might still be in SheetNames (from workbook.xml) but its data shouldn't be loaded
 		if (wb2.SheetNames.includes("S1")) {
@@ -286,7 +286,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		const wb = createWorkbook(ws1, "S1");
 		appendSheet(wb, ws2, "S2");
 		const bytes = await write(wb);
-		const wb2 = await read(bytes, { sheets: 1 } as any);
+		const wb2 = await read(bytes, { sheets: 1 });
 		expect(wb2.Sheets["S2"]).toBeDefined();
 	});
 
@@ -298,7 +298,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		appendSheet(wb, ws2, "S2");
 		appendSheet(wb, ws3, "S3");
 		const bytes = await write(wb);
-		const wb2 = await read(bytes, { sheets: [0, "S3"] } as any);
+		const wb2 = await read(bytes, { sheets: [0, "S3"] });
 		expect(wb2.Sheets["S1"]).toBeDefined();
 		expect(wb2.Sheets["S3"]).toBeDefined();
 	});

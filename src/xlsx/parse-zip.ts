@@ -239,7 +239,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 	const themes: ThemeData = { themeElements: { clrScheme: [] } };
 	let styles: StylesData = { NumberFmt: {}, CellXf: [], Fonts: [], Fills: [], Borders: [] };
-	let strs: SST = [] as any;
+	let strs: SST = [];
 
 	// Parse shared resources unless only sheet names or properties are requested
 	if (!options.bookSheets && !options.bookProps) {

@@ -33,31 +33,31 @@ describe("aoa.ts — addArrayToSheet edge cases", () => {
 	});
 
 	it("should handle numeric origin", () => {
-		const ws = addArrayToSheet(null, [["A"]], { origin: 3 } as any);
+		const ws = addArrayToSheet(null, [["A"]], { origin: 3 });
 		// When no prior ref, range starts at 0,0 and data at row 3 expands e.r to 3
 		expect(ws["!ref"]).toBe("A1:A4");
 		expect((ws as any)["A4"]).toBeDefined();
 	});
 
 	it("should handle origin as cell ref string", () => {
-		const ws = addArrayToSheet(null, [["X"]], { origin: "C5" } as any);
+		const ws = addArrayToSheet(null, [["X"]], { origin: "C5" });
 		expect((ws as any)["C5"].v).toBe("X");
 	});
 
 	it("should handle origin -1 (append)", () => {
 		let ws = arrayToSheet([["Row1"]]);
-		ws = addArrayToSheet(ws, [["Row2"]], { origin: -1 } as any);
+		ws = addArrayToSheet(ws, [["Row2"]], { origin: -1 });
 		expect((ws as any)["A2"].v).toBe("Row2");
 	});
 
 	it("should handle null values with nullError", () => {
-		const ws = arrayToSheet([[null, "ok"]], { nullError: true } as any);
+		const ws = arrayToSheet([[null, "ok"]], { nullError: true });
 		expect((ws as any)["A1"].t).toBe("e");
 		expect((ws as any)["A1"].v).toBe(0);
 	});
 
 	it("should handle null values with sheetStubs", () => {
-		const ws = arrayToSheet([[null, "ok"]], { sheetStubs: true } as any);
+		const ws = arrayToSheet([[null, "ok"]], { sheetStubs: true });
 		expect((ws as any)["A1"].t).toBe("z");
 	});
 
