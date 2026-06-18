@@ -1,185 +1,193 @@
+import { useEffect } from "react";
 import { Link } from "react-router";
-import {
-	ArrowLeftRight,
-	ArrowRight,
-	ArrowUpRight,
-	Braces,
-	CheckCircle2,
-	Code2,
-	Download,
-	ExternalLink,
-	FileSpreadsheet,
-	Globe,
-	LockKeyhole,
-	Package,
-	Paintbrush,
-	Rows3,
-	ShieldCheck,
-	Table2,
-	Zap,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Download, Minus } from "lucide-react";
 import config from "virtual:ardo/config";
 
+function GithubMark({ size = 16 }: { size?: number }) {
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+			<path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.34-1.3-1.7-1.3-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.8 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.43-2.7 5.4-5.26 5.69.41.36.78 1.07.78 2.16v3.2c0 .31.21.67.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5Z" />
+		</svg>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Content model                                                     */
+/* ------------------------------------------------------------------ */
+
 const proofItems = [
-	{ label: "Runtime deps", value: "0" },
-	{ label: "API shape", value: "async named exports" },
-	{ label: "Targets", value: "Node, browser, edge" },
-	{ label: "Output", value: "XLSX, CSV, TSV, HTML" },
+	{ value: "0", label: "runtime dependencies", cell: "B2" },
+	{ value: "async", label: "named ESM + CJS exports", cell: "B3" },
+	{ value: "91%", label: "test coverage", cell: "B4" },
+	{ value: "4", label: "output formats", cell: "B5" },
 ];
 
+const comparisonColumns = ["xlsx-format", "SheetJS", "ExcelJS"];
+
 const comparisonRows = [
-	{
-		label: "Runtime dependencies",
-		xlsx: "0",
-		sheetjs: "7",
-		exceljs: "9",
-	},
-	{
-		label: "Read/write model",
-		xlsx: "Fully async",
-		sheetjs: "Sync",
-		exceljs: "Partial async",
-	},
-	{
-		label: "Module format",
-		xlsx: "ESM + CJS",
-		sheetjs: "CJS",
-		exceljs: "CJS",
-	},
-	{
-		label: "Browser exports",
-		xlsx: "read() + write()",
-		sheetjs: "Separate bundle",
-		exceljs: "No",
-	},
-	{
-		label: "Styled reports",
-		xlsx: "Typed style layer",
-		sheetjs: "Utility model",
-		exceljs: "Workbook classes",
-	},
+	{ label: "Runtime dependencies", values: ["0", "7", "9"], win: 0 },
+	{ label: "Read / write model", values: ["Fully async", "Sync", "Partial async"], win: 0 },
+	{ label: "Module format", values: ["ESM + CJS", "CJS", "CJS"], win: 0 },
+	{ label: "Browser exports", values: ["read() + write()", "Separate bundle", "Not supported"], win: 0 },
+	{ label: "Styled reports", values: ["Typed style layer", "Utility model", "Workbook classes"], win: 0 },
 ];
 
 const useCases = [
 	{
-		title: "Ship styled browser reports without ExcelJS weight",
-		icon: <Paintbrush size={22} strokeWidth={1.8} />,
-		description:
-			"Create branded workbook downloads with fonts, fills, borders, number formats, merged titles, column widths, row heights, totals, and frozen panes.",
+		id: "R01",
+		title: "Styled browser reports, without ExcelJS",
+		body: "Branded workbook downloads with fonts, fills, borders, number formats, merged titles, column widths, row heights, totals, and frozen panes.",
 		link: "/guide/styled-workbooks",
-		linkText: "See styled workbooks",
+		linkText: "Styled workbooks",
 	},
 	{
-		title: "Migrate SheetJS code without redesigning your data model",
-		icon: <ArrowLeftRight size={22} strokeWidth={1.8} />,
-		description:
-			"Cell objects keep the familiar shape. Add await, switch to named imports, and move from sheet_to_json to sheetToJson.",
+		id: "R02",
+		title: "Migrate SheetJS code, keep your data model",
+		body: "Cell objects keep the familiar shape. Add await, switch to named imports, move from sheet_to_json to sheetToJson. Done.",
 		link: "/guide/migration",
-		linkText: "Read the migration guide",
+		linkText: "Migration guide",
 	},
 	{
-		title: "Keep exports safer when data comes from users",
-		icon: <LockKeyhole size={22} strokeWidth={1.8} />,
-		description:
-			"CSV formula-like fields are escaped by default, and HTML export sanitizes unsafe link targets unless you explicitly opt out.",
+		id: "R03",
+		title: "Safer exports when data comes from users",
+		body: "CSV formula-like fields are escaped by default. HTML export sanitizes unsafe link targets unless you explicitly opt out.",
 		link: "/guide/security",
-		linkText: "Review security guidance",
+		linkText: "Security guidance",
 	},
 	{
+		id: "R04",
 		title: "Convert spreadsheet data both ways",
-		icon: <Braces size={22} strokeWidth={1.8} />,
-		description:
-			"Move between worksheets, JSON objects, arrays of arrays, CSV, TSV, and HTML tables with typed utilities that work in modern runtimes.",
+		body: "Move between worksheets, JSON, arrays of arrays, CSV, TSV, and HTML tables with typed utilities built for modern runtimes.",
 		link: "/guide/getting-started",
-		linkText: "Build your first workbook",
+		linkText: "Getting started",
+	},
+];
+
+const runtimes = [
+	{
+		tag: "Browser",
+		title: "Ships to the client",
+		body: "File inputs, fetch responses, and Blob downloads. No separate browser bundle.",
+	},
+	{
+		tag: "Server",
+		title: "Wraps your own I/O",
+		body: "Async read and write around Node's fs, S3, or any byte source you already use.",
+	},
+	{
+		tag: "Edge",
+		title: "Runs on the edge",
+		body: "No node:fs import and no dependency chain, so Workers and Deno Deploy just work.",
 	},
 ];
 
 const capabilityGroups = [
-	{
-		title: "Workbook core",
-		icon: <FileSpreadsheet size={20} strokeWidth={1.8} />,
-		items: ["Multiple sheets", "Defined names", "Document properties", "Date systems"],
-	},
-	{
-		title: "Cell data",
-		icon: <Table2 size={20} strokeWidth={1.8} />,
-		items: ["Strings", "Numbers", "Dates", "Booleans", "Errors"],
-	},
-	{
-		title: "Report styling",
-		icon: <Paintbrush size={20} strokeWidth={1.8} />,
-		items: ["Fonts", "Fills", "Borders", "Alignment", "Number formats"],
-	},
-	{
-		title: "Sheet structure",
-		icon: <Rows3 size={20} strokeWidth={1.8} />,
-		items: ["Merged cells", "Column widths", "Row heights", "Frozen panes", "Auto filters"],
-	},
-	{
-		title: "Formulas and notes",
-		icon: <Code2 size={20} strokeWidth={1.8} />,
-		items: ["Cell formulas", "Array formulas", "Shared formula read", "Legacy comments", "Threaded comments"],
-	},
-	{
-		title: "Export guards",
-		icon: <ShieldCheck size={20} strokeWidth={1.8} />,
-		items: ["CSV formula escaping", "HTML link sanitizing", "XlsxError codes", "ZIP and XML limits"],
-	},
+	{ title: "Workbook core", items: ["Multiple sheets", "Defined names", "Properties", "Date systems"] },
+	{ title: "Cell data", items: ["Strings", "Numbers", "Dates", "Booleans", "Errors"] },
+	{ title: "Report styling", items: ["Fonts", "Fills", "Borders", "Alignment", "Number formats"] },
+	{ title: "Sheet structure", items: ["Merged cells", "Column widths", "Row heights", "Frozen panes", "Auto filters"] },
+	{ title: "Formulas & notes", items: ["Cell formulas", "Array formulas", "Shared formulas", "Threaded comments"] },
+	{ title: "Export guards", items: ["CSV escaping", "Link sanitizing", "Error codes", "ZIP & XML limits"] },
 ];
 
-const heroCode = `import {
-  arrayToSheet,
-  createWorkbook,
-  styleRange,
-  write,
-} from "xlsx-format";
+const codeLines: Array<Array<{ t: string; c?: string }>> = [
+	[{ t: "import" }, { t: " { arrayToSheet, createWorkbook," }],
+	[{ t: "         styleRange, write }" }, { t: " from " }, { t: '"xlsx-format"', c: "str" }],
+	[],
+	[{ t: "const" }, { t: " sheet " }, { t: "=", c: "op" }, { t: " arrayToSheet(reportRows)", c: "fn" }],
+	[{ t: "styleRange(sheet, " }, { t: '"A2:D2"', c: "str" }, { t: ", headerStyle)" }],
+	[],
+	[{ t: "const" }, { t: " bytes " }, { t: "=", c: "op" }, { t: " await", c: "kw" }, { t: " write(book, {" }],
+	[{ t: "  type: " }, { t: '"array"', c: "str" }, { t: ", cellStyles: " }, { t: "true", c: "kw" }, { t: " })" }],
+];
 
-const sheet = arrayToSheet(reportRows);
+const sheetRows = [
+	{ cells: ["Apr 2026", "12,400", "12,050", "-18,350"], negative: [3] },
+	{ cells: ["May 2026", "13,100", "13,980", "44,200"], selected: true },
+	{ cells: ["Jun 2026", "14,200", "14,460", "13,520"] },
+];
 
-styleRange(sheet, "A2:D2", headerStyle);
-
-const bytes = await write(createWorkbook(sheet, "Q2"), {
-  type: "array",
-  cellStyles: true,
-});`;
+/* ------------------------------------------------------------------ */
+/*  Page                                                              */
+/* ------------------------------------------------------------------ */
 
 export default function HomePage() {
 	const version = config.project?.version ?? "0.0.0";
 
+	// Scroll reveal. Content is visible by default; we only hide reveal targets
+	// once JS is active (the .xf-js class), so SSR and no-JS render everything
+	// and nothing ships blank. Reduced motion skips the whole mechanism.
+	useEffect(() => {
+		if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+		const root = document.querySelector<HTMLElement>(".xf");
+		const targets = document.querySelectorAll<HTMLElement>("[data-reveal]");
+		if (!root || !targets.length) return;
+		root.classList.add("xf-js");
+		const io = new IntersectionObserver(
+			(entries, obs) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) {
+						entry.target.classList.add("is-in");
+						obs.unobserve(entry.target);
+					}
+				}
+			},
+			{ rootMargin: "0px 0px -10% 0px", threshold: 0.1 },
+		);
+		for (const el of targets) io.observe(el);
+		return () => {
+			io.disconnect();
+			root.classList.remove("xf-js");
+		};
+	}, []);
+
 	return (
-		<div className="xlsx-home">
-			<section className="xlsx-hero" aria-labelledby="xlsx-home-title">
-				<div className="xlsx-hero__content">
-					<p className="xlsx-eyebrow">xlsx-format v{version} - zero dependency XLSX for modern apps</p>
-					<h1 id="xlsx-home-title">Replace spreadsheet weight with an XLSX core built for modern apps.</h1>
-					<p className="xlsx-hero__lead">
-						Read, write, convert, and style modern Excel workbooks with strict TypeScript, fully async APIs,
-						zero runtime dependencies, and browser-ready output.
+		<div className="xf">
+			{/* ============================ HERO ============================ */}
+			<header className="xf-hero">
+				<div className="xf-hero__grid" aria-hidden="true" />
+
+				<div className="xf-hero__copy">
+					<p className="xf-formula">
+						<span className="xf-formula__fx">fx</span>
+						<span className="xf-formula__val">
+							zero-dependency XLSX <span className="xf-formula__sep">·</span> v{version}
+						</span>
 					</p>
 
-					<div className="xlsx-hero__actions" aria-label="Primary actions">
-						<Link className="xlsx-button xlsx-button--primary" to="/guide/getting-started">
+					<h1 className="xf-hero__title">
+						<span className="xf-hero__line">Real Excel files.</span>
+						<span className="xf-hero__line xf-hero__line--accent">None of the weight.</span>
+					</h1>
+
+					<p className="xf-hero__lead">
+						A modern XLSX reader and writer for TypeScript. Fully async, tree-shakeable, and ready for the
+						browser, Node, and the edge. Read, write, convert, and style workbooks without carrying a
+						spreadsheet framework.
+					</p>
+
+					<div className="xf-hero__actions">
+						<Link className="xf-btn xf-btn--primary" to="/guide/getting-started">
 							Build your first workbook
 							<ArrowRight size={17} aria-hidden="true" />
 						</Link>
-						<Link className="xlsx-button xlsx-button--secondary" to="/guide/migration">
+						<Link className="xf-btn xf-btn--ghost" to="/guide/migration">
 							Compare the migration
-							<ArrowUpRight size={17} aria-hidden="true" />
+							<ArrowUpRight size={16} aria-hidden="true" />
 						</Link>
 						<a
-							className="xlsx-button xlsx-button--ghost"
+							className="xf-btn xf-btn--bare"
 							href="https://github.com/sebastian-software/xlsx-format"
-							aria-label="Open xlsx-format on GitHub"
+							aria-label="View xlsx-format on GitHub"
 						>
+							<GithubMark size={16} />
 							GitHub
-							<ExternalLink size={16} aria-hidden="true" />
 						</a>
 					</div>
 
-					<dl className="xlsx-proof" aria-label="Product proof points">
+					<dl className="xf-proof">
 						{proofItems.map((item) => (
-							<div key={item.label} className="xlsx-proof__item">
+							<div key={item.label} className="xf-proof__cell">
 								<dt>{item.label}</dt>
 								<dd>{item.value}</dd>
 							</div>
@@ -187,149 +195,208 @@ export default function HomePage() {
 					</dl>
 				</div>
 
-				<div className="xlsx-product-shot" aria-label="Styled workbook export preview">
-					<div className="xlsx-product-shot__header">
-						<span>report-builder.ts</span>
-						<span>async XLSX export</span>
+				{/* The money shot: code in, styled workbook out */}
+				<div className="xf-shot">
+					<figure className="xf-editor">
+						<figcaption className="xf-editor__bar">
+							<span className="xf-dot" aria-hidden="true" />
+							<span className="xf-editor__name">report-builder.ts</span>
+							<span className="xf-editor__tag">async</span>
+						</figcaption>
+						<pre className="xf-code">
+							<code>
+								{codeLines.map((line, i) => (
+									<span className="xf-code__row" key={i}>
+										<span className="xf-code__ln" aria-hidden="true">
+											{i + 1}
+										</span>
+										<span className="xf-code__src">
+											{line.length === 0 ? (
+												" "
+											) : (
+												line.map((tok, j) => (
+													<span key={j} className={tok.c ? `tok tok--${tok.c}` : undefined}>
+														{tok.t}
+													</span>
+												))
+											)}
+										</span>
+									</span>
+								))}
+							</code>
+						</pre>
+					</figure>
+
+					<div className="xf-pipe" aria-hidden="true">
+						<span className="xf-pipe__line" />
+						<span className="xf-pipe__chip">write()</span>
+						<span className="xf-pipe__line" />
 					</div>
-					<pre className="xlsx-code-panel">
-						<code>{heroCode}</code>
-					</pre>
-					<div className="xlsx-workbook-preview" aria-hidden="true">
-						<div className="xlsx-workbook-preview__bar">
-							<span>Overview</span>
-							<span>Q2 report.xlsx</span>
-						</div>
-						<div className="xlsx-sheet">
-							<div className="xlsx-sheet__title">Northstar Solar PPA - Q2 Report</div>
-							<div className="xlsx-sheet__row xlsx-sheet__row--head">
+
+					<figure className="xf-book" aria-label="Styled workbook output, Q2 solar report">
+						<figcaption className="xf-book__bar">
+							<span className="xf-book__file">Q2-report.xlsx</span>
+							<span className="xf-book__sheet">Overview</span>
+						</figcaption>
+						<div className="xf-table" role="presentation">
+							<div className="xf-table__cols" aria-hidden="true">
+								<span className="xf-table__corner" />
+								<span>A</span>
+								<span>B</span>
+								<span>C</span>
+								<span>D</span>
+							</div>
+							<div className="xf-table__title">
+								<span className="xf-table__rownum" aria-hidden="true">
+									1
+								</span>
+								<span className="xf-table__titletext">Northstar Solar PPA · Q2 Report</span>
+							</div>
+							<div className="xf-table__row xf-table__row--head">
+								<span className="xf-table__rownum" aria-hidden="true">
+									2
+								</span>
 								<span>Month</span>
-								<span>Expected MWh</span>
-								<span>Actual MWh</span>
-								<span>Settlement</span>
+								<span>Plan</span>
+								<span>Actual</span>
+								<span>Settle</span>
 							</div>
-							<div className="xlsx-sheet__row">
-								<span>Apr 2026</span>
-								<span>12,400</span>
-								<span>12,050</span>
-								<span>-18,350</span>
-							</div>
-							<div className="xlsx-sheet__row">
-								<span>May 2026</span>
-								<span>13,100</span>
-								<span>13,980</span>
-								<span>44,200</span>
-							</div>
-							<div className="xlsx-sheet__row xlsx-sheet__row--total">
+							{sheetRows.map((row, ri) => (
+								<div
+									className={`xf-table__row${row.selected ? " is-selected" : ""}`}
+									key={row.cells[0]}
+								>
+									<span className="xf-table__rownum" aria-hidden="true">
+										{ri + 3}
+									</span>
+									{row.cells.map((cell, ci) => (
+										<span
+											key={ci}
+											className={row.negative?.includes(ci) ? "is-neg" : undefined}
+										>
+											{cell}
+										</span>
+									))}
+								</div>
+							))}
+							<div className="xf-table__row xf-table__row--total">
+								<span className="xf-table__rownum" aria-hidden="true">
+									6
+								</span>
 								<span>Q2 Total</span>
 								<span>39,700</span>
 								<span>40,490</span>
 								<span>39,370</span>
 							</div>
 						</div>
-					</div>
+					</figure>
 				</div>
-			</section>
+			</header>
 
-			<section className="xlsx-section xlsx-switch" aria-labelledby="switch-title">
-				<div className="xlsx-section__intro">
-					<p className="xlsx-kicker">Why switch?</p>
-					<h2 id="switch-title">Most apps do not need a spreadsheet framework.</h2>
+			{/* ====================== WHY / COMPARISON ====================== */}
+			<section className="xf-section xf-why" aria-labelledby="why-title">
+				<div className="xf-section__head" data-reveal>
+					<span className="xf-label">A · Why switch</span>
+					<h2 id="why-title">
+						Most apps don&rsquo;t need a <em>spreadsheet framework</em>.
+					</h2>
 					<p>
-						If the job is XLSX, CSV, TSV, HTML, and polished report exports, xlsx-format keeps the useful
-						parts close and leaves the legacy weight out of your runtime.
+						The popular libraries ship support for dozens of legacy formats and pull in 7 to 9 runtime
+						dependencies. If the job is XLSX, CSV, and polished report exports, xlsx-format keeps the useful
+						parts and leaves the rest out of your bundle.
 					</p>
 				</div>
 
-				<div className="xlsx-comparison" role="table" aria-label="Library comparison">
-					<div className="xlsx-comparison__header" role="row">
+				<div className="xf-matrix" data-reveal role="table" aria-label="Library comparison">
+					<div className="xf-matrix__head" role="row">
 						<span role="columnheader">Decision point</span>
-						<strong role="columnheader">xlsx-format</strong>
-						<span role="columnheader">SheetJS</span>
-						<span role="columnheader">ExcelJS</span>
+						{comparisonColumns.map((col, i) => (
+							<span key={col} role="columnheader" className={i === 0 ? "is-primary" : undefined}>
+								{col}
+							</span>
+						))}
 					</div>
 					{comparisonRows.map((row) => (
-						<div key={row.label} className="xlsx-comparison__row" role="row">
-							<span role="cell">{row.label}</span>
-							<strong role="cell">
-								<CheckCircle2 size={17} aria-hidden="true" />
-								{row.xlsx}
-							</strong>
-							<span role="cell">{row.sheetjs}</span>
-							<span role="cell">{row.exceljs}</span>
+						<div className="xf-matrix__row" role="row" key={row.label}>
+							<span role="rowheader">{row.label}</span>
+							{row.values.map((value, i) => (
+								<span
+									key={i}
+									role="cell"
+									className={i === row.win ? "is-win" : "is-rival"}
+								>
+									{i === row.win ? (
+										<Check size={14} aria-hidden="true" strokeWidth={3} />
+									) : (
+										<Minus size={13} aria-hidden="true" className="xf-matrix__minus" />
+									)}
+									{value}
+								</span>
+							))}
 						</div>
 					))}
 				</div>
 			</section>
 
-			<section className="xlsx-section xlsx-use-cases" aria-labelledby="use-cases-title">
-				<div className="xlsx-section__intro xlsx-section__intro--wide">
-					<p className="xlsx-kicker">Built for real export work</p>
-					<h2 id="use-cases-title">One lean XLSX layer for the places spreadsheets actually show up.</h2>
+			{/* ========================= USE CASES ========================= */}
+			<section className="xf-section xf-cases" aria-labelledby="cases-title">
+				<div className="xf-section__head xf-section__head--wide" data-reveal>
+					<span className="xf-label">B · Built for export work</span>
+					<h2 id="cases-title">One lean layer for the places spreadsheets actually show up.</h2>
 				</div>
 
-				<div className="xlsx-use-case-list">
+				<ol className="xf-cases__list">
 					{useCases.map((useCase) => (
-						<article key={useCase.title} className="xlsx-use-case">
-							<div className="xlsx-use-case__icon" aria-hidden="true">
-								{useCase.icon}
-							</div>
-							<div>
+						<li className="xf-case" key={useCase.id} data-reveal>
+							<span className="xf-case__id" aria-hidden="true">
+								{useCase.id}
+							</span>
+							<div className="xf-case__body">
 								<h3>{useCase.title}</h3>
-								<p>{useCase.description}</p>
+								<p>{useCase.body}</p>
 							</div>
-							<Link className="xlsx-inline-link" to={useCase.link}>
+							<Link className="xf-case__link" to={useCase.link}>
 								{useCase.linkText}
-								<ArrowRight size={16} aria-hidden="true" />
+								<ArrowRight size={15} aria-hidden="true" />
 							</Link>
+						</li>
+					))}
+				</ol>
+			</section>
+
+			{/* ========================== RUNTIME ========================== */}
+			<section className="xf-section xf-runtime" aria-labelledby="runtime-title">
+				<div className="xf-section__head" data-reveal>
+					<span className="xf-label">C · Runs where your app runs</span>
+					<h2 id="runtime-title">No Node-only core. No browser-only fork.</h2>
+					<p>
+						xlsx-format reads and writes in-memory sources: Uint8Array, ArrayBuffer, Node Buffer, base64,
+						binary strings, CSV text, and HTML tables. Pair it with whatever I/O you already have.
+					</p>
+				</div>
+
+				<div className="xf-runtime__cards">
+					{runtimes.map((rt) => (
+						<article className="xf-rt" key={rt.tag} data-reveal>
+							<span className="xf-rt__tag">{rt.tag}</span>
+							<h3>{rt.title}</h3>
+							<p>{rt.body}</p>
 						</article>
 					))}
 				</div>
 			</section>
 
-			<section className="xlsx-section xlsx-runtime" aria-labelledby="runtime-title">
-				<div className="xlsx-runtime__panel">
-					<div className="xlsx-section__intro">
-						<p className="xlsx-kicker">Runs where your app runs</p>
-						<h2 id="runtime-title">No Node-only core. No browser-only fork.</h2>
-						<p>
-							xlsx-format reads and writes in-memory data sources: Uint8Array, ArrayBuffer, Node Buffer,
-							base64 strings, binary strings, CSV text, and HTML tables.
-						</p>
-					</div>
-					<div className="xlsx-runtime__grid">
-						<div>
-							<Globe size={21} aria-hidden="true" />
-							<strong>Browser UI</strong>
-							<span>File inputs, fetch responses, Blob downloads</span>
-						</div>
-						<div>
-							<Zap size={21} aria-hidden="true" />
-							<strong>Server jobs</strong>
-							<span>Async read/write around your own file I/O</span>
-						</div>
-						<div>
-							<Package size={21} aria-hidden="true" />
-							<strong>Edge paths</strong>
-							<span>No node:fs import, no runtime dependency chain</span>
-						</div>
-					</div>
-				</div>
-			</section>
-
-			<section className="xlsx-section xlsx-capabilities" aria-labelledby="capabilities-title">
-				<div className="xlsx-section__intro xlsx-section__intro--wide">
-					<p className="xlsx-kicker">Feature surface</p>
-					<h2 id="capabilities-title">Enough spreadsheet power for production reports, kept deliberately focused.</h2>
+			{/* ======================== CAPABILITIES ======================= */}
+			<section className="xf-section xf-caps" aria-labelledby="caps-title">
+				<div className="xf-section__head xf-section__head--wide" data-reveal>
+					<span className="xf-label">D · Feature surface</span>
+					<h2 id="caps-title">Enough spreadsheet power for production reports, kept deliberately focused.</h2>
 				</div>
 
-				<div className="xlsx-capability-grid">
+				<div className="xf-caps__grid">
 					{capabilityGroups.map((group) => (
-						<article key={group.title} className="xlsx-capability">
-							<div className="xlsx-capability__heading">
-								<span aria-hidden="true">{group.icon}</span>
-								<h3>{group.title}</h3>
-							</div>
+						<article className="xf-cap" key={group.title} data-reveal>
+							<h3>{group.title}</h3>
 							<ul>
 								{group.items.map((item) => (
 									<li key={item}>{item}</li>
@@ -340,17 +407,27 @@ export default function HomePage() {
 				</div>
 			</section>
 
-			<section className="xlsx-final-cta" aria-labelledby="final-cta-title">
-				<div>
-					<p className="xlsx-kicker">Install the smaller spreadsheet layer</p>
-					<h2 id="final-cta-title">Start with async XLSX today. Keep the workbook framework out of the bundle.</h2>
-				</div>
-				<div className="xlsx-install">
-					<code>npm install xlsx-format</code>
-					<Link className="xlsx-button xlsx-button--primary" to="/guide/getting-started">
-						Create your first workbook
-						<Download size={17} aria-hidden="true" />
-					</Link>
+			{/* ========================= FINAL CTA ========================= */}
+			<section className="xf-cta-band" aria-labelledby="cta-title" data-reveal>
+				<div className="xf-cta-band__grid" aria-hidden="true" />
+				<div className="xf-cta-band__inner">
+					<div>
+						<span className="xf-label xf-label--invert">Install the smaller layer</span>
+						<h2 id="cta-title">Start with async XLSX today.</h2>
+						<p>Keep the workbook framework out of your bundle. Your users download less, your build stays fast.</p>
+					</div>
+					<div className="xf-cta-band__action">
+						<div className="xf-install">
+							<span className="xf-install__prompt" aria-hidden="true">
+								$
+							</span>
+							<code>npm install xlsx-format</code>
+						</div>
+						<Link className="xf-btn xf-btn--accent" to="/guide/getting-started">
+							Create your first workbook
+							<Download size={17} aria-hidden="true" />
+						</Link>
+					</div>
 				</div>
 			</section>
 		</div>
