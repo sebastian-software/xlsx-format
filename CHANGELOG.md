@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.2.0...xlsx-format-v2.3.0) (2026-06-18)
+
+
+### Features
+
+* secure export protections by default ([#48](https://github.com/sebastian-software/xlsx-format/issues/48)) ([7f87c60](https://github.com/sebastian-software/xlsx-format/commit/7f87c603e928aedf34995dfd5f82413b79753304))
+
 ## [2.2.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.1.1...xlsx-format-v2.2.0) (2026-06-16)
 
 
