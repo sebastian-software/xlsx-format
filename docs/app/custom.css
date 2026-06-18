@@ -18,6 +18,26 @@
 	--ardo-color-brandSubtle: oklch(0.95 0.035 162);
 	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.52 0.13 162) 0%, oklch(0.64 0.13 158) 100%);
 
+	/* ----- One knob for ardo's neutral tint -----
+	   ardo bakes its brand hue (default 356 = magenta) into every neutral token,
+	   so there is no single ardo variable to redefine. We rebuild the neutral
+	   ramp ourselves from ONE hue: change --xf-chrome-hue and the header,
+	   sidebar, prose surfaces, borders, and the footer strip all follow.
+	   L/C values are ardo's own, so the light/dark hierarchy is unchanged. */
+	--xf-chrome-hue: 172;
+	--ardo-color-bg: oklch(0.992 0.0015 var(--xf-chrome-hue));
+	--ardo-color-bgSoft: oklch(0.975 0.003 var(--xf-chrome-hue));
+	--ardo-color-bgMute: oklch(0.955 0.004 var(--xf-chrome-hue));
+	--ardo-color-bgAlt: oklch(0.935 0.005 var(--xf-chrome-hue));
+	--ardo-color-border: oklch(0.88 0.005 var(--xf-chrome-hue));
+	--ardo-color-borderLight: oklch(0.925 0.003 var(--xf-chrome-hue));
+	--ardo-color-divider: oklch(0.89 0.004 var(--xf-chrome-hue));
+	--ardo-color-sidebarBg: oklch(0.965 0.004 var(--xf-chrome-hue));
+	--ardo-color-sidebarBorder: oklch(0.885 0.005 var(--xf-chrome-hue));
+	--ardo-color-text: oklch(0.17 0.008 var(--xf-chrome-hue));
+	--ardo-color-textLight: oklch(0.4 0.007 var(--xf-chrome-hue));
+	--ardo-color-textLighter: oklch(0.55 0.007 var(--xf-chrome-hue));
+
 	/* Project surfaces — cool, paper-like off-white, NOT cream */
 	--xf-bg: oklch(0.986 0.004 170);
 	--xf-surface: oklch(0.997 0.0015 170);
@@ -80,6 +100,20 @@
 	--ardo-color-brandSubtle: oklch(0.27 0.05 162);
 	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.74 0.12 158) 0%, oklch(0.83 0.1 152) 100%);
 
+	/* Same --xf-chrome-hue knob (inherited from :root), ardo's dark L/C ramp. */
+	--ardo-color-bg: oklch(0.155 0.008 var(--xf-chrome-hue));
+	--ardo-color-bgSoft: oklch(0.195 0.009 var(--xf-chrome-hue));
+	--ardo-color-bgMute: oklch(0.255 0.01 var(--xf-chrome-hue));
+	--ardo-color-bgAlt: oklch(0.33 0.01 var(--xf-chrome-hue));
+	--ardo-color-border: oklch(0.285 0.011 var(--xf-chrome-hue));
+	--ardo-color-borderLight: oklch(0.35 0.01 var(--xf-chrome-hue));
+	--ardo-color-divider: oklch(0.29 0.01 var(--xf-chrome-hue));
+	--ardo-color-sidebarBg: oklch(0.13 0.008 var(--xf-chrome-hue));
+	--ardo-color-sidebarBorder: oklch(0.265 0.011 var(--xf-chrome-hue));
+	--ardo-color-text: oklch(0.94 0.004 var(--xf-chrome-hue));
+	--ardo-color-textLight: oklch(0.72 0.007 var(--xf-chrome-hue));
+	--ardo-color-textLighter: oklch(0.56 0.005 var(--xf-chrome-hue));
+
 	--xf-bg: oklch(0.17 0.022 178);
 	--xf-surface: oklch(0.215 0.025 178);
 	--xf-surface-2: oklch(0.25 0.026 178);
@@ -119,6 +153,12 @@
 
 main footer[class] {
 	background: var(--xlsx-docs-footer-bg);
+}
+
+/* Homepage only: the dark CTA band meets the footer directly, with no
+   neutral strip between them. Doc pages keep ardo's default footer spacing. */
+.xf + footer {
+	margin-top: 0;
 }
 
 /* ----------------------------------------------------------------
