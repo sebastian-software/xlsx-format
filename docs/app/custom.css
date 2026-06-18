@@ -3,36 +3,23 @@
  */
 
 /* ----------------------------------------
-   Blue Steel color scheme
+   Blue Steel brand tokens
    ---------------------------------------- */
 
 :root {
-  --ardo-brand-h: 245;
-  --ardo-brand-c: 0.08;
-  --ardo-brand-l: 0.45;
+	--ardo-color-brand: oklch(0.5 0.1 245);
+	--ardo-color-brandLight: oklch(0.62 0.09 245);
+	--ardo-color-brandDark: oklch(0.39 0.11 245);
+	--ardo-color-brandSubtle: oklch(0.955 0.025 245);
+	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.5 0.1 245) 0%, oklch(0.6 0.075 260) 100%);
 }
 
 .dark {
-  --ardo-brand-l: 0.65;
-  --ardo-brand-c: 0.10;
-}
-
-/* ----------------------------------------
-   Hero refinements
-   ---------------------------------------- */
-
-.ardo-hero-name {
-  background: linear-gradient(
-    135deg,
-    oklch(0.40 0.10 245) 0%,
-    oklch(0.55 0.12 275) 50%,
-    oklch(0.45 0.08 220) 100%
-  );
-  background-clip: text;
-}
-
-.ardo-hero-tagline {
-  letter-spacing: 0.01em;
+	--ardo-color-brand: oklch(0.74 0.115 245);
+	--ardo-color-brandLight: oklch(0.84 0.1 245);
+	--ardo-color-brandDark: oklch(0.62 0.125 245);
+	--ardo-color-brandSubtle: oklch(0.275 0.06 245);
+	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.74 0.115 245) 0%, oklch(0.81 0.08 260) 100%);
 }
 
 /* ----------------------------------------
@@ -40,18 +27,18 @@
    ---------------------------------------- */
 
 .feature-tables table {
-  table-layout: fixed;
+	table-layout: fixed;
 }
 
 .feature-tables th:nth-child(1) {
-  width: 30%;
+	width: 30%;
 }
 
 .feature-tables th:nth-child(2),
 .feature-tables th:nth-child(3) {
-  width: 10%;
+	width: 10%;
 }
 
 .feature-tables th:nth-child(4) {
-  width: 50%;
+	width: 50%;
 }
