@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.3](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.2...xlsx-format-v2.3.3) (2026-06-18)
+
+
+### Bug Fixes
+
+* trigger release ([5fa2e76](https://github.com/sebastian-software/xlsx-format/commit/5fa2e7686b249a5d562c25d6d97610696791dc6c))
+* updated pnpm ([4fecfbe](https://github.com/sebastian-software/xlsx-format/commit/4fecfbe41996cd95aab4960468176944d8d73524))
+
 ## [2.3.2](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.1...xlsx-format-v2.3.2) (2026-06-18)
 
 
