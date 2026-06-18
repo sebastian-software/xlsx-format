@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.2](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.1...xlsx-format-v2.3.2) (2026-06-18)
+
+
+### Bug Fixes
+
+* **docs:** retint ardo neutrals off the magenta brand hue ([1462ae6](https://github.com/sebastian-software/xlsx-format/commit/1462ae65e8c915051a2cc008f0f5bc14d4a49a53))
+
 ## [2.3.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.0...xlsx-format-v2.3.1) (2026-06-18)
 
 
