@@ -1,6 +1,41 @@
-import { ArdoHero, ArdoFeatures } from "ardo/ui";
+import { ArdoFeatureCard, ArdoHero, ArdoFeatures } from "ardo/ui";
 import { Package, Zap, ShieldCheck, Globe, Paintbrush, ArrowLeftRight, ArrowRight, ExternalLink } from "lucide-react";
 import config from "virtual:ardo/config";
+
+const features = [
+	{
+		title: "Zero Dependencies",
+		icon: <Package size={28} strokeWidth={1.5} />,
+		details: "No runtime dependencies. No supply chain risk. Nothing to audit, nothing to break.",
+	},
+	{
+		title: "Fully Async",
+		icon: <Zap size={28} strokeWidth={1.5} />,
+		details: "Streaming ZIP under the hood. Your event loop stays free while Excel files are read and written.",
+	},
+	{
+		title: "TypeScript-First",
+		icon: <ShieldCheck size={28} strokeWidth={1.5} />,
+		details:
+			"Written in strict TypeScript from day one. Every export is fully typed — no .d.ts bolted on after the fact.",
+	},
+	{
+		title: "Browser-Ready",
+		icon: <Globe size={28} strokeWidth={1.5} />,
+		details: "Works with Uint8Array and ArrayBuffer. No Node.js APIs needed, no separate browser bundle required.",
+	},
+	{
+		title: "Styled XLSX Reports",
+		icon: <Paintbrush size={28} strokeWidth={1.5} />,
+		details:
+			"Write branded report exports with table headers, totals, merged titles, column widths, row heights, and frozen panes — without carrying ExcelJS just for styling.",
+	},
+	{
+		title: "Drop-In Migration",
+		icon: <ArrowLeftRight size={28} strokeWidth={1.5} />,
+		details: "API close to SheetJS by design. Add `await`, switch to named imports, and you're done.",
+	},
+];
 
 export default function HomePage() {
 	return (
@@ -24,45 +59,13 @@ export default function HomePage() {
 					},
 				]}
 			/>
-			<ArdoFeatures
-				items={[
-					{
-						title: "Zero Dependencies",
-						icon: <Package size={28} strokeWidth={1.5} />,
-						details: "No runtime dependencies. No supply chain risk. Nothing to audit, nothing to break.",
-					},
-					{
-						title: "Fully Async",
-						icon: <Zap size={28} strokeWidth={1.5} />,
-						details:
-							"Streaming ZIP under the hood. Your event loop stays free while Excel files are read and written.",
-					},
-					{
-						title: "TypeScript-First",
-						icon: <ShieldCheck size={28} strokeWidth={1.5} />,
-						details:
-							"Written in strict TypeScript from day one. Every export is fully typed — no .d.ts bolted on after the fact.",
-					},
-					{
-						title: "Browser-Ready",
-						icon: <Globe size={28} strokeWidth={1.5} />,
-						details:
-							"Works with Uint8Array and ArrayBuffer. No Node.js APIs needed, no separate browser bundle required.",
-					},
-					{
-						title: "Styled XLSX Reports",
-						icon: <Paintbrush size={28} strokeWidth={1.5} />,
-						details:
-							"Write branded report exports with table headers, totals, merged titles, column widths, row heights, and frozen panes — without carrying ExcelJS just for styling.",
-					},
-					{
-						title: "Drop-In Migration",
-						icon: <ArrowLeftRight size={28} strokeWidth={1.5} />,
-						details:
-							"API close to SheetJS by design. Add `await`, switch to named imports, and you're done.",
-					},
-				]}
-			/>
+			<ArdoFeatures>
+				{features.map((feature) => (
+					<ArdoFeatureCard key={feature.title} title={feature.title} icon={feature.icon}>
+						{feature.details}
+					</ArdoFeatureCard>
+				))}
+			</ArdoFeatures>
 		</>
 	);
 }

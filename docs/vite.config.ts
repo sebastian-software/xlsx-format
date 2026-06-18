@@ -17,28 +17,8 @@ export default defineConfig({
 				homepage: pkg.homepage,
 			},
 
-			themeConfig: {
-				nav: [
-					{ text: "Guide", link: "/guide/getting-started" },
-					{ text: "API", link: "/api-reference" },
-				],
-
-				sidebar: [
-					{
-						text: "Guide",
-						items: [
-							{ text: "Getting Started", link: "/guide/getting-started" },
-							{ text: "Styled Workbooks", link: "/guide/styled-workbooks" },
-							{ text: "Why xlsx-format?", link: "/guide/why-xlsx-format" },
-							{ text: "Migration from SheetJS", link: "/guide/migration" },
-						],
-					},
-					{ text: "API Reference", link: "/api-reference" },
-				],
-
-				search: {
-					enabled: true,
-				},
+			sidebar: {
+				sectionOrder: ["guide", "api-reference"],
 			},
 		}),
 	],
