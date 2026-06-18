@@ -35,8 +35,9 @@ export default tseslint.config(
 			"@typescript-eslint/no-empty-function": "off",
 			"no-empty": ["error", { allowEmptyCatch: true }],
 
-			// Ported code uses parameter reassignment
+			// Ported code keeps SheetJS-style mutation and state assignments
 			"@typescript-eslint/no-unnecessary-condition": "off",
+			"no-useless-assignment": "off",
 
 			// Too strict for ported code
 			"@typescript-eslint/restrict-template-expressions": "off",
@@ -46,10 +47,7 @@ export default tseslint.config(
 			curly: "error",
 
 			// Unused vars as warning only
-			"@typescript-eslint/no-unused-vars": [
-				"warn",
-				{ argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
-			],
+			"@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
 		},
 	},
 );
