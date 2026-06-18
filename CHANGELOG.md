@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.3.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.0...xlsx-format-v2.3.1) (2026-06-18)
+
+
+### Bug Fixes
+
+* **docs:** avoid duplicate api sidebar active state ([93202c0](https://github.com/sebastian-software/xlsx-format/commit/93202c08e91f972dfcebe3158851b0fa70b16a08))
+* **docs:** neutralize ardo footer surface ([1aea064](https://github.com/sebastian-software/xlsx-format/commit/1aea0648187b2f89dfd2ea8c51ea53701865405e))
+* **docs:** normalize ardo sidebar and theme ([f736f68](https://github.com/sebastian-software/xlsx-format/commit/f736f68f8c1eed83b4686e21306daaf4a39964f4))
+* **docs:** restore ardo navigation and home features ([da3c8ae](https://github.com/sebastian-software/xlsx-format/commit/da3c8aee6aa3c9f63798dea669e662b8da312f4f))
+
+
+### Documentation
+
+* overhaul homepage ([a29c2fe](https://github.com/sebastian-software/xlsx-format/commit/a29c2fec3d0b3d8be21a75cab711e480c347ab7f))
+* redesign homepage with a spreadsheet-native visual system ([cdbac41](https://github.com/sebastian-software/xlsx-format/commit/cdbac41adb9ac57a7caf4ae3053535267efa556c))
+
 ## [2.3.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.2.0...xlsx-format-v2.3.0) (2026-06-18)
 
 
