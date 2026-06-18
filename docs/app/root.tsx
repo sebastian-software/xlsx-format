@@ -35,7 +35,6 @@ const sidebars = {
 		{ text: "Security Considerations", link: "/guide/security" },
 	],
 	"api-reference": [
-		{ text: "API Reference", link: "/api-reference" },
 		{ text: "Classes", link: "/api-reference/classes" },
 		{ text: "Functions", link: "/api-reference/functions" },
 		{ text: "Interfaces", link: "/api-reference/interfaces" },
