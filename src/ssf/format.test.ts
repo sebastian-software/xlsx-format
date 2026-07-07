@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatNumber, parseExcelDateCode, isDateFormat } from "./format.js";
+import { formatNumber, parseExcelDateCode, isDateFormat, getDateTimeFormatKind } from "./format.js";
 
 describe("formatNumber", () => {
 	describe("General format", () => {
@@ -1502,6 +1502,16 @@ describe("SSF: elapsed time formats", () => {
 	it("formats elapsed minutes [mm]:ss", () => {
 		const result = formatNumber("[mm]:ss", 0.5);
 		expect(result).toContain(":");
+	});
+});
+
+describe("SSF: date/time format classification", () => {
+	it("classifies calendar dates, datetimes, and time-only formats", () => {
+		expect(getDateTimeFormatKind("m/d/yy")).toBe("date");
+		expect(getDateTimeFormatKind("m/d/yy h:mm")).toBe("datetime");
+		expect(getDateTimeFormatKind("h:mm")).toBe("time");
+		expect(getDateTimeFormatKind("h:mm:ss AM/PM")).toBe("time");
+		expect(getDateTimeFormatKind("0.00")).toBe("none");
 	});
 });
 

@@ -11,7 +11,7 @@ import {
 	xmlOptionLimit,
 } from "../xml/limits.js";
 import { safeDecodeRange, encodeRange, encodeCell } from "../utils/cell.js";
-import { formatNumber, isDateFormat } from "../ssf/format.js";
+import { formatNumber, getDateTimeFormatKind } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
 import type { SST } from "./shared-strings.js";
@@ -384,7 +384,8 @@ function parseSheetData(
 					// Convert numeric cells with date formats to Date objects if cellDates is enabled
 					if (opts.cellDates && cell.XF) {
 						const fmtStr = nfmt || formatTable[cell.XF.numFmtId || 0] || "";
-						if (typeof fmtStr === "string" && isDateFormat(fmtStr) && typeof cell.v === "number") {
+						const fmtKind = typeof fmtStr === "string" ? getDateTimeFormatKind(fmtStr) : "none";
+						if (fmtKind !== "none" && fmtKind !== "time" && typeof cell.v === "number") {
 							cell.t = "d";
 							cell.v = serialNumberToDate(cell.v, date1904);
 						}

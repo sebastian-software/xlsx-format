@@ -5,7 +5,7 @@ import { dateToSerialNumber, serialNumberToDate, utcToLocal, localToUtc } from "
 import { clampLargeExportRange } from "../utils/export-range.js";
 import { isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
-import { formatCell } from "./format.js";
+import { formatCell, formatCellForOutput, getCellDateTimeFormatKind } from "./format.js";
 
 function setRowValue(row: any, key: any, value: any): void {
 	if (key === "__proto__" || key === "constructor" || key === "prototype") {
@@ -73,15 +73,21 @@ function buildJsonRow(
 			case "s": // string
 			case "b": // boolean
 				break;
-			case "n": // number — may actually represent a date if the format is date-like
-				if (!val.z || !isDateFormat(String(val.z))) {
+			case "n": {
+				// Number may actually represent a date if the format is date-like.
+				if (!options.dateOutput && options.raw !== false) {
+					break;
+				}
+				const fmtKind = getCellDateTimeFormatKind(val, options);
+				if (fmtKind === "none" || fmtKind === "time") {
 					break;
 				}
 				// Number format indicates a date; convert serial number to JS Date
-				cellValue = serialNumberToDate(cellValue as number);
+				cellValue = serialNumberToDate(cellValue as number, options.date1904);
 				if (typeof cellValue === "number") {
 					break;
 				}
+			}
 			/* falls through */
 			case "d": // date
 				if (!(options && (options.UTC || options.raw === false))) {
@@ -104,12 +110,14 @@ function buildJsonRow(
 				}
 			} else {
 				// Use raw value when rawNumbers/raw is set, otherwise format for display
+				const useRaw = val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw;
+				const fmtKind = getCellDateTimeFormatKind(val, options);
+				const useDateOutput =
+					options.dateOutput === "iso" && (val.t === "d" || fmtKind === "date" || fmtKind === "datetime");
 				setRowValue(
 					row,
 					headers[colIdx],
-					(val.t === "n" && typeof options.rawNumbers === "boolean" ? options.rawNumbers : raw)
-						? cellValue
-						: formatCell(val, cellValue, options),
+					useDateOutput || !useRaw ? formatCellForOutput(val, cellValue, options) : cellValue,
 				);
 			}
 			if (cellValue != null) {

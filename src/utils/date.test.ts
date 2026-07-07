@@ -2,26 +2,29 @@ import { describe, it, expect } from "vitest";
 import { dateToSerialNumber, serialNumberToDate, localToUtc, utcToLocal } from "./date.js";
 
 describe("dateToSerialNumber", () => {
-	it("should convert 1900-01-01 to serial 2", () => {
-		// Epoch is 1899-12-30, so 1900-01-01 is 2 days later
+	it("should convert 1900-01-01 to serial 2 with the real-date epoch mapping", () => {
 		const d = new Date(Date.UTC(1900, 0, 1));
 		expect(dateToSerialNumber(d)).toBe(2);
 	});
 
-	it("should add 1 for dates at or after serial 60 (Lotus bug)", () => {
-		// 1900-02-28 is 60 days from epoch; >= 60 triggers the +1 adjustment
-		const d = new Date(Date.UTC(1900, 1, 28));
-		expect(dateToSerialNumber(d)).toBe(61);
+	it("should convert modern dates to Excel serials", () => {
+		const d = new Date(Date.UTC(2024, 0, 1));
+		expect(dateToSerialNumber(d)).toBe(45292);
 	});
 
-	it("should convert 1900-03-01 to serial 62", () => {
+	it("should map the real date at serial 60 to 1900-02-28", () => {
+		const d = new Date(Date.UTC(1900, 1, 28));
+		expect(dateToSerialNumber(d)).toBe(60);
+	});
+
+	it("should convert 1900-03-01 to serial 61", () => {
 		const d = new Date(Date.UTC(1900, 2, 1));
-		expect(dateToSerialNumber(d)).toBe(62);
+		expect(dateToSerialNumber(d)).toBe(61);
 	});
 
 	it("should convert 2023-01-01 correctly", () => {
 		const d = new Date(Date.UTC(2023, 0, 1));
-		expect(dateToSerialNumber(d)).toBe(44928);
+		expect(dateToSerialNumber(d)).toBe(44927);
 	});
 
 	it("should handle 1904 date system", () => {
@@ -42,11 +45,16 @@ describe("serialNumberToDate", () => {
 		expect(d.getUTCDate()).toBe(1);
 	});
 
-	it("should convert serial 44928 to 2023-01-01", () => {
-		const d = serialNumberToDate(44928);
+	it("should convert serial 44927 to 2023-01-01", () => {
+		const d = serialNumberToDate(44927);
 		expect(d.getUTCFullYear()).toBe(2023);
 		expect(d.getUTCMonth()).toBe(0);
 		expect(d.getUTCDate()).toBe(1);
+	});
+
+	it("should convert serial 45292 to 2024-01-01", () => {
+		const d = serialNumberToDate(45292);
+		expect(d.toISOString()).toBe("2024-01-01T00:00:00.000Z");
 	});
 
 	it("should roundtrip with dateToSerialNumber", () => {
@@ -59,11 +67,10 @@ describe("serialNumberToDate", () => {
 	});
 
 	it("should handle 1904 date system", () => {
-		const d = serialNumberToDate(44928, true);
-		// 1904 system adds 1462 days
-		const d1900 = serialNumberToDate(44928);
+		const d = serialNumberToDate(43465, true);
+		const d1900 = serialNumberToDate(44927);
 		const diff = d.getTime() - d1900.getTime();
-		expect(diff).toBe(1462 * 24 * 60 * 60 * 1000);
+		expect(diff).toBe(0);
 	});
 });
 

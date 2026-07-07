@@ -526,6 +526,10 @@ export interface Sheet2CSVOpts {
 	escapeFormulae?: boolean;
 	/** Override date format for date cells */
 	dateNF?: NumberFormat;
+	/** If "iso", emit date/datetime cells as machine-readable ISO-like strings */
+	dateOutput?: "iso";
+	/** If true, use 1904 date system for date serial numbers */
+	date1904?: boolean;
 }
 
 /** Options for converting a worksheet to an HTML table string */
@@ -562,6 +566,10 @@ export interface Sheet2JSONOpts {
 	UTC?: boolean;
 	/** Override date format for date cells */
 	dateNF?: NumberFormat;
+	/** If "iso", emit date/datetime cells as machine-readable ISO-like strings */
+	dateOutput?: "iso";
+	/** If true, use 1904 date system for date serial numbers */
+	date1904?: boolean;
 }
 
 /** Options for creating a worksheet from a 2D array (Array of Arrays) */

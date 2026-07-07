@@ -51,6 +51,24 @@ describe("csv.ts: advanced CSV features", () => {
 		expect(csv).toBe("1.23456789");
 	});
 
+	it("sheetToCsv with ISO date output", () => {
+		const ws = arrayToSheet([
+			["Date", "DateTime", "Time"],
+			[
+				{ t: "n", v: 45292, z: "m/d/yy" },
+				{ t: "n", v: 45292.5, z: "m/d/yy h:mm" },
+				{ t: "n", v: 0.5, z: "h:mm" },
+			],
+		]);
+
+		expect(sheetToCsv(ws, { dateOutput: "iso", UTC: true })).toBe(
+			"Date,DateTime,Time\n2024-01-01,2024-01-01T12:00:00,12:00",
+		);
+		expect(sheetToCsv(ws, { dateOutput: "iso", rawNumbers: true, UTC: true })).toBe(
+			"Date,DateTime,Time\n2024-01-01,2024-01-01T12:00:00,0.5",
+		);
+	});
+
 	it("sheetToCsv quotes commas", () => {
 		const ws = arrayToSheet([["A,B"]]);
 		const csv = sheetToCsv(ws);
