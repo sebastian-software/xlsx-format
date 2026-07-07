@@ -85,7 +85,11 @@ describe("csv.ts: advanced CSV features", () => {
 				"Date,Text\n2024-01-01T13:00:00,hello",
 			);
 		} finally {
-			process.env.TZ = originalTimezone;
+			if (originalTimezone === undefined) {
+				delete process.env.TZ;
+			} else {
+				process.env.TZ = originalTimezone;
+			}
 		}
 	});
 

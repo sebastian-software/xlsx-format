@@ -71,7 +71,11 @@ describe("sheetToArray", () => {
 				["2024-01-01T17:00:00"],
 			]);
 		} finally {
-			process.env.TZ = originalTimezone;
+			if (originalTimezone === undefined) {
+				delete process.env.TZ;
+			} else {
+				process.env.TZ = originalTimezone;
+			}
 		}
 	});
 });
