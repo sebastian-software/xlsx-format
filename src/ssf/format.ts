@@ -1060,20 +1060,36 @@ function SSF_split_fmt(fmt: string): string[] {
 /** Regex to detect absolute time tokens like [h], [mm], [ss] (including Thai equivalents) */
 const SSF_abstime = /\[[HhMmSs\u0E0A\u0E19\u0E17]*\]/;
 
+/** Classification for Excel number formats that include date/time tokens. */
+export type DateTimeFormatKind = "none" | "date" | "time" | "datetime";
+
+function classifyDateTimeTokens(hasDate: boolean, hasTime: boolean, hasMonth: boolean): DateTimeFormatKind {
+	if (hasDate) {
+		return hasTime ? "datetime" : "date";
+	}
+	if (hasTime) {
+		return "time";
+	}
+	return hasMonth ? "date" : "none";
+}
+
 /**
- * Determine if a format string represents a date/time format.
+ * Classify date/time tokens in a format string.
  *
  * Scans the format string for date/time tokens (y, m, d, h, s, etc.) while
  * skipping over quoted strings, escaped characters, numeric placeholders,
- * and color/condition blocks. Returns true as soon as any date/time token is found.
+ * and color/condition blocks.
  *
  * @param fmt - Excel number format string
- * @returns true if the format contains date/time formatting tokens
+ * @returns a classification of the date/time tokens in the format
  */
-export function isDateFormat(fmt: string): boolean {
+export function getDateTimeFormatKind(fmt: string): DateTimeFormatKind {
 	let i = 0;
 	let c = "";
 	let o = "";
+	let hasDate = false;
+	let hasTime = false;
+	let hasMonth = false;
 	while (i < fmt.length) {
 		switch ((c = fmt.charAt(i))) {
 			case "G":
@@ -1102,34 +1118,50 @@ export function isDateFormat(fmt: string): boolean {
 			case "b":
 				// "B1" or "B2" = Buddhist/Hijri calendar modifier => date format
 				if (fmt.charAt(i + 1) === "1" || fmt.charAt(i + 1) === "2") {
-					return true;
+					hasDate = true;
+					i += 2;
+					break;
 				}
 			/* falls through */
-			case "M":
 			case "D":
 			case "Y":
-			case "H":
-			case "S":
 			case "E":
-			case "m":
 			case "d":
 			case "y":
-			case "h":
-			case "s":
 			case "e":
 			case "g":
-				return true;
+				hasDate = true;
+				++i;
+				break;
+			case "M":
+			case "m":
+				hasMonth = true;
+				++i;
+				break;
+			case "H":
+			case "S":
+			case "h":
+			case "s":
+				hasTime = true;
+				++i;
+				break;
 			case "A":
 			case "a":
 			case "\u4E0A": // Chinese "上" (used in AM/PM: 上午/下午)
 				if (fmt.substring(i, i + 3).toUpperCase() === "A/P") {
-					return true;
+					hasTime = true;
+					i += 3;
+					break;
 				}
 				if (fmt.substring(i, i + 5).toUpperCase() === "AM/PM") {
-					return true;
+					hasTime = true;
+					i += 5;
+					break;
 				}
 				if (fmt.substring(i, i + 5).toUpperCase() === "\u4E0A\u5348/\u4E0B\u5348") {
-					return true; // Chinese AM/PM: 上午/下午
+					hasTime = true; // Chinese AM/PM: 上午/下午
+					i += 5;
+					break;
 				}
 				++i;
 				break;
@@ -1140,7 +1172,7 @@ export function isDateFormat(fmt: string): boolean {
 					o += fmt.charAt(i);
 				}
 				if (o.match(SSF_abstime)) {
-					return true;
+					hasTime = true;
 				}
 				break;
 			case ".":
@@ -1191,7 +1223,20 @@ export function isDateFormat(fmt: string): boolean {
 				break;
 		}
 	}
-	return false;
+	return classifyDateTimeTokens(hasDate, hasTime, hasMonth);
+}
+
+/**
+ * Determine if a format string represents a date/time format.
+ *
+ * Scans the format string for date/time tokens while skipping quoted strings,
+ * escaped characters, numeric placeholders, and color/condition blocks.
+ *
+ * @param fmt - Excel number format string
+ * @returns true if the format contains date/time formatting tokens
+ */
+export function isDateFormat(fmt: string): boolean {
+	return getDateTimeFormatKind(fmt) !== "none";
 }
 
 /** Token produced by the format string tokenizer */
@@ -1979,7 +2024,20 @@ export function formatNumber(fmt: string | number, value: any, options?: any): s
 	}
 	// Convert Date objects to serial numbers before formatting
 	if (value instanceof Date) {
-		value = dateToSerialNumber(value, options.date1904);
+		const dateValue = options.UTC
+			? value
+			: new Date(
+					Date.UTC(
+						value.getFullYear(),
+						value.getMonth(),
+						value.getDate(),
+						value.getHours(),
+						value.getMinutes(),
+						value.getSeconds(),
+						value.getMilliseconds(),
+					),
+				);
+		value = dateToSerialNumber(dateValue, options.date1904);
 	}
 	// Select the appropriate format section (positive/negative/zero/text)
 	const chosenFmt = choose_fmt(sfmt, value);

@@ -1,7 +1,7 @@
 import type { WorkSheet, Sheet2CSVOpts, Range } from "../types.js";
 import { encodeCol, safeDecodeRange, getCell } from "../utils/cell.js";
 import { clampLargeExportRange } from "../utils/export-range.js";
-import { formatCell } from "./format.js";
+import { formatCellForOutput, getCellDateTimeFormatKind } from "./format.js";
 import { arrayToSheet } from "./aoa.js";
 
 /** Regex to match double-quote characters for CSV escaping (doubled inside quoted fields) */
@@ -58,7 +58,14 @@ function buildCsvRow(
 			txt = "";
 		} else if (val.v != null) {
 			isempty = false;
-			txt = "" + (options.rawNumbers && val.t === "n" ? val.v : formatCell(val, null, options));
+			const fmtKind = getCellDateTimeFormatKind(val, options);
+			const useDateOutput =
+				options.dateOutput === "iso" && (val.t === "d" || fmtKind === "date" || fmtKind === "datetime");
+			txt =
+				"" +
+				(options.rawNumbers && val.t === "n" && !useDateOutput
+					? val.v
+					: formatCellForOutput(val, null, options));
 			txt = escapeFormulaText(txt, options);
 			// Check each character: if the text contains the field separator,
 			// record separator, LF (10), CR (13), or double-quote (34), wrap in quotes

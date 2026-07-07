@@ -1,60 +1,45 @@
 /**
  * Convert a JavaScript Date to an Excel serial date number.
  *
- * Excel serial dates count days since 1899-12-30 (the epoch).
- * The 1900 date system intentionally includes a fictitious Feb 29, 1900
- * (serial number 60) to maintain compatibility with Lotus 1-2-3.
- * For serial numbers >= 60, we add 1 to skip over this phantom day.
+ * Excel serial dates in the 1900 date system can be mapped to real JavaScript
+ * dates with the 1899-12-30 epoch. This preserves modern Excel serials such as
+ * 45292 -> 2024-01-01 while avoiding a representational value for Excel's
+ * fictitious 1900-02-29.
  *
  * @param v - JavaScript Date to convert
  * @param date1904 - If true, use the 1904 date system (Mac Excel default), which shifts the epoch by 1462 days
  * @returns Excel serial date number
  */
 export function dateToSerialNumber(v: Date, date1904?: boolean): number {
-	let epoch = v.getTime();
+	const epoch = v.getTime();
 	if (date1904) {
-		// 1904 date system: subtract 1462 days (the offset between 1900-01-01 and 1904-01-01)
-		epoch -= 1462 * 24 * 60 * 60 * 1000;
+		const date1904Epoch = Date.UTC(1904, 0, 1, 0, 0, 0);
+		return (epoch - date1904Epoch) / (24 * 60 * 60 * 1000);
 	}
 	// Excel epoch: 1899-12-30T00:00:00Z (Dec 30, 1899)
 	const dnthresh = Date.UTC(1899, 11, 30, 0, 0, 0);
-	const result = (epoch - dnthresh) / (24 * 60 * 60 * 1000);
-	// Excel intentionally considers 1900-02-29 a valid date (serial 60) — Lotus 1-2-3 bug.
-	// For serial numbers < 60, no adjustment is needed.
-	if (result < 60) {
-		return result;
-	}
-	// For serial numbers >= 60, add 1 to account for the phantom Feb 29, 1900
-	if (result >= 60) {
-		return result + 1;
-	}
-	return result;
+	return (epoch - dnthresh) / (24 * 60 * 60 * 1000);
 }
 
 /**
  * Convert an Excel serial date number to a JavaScript Date.
  *
- * Reverses the conversion done by {@link dateToSerialNumber}, accounting for
- * the 1904 date system offset and the Lotus 1-2-3 leap year bug at serial 60.
+ * Reverses the conversion done by {@link dateToSerialNumber}. The SSF display
+ * formatter represents Excel's fictitious serial 60 separately; this helper
+ * returns real JavaScript Dates for machine-readable conversion paths.
  *
  * @param v - Excel serial date number
  * @param date1904 - If true, use the 1904 date system (adds 1462 days)
  * @returns JavaScript Date corresponding to the serial number
  */
 export function serialNumberToDate(v: number, date1904?: boolean): Date {
-	let date = v;
 	if (date1904) {
-		// 1904 system: add back the 1462-day offset
-		date += 1462;
-	}
-	// Lotus 1-2-3 bug: serial 60 is the fictitious 1900-02-29.
-	// For serial > 60, subtract 1 to compensate for the phantom day.
-	if (date > 60) {
-		--date;
+		const date1904Epoch = Date.UTC(1904, 0, 1, 0, 0, 0);
+		return new Date(date1904Epoch + v * 24 * 60 * 60 * 1000);
 	}
 	// Excel epoch: 1899-12-30T00:00:00Z
 	const dnthresh = Date.UTC(1899, 11, 30, 0, 0, 0);
-	return new Date(dnthresh + date * 24 * 60 * 60 * 1000);
+	return new Date(dnthresh + v * 24 * 60 * 60 * 1000);
 }
 
 /**

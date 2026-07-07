@@ -15,6 +15,42 @@ describe("sheetToArray", () => {
 			["Bob", 25],
 		]);
 	});
+
+	it("keeps time-only number formats as raw values by default", () => {
+		const ws = arrayToSheet([
+			["Time", "Text"],
+			[{ t: "n", v: 0.5, z: "h:mm" }, "hello"],
+		]);
+
+		expect(sheetToArray(ws)).toStrictEqual([
+			["Time", "Text"],
+			[0.5, "hello"],
+		]);
+		expect(sheetToArray(ws, { raw: false, UTC: true })).toStrictEqual([
+			["Time", "Text"],
+			["12:00", "hello"],
+		]);
+	});
+
+	it("emits ISO strings for date and datetime formats", () => {
+		const ws = arrayToSheet([
+			["Date", "DateTime", "Time"],
+			[
+				{ t: "n", v: 45292, z: "m/d/yy" },
+				{ t: "n", v: 45292.5, z: "m/d/yy h:mm" },
+				{ t: "n", v: 0.5, z: "h:mm" },
+			],
+		]);
+
+		expect(sheetToArray(ws, { dateOutput: "iso", UTC: true })).toStrictEqual([
+			["Date", "DateTime", "Time"],
+			["2024-01-01", "2024-01-01T12:00:00", 0.5],
+		]);
+		expect(sheetToArray(ws, { raw: false, dateOutput: "iso", UTC: true })).toStrictEqual([
+			["Date", "DateTime", "Time"],
+			["2024-01-01", "2024-01-01T12:00:00", "12:00"],
+		]);
+	});
 });
 
 describe("aoa.ts — addArrayToSheet edge cases", () => {

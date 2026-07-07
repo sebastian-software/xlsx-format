@@ -85,6 +85,18 @@ describe("Cell Types", () => {
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
 		expect(wb2.Sheets.S.A1.v).toBe(44927);
 	});
+
+	it("date serials with date styles read as correct UTC dates with cellDates", async () => {
+		const ws = createSheet();
+		ws.A1 = { t: "n", v: 45292, z: "m/d/yy" };
+		ws["!ref"] = "A1";
+
+		const bytes = await write(createWorkbook(ws, "S"), { cellStyles: true });
+		const wb2 = await read(bytes, { cellDates: true, UTC: true });
+
+		expect(wb2.Sheets.S.A1.t).toBe("d");
+		expect((wb2.Sheets.S.A1.v as Date).toISOString()).toBe("2024-01-01T00:00:00.000Z");
+	});
 });
 
 // ---------------------------------------------------------------------------

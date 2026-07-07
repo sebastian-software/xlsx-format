@@ -1,7 +1,60 @@
 import type { CellObject } from "../types.js";
 import { BErr } from "../types.js";
-import { formatNumber } from "../ssf/format.js";
-import { dateToSerialNumber } from "../utils/date.js";
+import { formatNumber, getDateTimeFormatKind, type DateTimeFormatKind } from "../ssf/format.js";
+import { DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS, formatTable } from "../ssf/table.js";
+import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
+
+function resolveNumberFormat(fmt: unknown, options?: any): string | undefined {
+	if (typeof fmt === "string") {
+		return fmt === "m/d/yy" && options?.dateNF ? String(options.dateNF) : fmt;
+	}
+	if (typeof fmt !== "number") {
+		return undefined;
+	}
+	if (fmt === 14 && options?.dateNF) {
+		return String(options.dateNF);
+	}
+	const table = options?.table || formatTable;
+	return table[fmt] || table[DEFAULT_FORMAT_MAP[fmt]] || DEFAULT_FORMAT_STRINGS[fmt];
+}
+
+function resolveCellNumberFormat(cell: CellObject, options?: any): string | undefined {
+	return resolveNumberFormat(cell.z ?? cell.XF?.numFmtId, options);
+}
+
+/** Return the date/time classification for a cell's number format. */
+export function getCellDateTimeFormatKind(cell: CellObject, options?: any): DateTimeFormatKind {
+	const fmt = resolveCellNumberFormat(cell, options);
+	return fmt ? getDateTimeFormatKind(fmt) : "none";
+}
+
+function pad2(value: number): string {
+	return value < 10 ? "0" + value : "" + value;
+}
+
+function formatDateIso(date: Date, kind: DateTimeFormatKind, options?: any): string {
+	const useUtc = options?.UTC !== false;
+	const year = useUtc ? date.getUTCFullYear() : date.getFullYear();
+	const month = (useUtc ? date.getUTCMonth() : date.getMonth()) + 1;
+	const day = useUtc ? date.getUTCDate() : date.getDate();
+	const hours = useUtc ? date.getUTCHours() : date.getHours();
+	const minutes = useUtc ? date.getUTCMinutes() : date.getMinutes();
+	const seconds = useUtc ? date.getUTCSeconds() : date.getSeconds();
+	const datePart = `${year}-${pad2(month)}-${pad2(day)}`;
+	if (kind === "date") {
+		return datePart;
+	}
+	return `${datePart}T${pad2(hours)}:${pad2(minutes)}:${pad2(seconds)}`;
+}
+
+function inferDateKind(date: Date, options?: any): DateTimeFormatKind {
+	const useUtc = options?.UTC !== false;
+	const hours = useUtc ? date.getUTCHours() : date.getHours();
+	const minutes = useUtc ? date.getUTCMinutes() : date.getMinutes();
+	const seconds = useUtc ? date.getUTCSeconds() : date.getSeconds();
+	const ms = useUtc ? date.getUTCMilliseconds() : date.getMilliseconds();
+	return hours || minutes || seconds || ms ? "datetime" : "date";
+}
 
 /**
  * Attempt to format a cell value using the cell's number format or XF record.
@@ -61,4 +114,33 @@ export function formatCell(cell: CellObject, value?: any, options?: any): string
 		return safeFormatCell(cell, cell.v);
 	}
 	return safeFormatCell(cell, value);
+}
+
+/**
+ * Format a cell for worksheet export APIs.
+ *
+ * This mirrors `formatCell` by default. With `dateOutput: "iso"`, date and
+ * datetime number formats are rendered as stable ISO-like strings, while
+ * time-only formats keep their display value instead of becoming epoch dates.
+ */
+export function formatCellForOutput(cell: CellObject, value?: any, options?: any): string {
+	if (options?.dateOutput !== "iso") {
+		return formatCell(cell, value, options);
+	}
+	const cellValue = value == null ? cell.v : value;
+	const kind = getCellDateTimeFormatKind(cell, options);
+	if (cell.t === "n" && typeof cellValue === "number") {
+		if (kind === "date" || kind === "datetime") {
+			return formatDateIso(serialNumberToDate(cellValue, options?.date1904), kind, options);
+		}
+		return formatCell(cell, value, options);
+	}
+	if (cellValue instanceof Date) {
+		return formatDateIso(
+			cellValue,
+			kind === "none" || kind === "time" ? inferDateKind(cellValue, options) : kind,
+			options,
+		);
+	}
+	return formatCell(cell, value, options);
 }
