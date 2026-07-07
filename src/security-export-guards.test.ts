@@ -44,7 +44,7 @@ describe("export security guards", () => {
 
 		const parsed = await read(await import("./zip/index.js").then(async ({ zipWrite }) => zipWrite(zip)));
 
-		expect(parsed.SheetNames).toEqual(["__proto__"]);
+		expect(parsed.SheetNames).toStrictEqual(["__proto__"]);
 		expect(Object.getPrototypeOf(parsed.Sheets)).toBeNull();
 		expect(Object.hasOwn(parsed.Sheets, "__proto__")).toBe(true);
 		expect(Object.prototype).not.toHaveProperty("value");
@@ -109,7 +109,7 @@ describe("export security guards", () => {
 
 		const rows = sheetToJson<unknown[]>(ws, { header: 1 });
 		expect(rows).toHaveLength(2);
-		expect(rows[0]).toEqual(["Name"]);
+		expect(rows[0]).toStrictEqual(["Name"]);
 		expect(rows[1][1]).toBe("Done");
 
 		const html = sheetToHtml(ws);
@@ -145,7 +145,7 @@ describe("export security guards", () => {
 		const ws = { "!ref": "A1:XFD1048576" } as WorkSheet;
 
 		expect(sheetToCsv(ws)).toBe("");
-		expect(sheetToJson(ws)).toEqual([]);
+		expect(sheetToJson(ws)).toStrictEqual([]);
 		expect(sheetToHtml(ws)).not.toContain("<tr>");
 	});
 });

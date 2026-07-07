@@ -37,7 +37,7 @@ describe("xml/writer", () => {
 	});
 
 	it("writeW3cDatetime should throw on invalid date when throwOnError", () => {
-		expect(() => writeW3cDatetime(new Date("invalid"), true)).toThrow();
+		expect(() => writeW3cDatetime(new Date("invalid"), true)).toThrow("Invalid time value");
 	});
 
 	it("writeVariantType should handle strings", () => {
@@ -67,6 +67,6 @@ describe("xml/writer", () => {
 	});
 
 	it("writeVariantType should throw on unsupported type", () => {
-		expect(() => writeVariantType(Symbol("x"))).toThrow();
+		expect(() => writeVariantType(Symbol("x"))).toThrow("Unable to serialize Symbol(x)");
 	});
 });

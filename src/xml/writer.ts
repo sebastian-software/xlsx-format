@@ -105,5 +105,5 @@ export function writeVariantType(value: any, xlsx?: boolean): string {
 	if (value instanceof Date) {
 		return writeXmlElement("vt:filetime", writeW3cDatetime(value));
 	}
-	throw new XlsxError("INVALID_ARGUMENT", "Unable to serialize " + value);
+	throw new XlsxError("INVALID_ARGUMENT", "Unable to serialize " + String(value));
 }

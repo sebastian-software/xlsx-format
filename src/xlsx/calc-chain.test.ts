@@ -14,6 +14,6 @@ describe("xlsx/calc-chain", () => {
 	});
 
 	it("parseCalcChainXml should handle empty input", () => {
-		expect(parseCalcChainXml("")).toEqual([]);
+		expect(parseCalcChainXml("")).toStrictEqual([]);
 	});
 });

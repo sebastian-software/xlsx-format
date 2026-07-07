@@ -48,7 +48,7 @@ describe("opc/relationships", () => {
 
 	it("parseRelationships should handle null input", () => {
 		const rels = parseRelationships(null, "/test");
-		expect(rels["!id"]).toEqual({});
+		expect(rels["!id"]).toStrictEqual({});
 	});
 
 	it("getRelsPath should compute correct path", () => {

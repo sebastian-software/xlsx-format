@@ -4,7 +4,7 @@ import { addJsonToSheet } from "./json.js";
 
 describe("json.ts — sheetToJson edge cases", () => {
 	it("should return [] for null sheet", () => {
-		expect(sheetToJson(null as any)).toEqual([]);
+		expect(sheetToJson(null as any)).toStrictEqual([]);
 	});
 
 	it("should handle header: 'A' mode", () => {
@@ -23,7 +23,7 @@ describe("json.ts — sheetToJson edge cases", () => {
 			[30, 40],
 		]);
 		const rows = sheetToJson(ws, { header: ["Col1", "Col2"] });
-		expect(rows[0]).toEqual(expect.objectContaining({ Col1: 10, Col2: 20 }));
+		expect(rows[0]).toStrictEqual(expect.objectContaining({ Col1: 10, Col2: 20 }));
 	});
 
 	it("should deduplicate repeated headers", () => {
@@ -71,7 +71,7 @@ describe("json.ts — sheetToJson edge cases", () => {
 	it("should handle numeric range option", () => {
 		const ws = arrayToSheet([["a"], ["b"], ["c"], ["d"]]);
 		const rows = sheetToJson(ws, { header: 1, range: 2 });
-		expect(rows[0]).toEqual(["c"]);
+		expect(rows[0]).toStrictEqual(["c"]);
 	});
 
 	it("should skip hidden rows", () => {
@@ -126,13 +126,13 @@ describe("json.ts — addJsonToSheet edge cases", () => {
 		const ws = addJsonToSheet(null, [{ x: 1 }]);
 		const ws2 = addJsonToSheet(ws, [{ x: 2 }], { origin: -1 });
 		const rows = sheetToJson(ws2, { header: 1 });
-		expect(rows.at(-1)).toEqual([2]);
+		expect(rows.at(-1)).toStrictEqual([2]);
 	});
 
 	it("should handle skipHeader", () => {
 		const ws = addJsonToSheet(null, [{ a: 1 }, { a: 2 }], { skipHeader: true });
 		const rows = sheetToJson(ws, { header: 1 });
-		expect(rows[0]).toEqual([1]); // no header row
+		expect(rows[0]).toStrictEqual([1]); // no header row
 	});
 
 	it("should handle pre-built cell objects", () => {

@@ -20,11 +20,11 @@ import { getCellStyleIndex, getStyleFromXf } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
 
 /** Regex patterns for extracting various worksheet XML elements */
-const mergecregex = /<(?:\w+:)?mergeCell ref=["'][A-Z0-9:]+['"]\s*\/?>/g;
-const hlinkregex = /<(?:\w+:)?hyperlink [^<>]*>/g;
+const mergecregex = /<(?:\w+:)?mergeCell ref=["'][A-Z0-9:]+['"]\s*[/]?>/g;
+const hlinkregex = /<(?:\w+:)?hyperlink [^<>]*>/gm;
 const dimregex = /"(\w*:\w*)"/;
-const colregex = /<(?:\w+:)?col\b[^<>]*>/g;
-const afregex = /<(?:\w:)?autoFilter[^>]*(\/|>([\s\S]*)<\/(?:\w:)?autoFilter)>/g;
+const colregex = /<(?:\w+:)?col\b[^<>]*[/]?>/g;
+const afregex = /<(?:\w:)?autoFilter[^>]*([/]|>([\s\S]*)<\/(?:\w:)?autoFilter)>/g;
 const marginregex = /<(?:\w+:)?pageMargins[^<>]*\/>/g;
 const sheetViewRegex = /<(?:\w+:)?sheetView\b[^>]*(?:\/>|>[\s\S]*?<\/(?:\w+:)?sheetView>)/;
 
@@ -370,22 +370,24 @@ function parseSheetData(
 			}
 
 			// Format the cell value as display text
-			if (opts.cellText !== false && cell.t === "n") {
-				const nfmt =
-					cell.z ||
-					(cell.XF && cell.XF.numFmtId != null && styles?.NumberFmt[cell.XF.numFmtId]) ||
-					formatTable[(cell.XF && cell.XF.numFmtId) || 0];
-				if (nfmt) {
-					try {
-						cell.w = formatNumber(nfmt, cell.v, { date1904 });
-					} catch {}
-				}
-				// Convert numeric cells with date formats to Date objects if cellDates is enabled
-				if (opts.cellDates && cell.XF) {
-					const fmtStr = nfmt || formatTable[cell.XF.numFmtId || 0] || "";
-					if (typeof fmtStr === "string" && isDateFormat(fmtStr) && typeof cell.v === "number") {
-						cell.t = "d";
-						cell.v = serialNumberToDate(cell.v, date1904);
+			if (opts.cellText !== false) {
+				if (cell.t === "n") {
+					const nfmt =
+						cell.z ||
+						(cell.XF && cell.XF.numFmtId != null && styles?.NumberFmt[cell.XF.numFmtId]) ||
+						formatTable[(cell.XF && cell.XF.numFmtId) || 0];
+					if (nfmt) {
+						try {
+							cell.w = formatNumber(nfmt, cell.v, { date1904 });
+						} catch {}
+					}
+					// Convert numeric cells with date formats to Date objects if cellDates is enabled
+					if (opts.cellDates && cell.XF) {
+						const fmtStr = nfmt || formatTable[cell.XF.numFmtId || 0] || "";
+						if (typeof fmtStr === "string" && isDateFormat(fmtStr) && typeof cell.v === "number") {
+							cell.t = "d";
+							cell.v = serialNumberToDate(cell.v, date1904);
+						}
 					}
 				}
 			}
@@ -735,11 +737,11 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
 		const row_cells: string[] = [];
 		for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
-			const addr = encodeCell({ r: rowIdx, c: colIdx });
 			let cell: CellObject | undefined;
 			if (dense) {
 				cell = ws["!data"]?.[rowIdx]?.[colIdx];
 			} else {
+				const addr = encodeCell({ r: rowIdx, c: colIdx });
 				cell = ws[addr] as CellObject | undefined;
 			}
 			const styleIndex = cell ? getCellStyleIndex(opts, cell) : undefined;
@@ -747,6 +749,8 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 			if (!cell || (cell.t === "z" && styleIndex == null)) {
 				continue;
 			}
+
+			const addr = encodeCell({ r: rowIdx, c: colIdx });
 			let cellValueStr = "";
 			let cellTypeAttr = "";
 

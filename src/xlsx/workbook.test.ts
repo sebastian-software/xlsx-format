@@ -28,12 +28,12 @@ describe("workbook.ts: validation", () => {
 	});
 
 	it("validateSheetName rejects forbidden characters", () => {
-		expect(() => validateSheetName("Sheet:1")).toThrow();
-		expect(() => validateSheetName("Sheet[1]")).toThrow();
-		expect(() => validateSheetName("Sheet*")).toThrow();
-		expect(() => validateSheetName("Sheet?")).toThrow();
-		expect(() => validateSheetName("Sheet/1")).toThrow();
-		expect(() => validateSheetName("Sheet\\1")).toThrow();
+		expect(() => validateSheetName("Sheet:1")).toThrow("cannot contain");
+		expect(() => validateSheetName("Sheet[1]")).toThrow("cannot contain");
+		expect(() => validateSheetName("Sheet*")).toThrow("cannot contain");
+		expect(() => validateSheetName("Sheet?")).toThrow("cannot contain");
+		expect(() => validateSheetName("Sheet/1")).toThrow("cannot contain");
+		expect(() => validateSheetName("Sheet\\1")).toThrow("cannot contain");
 	});
 
 	it("validateSheetName safe mode returns false", () => {

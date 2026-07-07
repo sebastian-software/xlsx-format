@@ -33,7 +33,7 @@ describe("fixture roundtrip: basic-types", () => {
 	it("should produce identical data from CSV and XLSX", async () => {
 		const expected = loadCsvAsAoA("basic-types.csv");
 		const actual = await loadXlsxAsAoA("basic-types.xlsx");
-		expect(actual).toEqual(expected);
+		expect(actual).toStrictEqual(expected);
 	});
 
 	it("should have correct cell types", async () => {
@@ -59,7 +59,7 @@ describe("fixture roundtrip: unicode-data", () => {
 	it("should produce identical data from CSV and XLSX", async () => {
 		const expected = loadCsvAsAoA("unicode-data.csv");
 		const actual = await loadXlsxAsAoA("unicode-data.xlsx");
-		expect(actual).toEqual(expected);
+		expect(actual).toStrictEqual(expected);
 	});
 
 	it("should preserve CJK characters", async () => {
@@ -92,7 +92,7 @@ describe("fixture roundtrip: edge-cases", () => {
 	it("should produce identical data from CSV and XLSX", async () => {
 		const expected = loadCsvAsAoA("edge-cases.csv");
 		const actual = await loadXlsxAsAoA("edge-cases.xlsx");
-		expect(actual).toEqual(expected);
+		expect(actual).toStrictEqual(expected);
 	});
 
 	it("should preserve commas in quoted fields", async () => {
@@ -128,18 +128,18 @@ describe("fixture roundtrip: large-dataset", () => {
 	it("should produce identical data from CSV and XLSX", async () => {
 		const expected = loadCsvAsAoA("large-dataset.csv");
 		const actual = await loadXlsxAsAoA("large-dataset.xlsx");
-		expect(actual).toEqual(expected);
+		expect(actual).toStrictEqual(expected);
 	});
 
 	it("should have 1001 rows (header + 1000 data)", async () => {
 		const rows = await loadXlsxAsAoA("large-dataset.xlsx");
-		expect(rows.length).toBe(1001);
+		expect(rows).toHaveLength(1001);
 	});
 
 	it("should have correct first data row", async () => {
 		const rows = await loadXlsxAsAoA("large-dataset.xlsx");
 		// Row 0 = header [ID, Name, Value, Flag]
-		expect(rows[0]).toEqual(["ID", "Name", "Value", "Flag"]);
+		expect(rows[0]).toStrictEqual(["ID", "Name", "Value", "Flag"]);
 		// Row 1 = first data (ID=1)
 		expect(rows[1][0]).toBe(1);
 		expect(typeof rows[1][1]).toBe("string");

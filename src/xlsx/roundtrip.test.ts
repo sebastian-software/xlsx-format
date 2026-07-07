@@ -80,7 +80,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		const wb2 = await read(bytes);
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
 		expect(ws2["!merges"]).toBeDefined();
-		expect(ws2["!merges"]!.length).toBe(1);
+		expect(ws2["!merges"]!).toHaveLength(1);
 		expect(ws2["!merges"]![0].s.r).toBe(0);
 		expect(ws2["!merges"]![0].e.r).toBe(1);
 	});
@@ -223,7 +223,7 @@ describe("XLSX roundtrip: workbook features", () => {
 
 		const bytes = await write(wb);
 		const wb2 = await read(bytes);
-		expect(wb2.SheetNames).toEqual(["S1", "S2", "S3"]);
+		expect(wb2.SheetNames).toStrictEqual(["S1", "S2", "S3"]);
 	});
 
 	it("inline strings survive roundtrip", async () => {

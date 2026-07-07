@@ -1692,7 +1692,7 @@ describe("SSF: miscellaneous format branches", () => {
 describe("SSF: write_num_flt specific patterns", () => {
 	it("handles #? pattern (question marks)", () => {
 		const result = formatNumber("??", 5);
-		expect(result.length).toBe(2);
+		expect(result).toHaveLength(2);
 	});
 
 	it("handles large number in flr() path (>2^31)", () => {
@@ -1856,7 +1856,7 @@ describe("SSF: day-of-week and month-name formats", () => {
 
 	it("formats with mmm (abbreviated month)", () => {
 		const result = formatNumber("mmm", 44000);
-		expect(result.length).toBe(3);
+		expect(result).toHaveLength(3);
 	});
 
 	it("formats with mmmm (full month name)", () => {
@@ -1866,7 +1866,7 @@ describe("SSF: day-of-week and month-name formats", () => {
 
 	it("formats with mmmmm (first letter of month)", () => {
 		const result = formatNumber("mmmmm", 44000);
-		expect(result.length).toBe(1);
+		expect(result).toHaveLength(1);
 	});
 });
 
