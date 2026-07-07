@@ -23,3 +23,14 @@ minimumReleaseAgeExclude:
     - "@oxfmt/binding-win32-ia32-msvc@0.58.0"
     - "@oxfmt/binding-win32-x64-msvc@0.58.0"
     - oxfmt@0.58.0
+    - "@typescript-eslint/eslint-plugin@8.63.0"
+    - "@typescript-eslint/parser@8.63.0"
+    - "@typescript-eslint/project-service@8.63.0"
+    - "@typescript-eslint/scope-manager@8.63.0"
+    - "@typescript-eslint/tsconfig-utils@8.63.0"
+    - "@typescript-eslint/type-utils@8.63.0"
+    - "@typescript-eslint/types@8.63.0"
+    - "@typescript-eslint/typescript-estree@8.63.0"
+    - "@typescript-eslint/utils@8.63.0"
+    - "@typescript-eslint/visitor-keys@8.63.0"
+    - typescript-eslint@8.63.0
