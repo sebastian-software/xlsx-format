@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { formatCell } from "../index.js";
+import { formatCellForOutput, getCellDateTimeFormatKind } from "./format.js";
 
 describe("api/format", () => {
 	it("formatCell should return empty for null/stub cells", () => {
@@ -26,5 +27,47 @@ describe("api/format", () => {
 		const cell: any = { t: "d", v: new Date("2024-01-15") };
 		formatCell(cell, null, { dateNF: "yyyy-mm-dd" });
 		expect(cell.z).toBe("yyyy-mm-dd");
+	});
+
+	it("classifies cell formats from XF records and custom format tables", () => {
+		expect(getCellDateTimeFormatKind({ t: "n", v: 45292, XF: { numFmtId: 14 } })).toBe("date");
+		expect(getCellDateTimeFormatKind({ t: "n", v: 45292, XF: { numFmtId: 27 } })).toBe("date");
+		expect(
+			getCellDateTimeFormatKind({ t: "n", v: 45292.5, XF: { numFmtId: 200 } }, { table: { 200: "m/d/yy h:mm" } }),
+		).toBe("datetime");
+		expect(getCellDateTimeFormatKind({ t: "n", v: 42, XF: { numFmtId: 63 } })).toBe("none");
+		expect(getCellDateTimeFormatKind({ t: "n", v: 42 })).toBe("none");
+	});
+
+	it("formats numeric date cells as ISO from XF records", () => {
+		expect(
+			formatCellForOutput({ t: "n", v: 45292, XF: { numFmtId: 14 } }, null, {
+				dateOutput: "iso",
+				dateNF: "yyyy-mm-dd",
+				UTC: true,
+			}),
+		).toBe("2024-01-01");
+		expect(
+			formatCellForOutput({ t: "n", v: 45292.5, XF: { numFmtId: 200 } }, null, {
+				dateOutput: "iso",
+				table: { 200: "m/d/yy h:mm" },
+				UTC: true,
+			}),
+		).toBe("2024-01-01T12:00:00");
+	});
+
+	it("infers ISO output shape for Date objects without explicit formats", () => {
+		expect(
+			formatCellForOutput({ t: "d", v: new Date("2024-01-01T00:00:00Z") }, null, {
+				dateOutput: "iso",
+				UTC: true,
+			}),
+		).toBe("2024-01-01");
+		expect(
+			formatCellForOutput({ t: "d", v: new Date("2024-01-01T12:34:56Z") }, null, {
+				dateOutput: "iso",
+				UTC: true,
+			}),
+		).toBe("2024-01-01T12:34:56");
 	});
 });

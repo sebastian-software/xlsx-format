@@ -252,6 +252,34 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 		}
 	});
 
+	it("keeps time-only styled numbers numeric with cellDates enabled", () => {
+		const xml = `<?xml version="1.0"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetData>
+<row r="1"><c r="A1" s="1"><v>0.5</v></c></row>
+</sheetData>
+</worksheet>`;
+		const styles: any = {
+			NumberFmt: {},
+			CellXf: [{ numFmtId: 0 }, { numFmtId: 20 }],
+			Fonts: [],
+			Fills: [],
+			Borders: [],
+		};
+
+		const ws = parseWorksheetXml(
+			xml,
+			{ cellDates: true, cellNF: true },
+			0,
+			undefined,
+			undefined,
+			undefined,
+			styles,
+		);
+
+		expect((ws as any).A1).toMatchObject({ t: "n", v: 0.5, z: "h:mm", w: "12:00" });
+	});
+
 	it("parses worksheet with hyperlinks", () => {
 		const xml = `<?xml version="1.0"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
