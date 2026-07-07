@@ -38,13 +38,13 @@ describe("roundtrip", () => {
 		const wb2 = await read(u8);
 		expect(wb2.SheetNames).toEqual(["People"]);
 
-		const rows = sheetToJson(wb2.Sheets["People"]);
+		const rows = sheetToJson(wb2.Sheets.People);
 		expect(rows.length).toBe(3);
-		expect(rows[0]["Name"]).toBe("Alice");
-		expect(rows[0]["Age"]).toBe(30);
-		expect(rows[0]["Active"]).toBe(true);
-		expect(rows[1]["Name"]).toBe("Bob");
-		expect(rows[2]["Name"]).toBe("Charlie");
+		expect(rows[0].Name).toBe("Alice");
+		expect(rows[0].Age).toBe(30);
+		expect(rows[0].Active).toBe(true);
+		expect(rows[1].Name).toBe("Bob");
+		expect(rows[2].Name).toBe("Charlie");
 	});
 
 	it("should roundtrip multiple sheets", async () => {
@@ -69,10 +69,10 @@ describe("roundtrip", () => {
 		const wb2 = await read(await write(wb));
 		expect(wb2.SheetNames).toEqual(["Sheet1", "Sheet2"]);
 
-		const rows1 = sheetToJson(wb2.Sheets["Sheet1"]);
-		expect(rows1[0]["A"]).toBe(1);
-		const rows2 = sheetToJson(wb2.Sheets["Sheet2"]);
-		expect(rows2[0]["X"]).toBe(3);
+		const rows1 = sheetToJson(wb2.Sheets.Sheet1);
+		expect(rows1[0].A).toBe(1);
+		const rows2 = sheetToJson(wb2.Sheets.Sheet2);
+		expect(rows2[0].X).toBe(3);
 	});
 
 	it("should roundtrip JSON data", async () => {
@@ -86,11 +86,11 @@ describe("roundtrip", () => {
 		appendSheet(wb, ws, "Data");
 
 		const wb2 = await read(await write(wb));
-		const rows = sheetToJson(wb2.Sheets["Data"]);
+		const rows = sheetToJson(wb2.Sheets.Data);
 		expect(rows.length).toBe(3);
-		expect(rows[0]["name"]).toBe("Alpha");
-		expect(rows[0]["value"]).toBe(100);
-		expect(rows[2]["name"]).toBe("Gamma");
+		expect(rows[0].name).toBe("Alpha");
+		expect(rows[0].value).toBe(100);
+		expect(rows[2].name).toBe("Gamma");
 	});
 
 	it("should write base64 and re-read", async () => {
@@ -164,8 +164,8 @@ describe("sheetToJson options", () => {
 			["x", 1],
 		]);
 		const rows = sheetToJson(ws, { header: "A" });
-		expect(rows[0]["A"]).toBe("Name");
-		expect(rows[1]["A"]).toBe("x");
+		expect(rows[0].A).toBe("Name");
+		expect(rows[1].A).toBe("x");
 	});
 
 	it("should support custom header array", () => {
@@ -174,14 +174,14 @@ describe("sheetToJson options", () => {
 			[1, 2],
 		]);
 		const rows = sheetToJson(ws, { header: ["col1", "col2"] });
-		expect(rows[0]["col1"]).toBe("a");
-		expect(rows[1]["col1"]).toBe(1);
+		expect(rows[0].col1).toBe("a");
+		expect(rows[1].col1).toBe(1);
 	});
 
 	it("should support defval for missing cells", () => {
 		const ws = arrayToSheet([["A", "B"], [1]]);
 		const rows = sheetToJson(ws, { defval: null });
-		expect(rows[0]["B"]).toBe(null);
+		expect(rows[0].B).toBe(null);
 	});
 });
 
@@ -196,7 +196,7 @@ describe("workbook utilities", () => {
 		const ws = arrayToSheet([[1, 2, 3]]);
 		const wb = createWorkbook(ws, "Data");
 		expect(wb.SheetNames).toEqual(["Data"]);
-		expect(wb.Sheets["Data"]).toBe(ws);
+		expect(wb.Sheets.Data).toBe(ws);
 	});
 
 	it("should append sheets", () => {
@@ -276,41 +276,41 @@ describe("CSV write and read", () => {
 		const ws2 = csvToSheet(csv);
 		const rows = sheetToJson(ws2);
 		expect(rows.length).toBe(2);
-		expect(rows[0]["Name"]).toBe("Alice");
-		expect(rows[0]["Score"]).toBe(95);
-		expect(rows[1]["Name"]).toBe("Bob");
+		expect(rows[0].Name).toBe("Alice");
+		expect(rows[0].Score).toBe(95);
+		expect(rows[1].Name).toBe("Bob");
 	});
 
 	it("should read CSV string via read()", async () => {
 		const csv = "Name,Age\nAlice,30\nBob,25";
 		const wb = await read(csv, { type: "string" });
 		expect(wb.SheetNames).toEqual(["Sheet1"]);
-		const rows = sheetToJson(wb.Sheets["Sheet1"]);
+		const rows = sheetToJson(wb.Sheets.Sheet1);
 		expect(rows.length).toBe(2);
-		expect(rows[0]["Name"]).toBe("Alice");
-		expect(rows[0]["Age"]).toBe(30);
+		expect(rows[0].Name).toBe("Alice");
+		expect(rows[0].Age).toBe(30);
 	});
 
 	it("should handle commas in quoted fields", () => {
 		const csv = 'Name,Address\n"Doe, Jane","123 Main St, Apt 4"';
 		const ws = csvToSheet(csv);
 		const rows = sheetToJson(ws);
-		expect(rows[0]["Name"]).toBe("Doe, Jane");
-		expect(rows[0]["Address"]).toBe("123 Main St, Apt 4");
+		expect(rows[0].Name).toBe("Doe, Jane");
+		expect(rows[0].Address).toBe("123 Main St, Apt 4");
 	});
 
 	it("should handle escaped quotes", () => {
 		const csv = 'Val\n"He said ""hello"""';
 		const ws = csvToSheet(csv);
 		const rows = sheetToJson(ws);
-		expect(rows[0]["Val"]).toBe('He said "hello"');
+		expect(rows[0].Val).toBe('He said "hello"');
 	});
 
 	it("should handle newlines in quoted fields", () => {
 		const csv = 'Note\n"Line1\nLine2"';
 		const ws = csvToSheet(csv);
 		const rows = sheetToJson(ws);
-		expect(rows[0]["Note"]).toBe("Line1\nLine2");
+		expect(rows[0].Note).toBe("Line1\nLine2");
 	});
 
 	it("should handle empty cells", () => {
@@ -326,8 +326,8 @@ describe("CSV write and read", () => {
 		const tsv = "A\tB\n1\t2";
 		const ws = csvToSheet(tsv, { FS: "\t" });
 		const rows = sheetToJson(ws);
-		expect(rows[0]["A"]).toBe(1);
-		expect(rows[0]["B"]).toBe(2);
+		expect(rows[0].A).toBe(1);
+		expect(rows[0].B).toBe(2);
 	});
 });
 
@@ -355,18 +355,18 @@ describe("HTML write and read", () => {
 		const ws2 = htmlToSheet(html);
 		const rows = sheetToJson(ws2);
 		expect(rows.length).toBe(2);
-		expect(rows[0]["Name"]).toBe("Alpha");
-		expect(rows[0]["Value"]).toBe(100);
-		expect(rows[1]["Name"]).toBe("Beta");
+		expect(rows[0].Name).toBe("Alpha");
+		expect(rows[0].Value).toBe(100);
+		expect(rows[1].Name).toBe("Beta");
 	});
 
 	it("should read HTML string via read()", async () => {
 		const html = "<table><tr><td>A</td><td>B</td></tr><tr><td>1</td><td>2</td></tr></table>";
 		const wb = await read(html, { type: "string" });
 		expect(wb.SheetNames).toEqual(["Sheet1"]);
-		const rows = sheetToJson(wb.Sheets["Sheet1"]);
-		expect(rows[0]["A"]).toBe(1);
-		expect(rows[0]["B"]).toBe(2);
+		const rows = sheetToJson(wb.Sheets.Sheet1);
+		expect(rows[0].A).toBe(1);
+		expect(rows[0].B).toBe(2);
 	});
 
 	it("should parse HTML with data-t/data-v attributes", () => {

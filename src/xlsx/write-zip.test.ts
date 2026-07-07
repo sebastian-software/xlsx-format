@@ -13,7 +13,7 @@ describe("write-zip.ts: comments in roundtrip", () => {
 		const wb2 = await read(bytes);
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
 		// Check that the comment was read back
-		const a1 = (ws2 as any)["A1"];
+		const a1 = (ws2 as any).A1;
 		expect(a1).toBeDefined();
 		if (a1.c) {
 			expect(a1.c.length).toBeGreaterThanOrEqual(1);
@@ -38,7 +38,7 @@ describe("write-zip.ts: comments in roundtrip", () => {
 		const bytes = await write(wb);
 		const wb2 = await read(bytes);
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
-		const a1 = (ws2 as any)["A1"];
+		const a1 = (ws2 as any).A1;
 		expect(a1).toBeDefined();
 		if (a1.c) {
 			expect(a1.c.length).toBeGreaterThanOrEqual(1);

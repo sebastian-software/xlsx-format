@@ -27,7 +27,7 @@ describe("export security guards", () => {
 		expect(Object.hasOwn(row, "__proto__")).toBe(true);
 		expect(Object.hasOwn(row, "constructor")).toBe(true);
 		expect(Object.hasOwn(row, "prototype")).toBe(true);
-		expect(row["__proto__"]).toBe("polluted");
+		expect(Object.getOwnPropertyDescriptor(row, "__proto__")?.value).toBe("polluted");
 		expect(row.constructor).toBe("ctor");
 		expect(row.prototype).toBe("proto");
 		expect(row.safe).toBe("ok");
@@ -42,7 +42,7 @@ describe("export security guards", () => {
 			decoder.decode(zip.files["xl/workbook.xml"]).replace('name="Safe"', 'name="__proto__"'),
 		);
 
-		const parsed = await read(await import("./zip/index.js").then(({ zipWrite }) => zipWrite(zip)));
+		const parsed = await read(await import("./zip/index.js").then(async ({ zipWrite }) => zipWrite(zip)));
 
 		expect(parsed.SheetNames).toEqual(["__proto__"]);
 		expect(Object.getPrototypeOf(parsed.Sheets)).toBeNull();

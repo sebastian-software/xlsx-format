@@ -141,10 +141,8 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 			}
 
 			// Write VML drawing for comment anchor shapes
-			if ((ws as any)["!legacy"]) {
-				if (need_vml) {
-					zipAddString(zip, "xl/drawings/vmlDrawing" + rId + ".vml", writeVml(rId, (ws as any)["!comments"]));
-				}
+			if ((ws as any)["!legacy"] && need_vml) {
+				zipAddString(zip, "xl/drawings/vmlDrawing" + rId + ".vml", writeVml(rId, (ws as any)["!comments"]));
 			}
 
 			// Clean up transient worksheet properties

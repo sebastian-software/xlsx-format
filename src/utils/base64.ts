@@ -12,7 +12,7 @@ export function base64decode(input: string): Uint8Array {
 	// Strip data-URI prefix if present (e.g. "data:image/png;base64,...")
 	if (str.slice(0, 5) === "data:") {
 		const i = str.slice(0, 1024).indexOf(";base64,");
-		if (i > -1) {
+		if (i !== -1) {
 			str = str.slice(i + 8);
 		}
 	}

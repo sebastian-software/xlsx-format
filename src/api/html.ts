@@ -87,8 +87,10 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 		}
 
 		// Resolve cell content: prefer cached HTML (cell.h), then formatted text, then empty
-		let cellContent =
-			(cell && cell.v != null && (cell.h || escapeHtml(cell.w || (formatCell(cell), cell.w) || ""))) || "";
+		let cellContent = "";
+		if (cell && cell.v != null) {
+			cellContent = cell.h || escapeHtml(cell.w || formatCell(cell) || "");
+		}
 
 		const cellAttrs: Record<string, any> = {};
 		if (rowSpan > 1) {

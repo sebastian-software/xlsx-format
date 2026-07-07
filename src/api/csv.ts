@@ -94,7 +94,7 @@ function buildCsvRow(
 	}
 	// Strip trailing empty cells from the row if requested
 	if (options.strip) {
-		while (row[row.length - 1] === "") {
+		while (row.at(-1) === "") {
 			--row.length;
 		}
 	}
@@ -299,6 +299,6 @@ function coerceValue(val: string): string | number | boolean {
 export function csvToSheet(text: string, opts?: { FS?: string }): WorkSheet {
 	const sep = (opts && opts.FS) || ",";
 	const rows = parseCsv(text, sep);
-	const data: any[][] = rows.map((row) => row.map(coerceValue));
+	const data: any[][] = rows.map((row) => row.map((value) => coerceValue(value)));
 	return arrayToSheet(data);
 }

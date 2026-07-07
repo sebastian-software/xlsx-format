@@ -76,8 +76,8 @@ export function utf8read(orig: string): string {
 }
 
 /** Regex matching NUL (U+0000) characters globally */
-// eslint-disable-next-line no-control-regex
-export const NULL_CHAR_REGEX = /\u0000/g;
+
+export const NULL_CHAR_REGEX = /\0/g;
 
 /** Regex matching control characters U+0001 through U+0006 globally */
 // eslint-disable-next-line no-control-regex

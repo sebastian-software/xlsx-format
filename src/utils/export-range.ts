@@ -1,7 +1,7 @@
 import type { Range, WorkSheet } from "../types.js";
 import { decodeCell } from "./cell.js";
 
-const CELL_REF_RE = /^[A-Z]+[1-9][0-9]*$/;
+const CELL_REF_RE = /^[A-Z]+[1-9]\d*$/;
 const MAX_EXPORT_CELLS = 1000000;
 
 function rangeCellCount(range: Range): number {

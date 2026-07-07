@@ -263,7 +263,7 @@ export function writeContentTypes(ct: ContentTypes, opts: { bookType?: string })
 			o.push(
 				writeXmlElement("Override", null, {
 					PartName: (v[0] === "/" ? "" : "/") + v,
-					ContentType: CT_LIST[w]?.[opts.bookType || "xlsx"] || CT_LIST[w]?.["xlsx"],
+					ContentType: CT_LIST[w]?.[opts.bookType || "xlsx"] || CT_LIST[w]?.xlsx,
 				}),
 			);
 		}
@@ -275,7 +275,7 @@ export function writeContentTypes(ct: ContentTypes, opts: { bookType?: string })
 			o.push(
 				writeXmlElement("Override", null, {
 					PartName: (v[0] === "/" ? "" : "/") + v,
-					ContentType: CT_LIST[w]?.[opts.bookType || "xlsx"] || CT_LIST[w]?.["xlsx"],
+					ContentType: CT_LIST[w]?.[opts.bookType || "xlsx"] || CT_LIST[w]?.xlsx,
 				}),
 			);
 		}

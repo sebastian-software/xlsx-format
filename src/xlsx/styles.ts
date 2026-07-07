@@ -85,7 +85,7 @@ function styleKey(value: unknown): string {
 		return JSON.stringify(value);
 	}
 	if (Array.isArray(value)) {
-		return "[" + value.map(styleKey).join(",") + "]";
+		return "[" + value.map((item) => styleKey(item)).join(",") + "]";
 	}
 	const record = value as Record<string, unknown>;
 	return (
@@ -668,7 +668,7 @@ export function writeStylesXml(_wb: any, _opts: any): string {
 			'<numFmts count="' +
 				numFmts.size +
 				'">' +
-				Array.from(numFmts.entries())
+				[...numFmts.entries()]
 					.sort((a, b) => a[0] - b[0])
 					.map(([id, code]) => '<numFmt numFmtId="' + id + '" formatCode="' + escapeXml(code) + '"/>')
 					.join("") +
@@ -677,13 +677,19 @@ export function writeStylesXml(_wb: any, _opts: any): string {
 	}
 
 	const fonts = registry?.fonts || [DEFAULT_FONT];
-	lines.push('<fonts count="' + fonts.length + '">' + fonts.map(writeFont).join("") + "</fonts>");
+	lines.push('<fonts count="' + fonts.length + '">' + fonts.map((font) => writeFont(font)).join("") + "</fonts>");
 
 	const fills = registry?.fills || [DEFAULT_FILL, GRAY125_FILL];
-	lines.push('<fills count="' + fills.length + '">' + fills.map(writeFill).join("") + "</fills>");
+	lines.push('<fills count="' + fills.length + '">' + fills.map((fill) => writeFill(fill)).join("") + "</fills>");
 
 	const borders = registry?.borders || [DEFAULT_BORDER];
-	lines.push('<borders count="' + borders.length + '">' + borders.map(writeBorder).join("") + "</borders>");
+	lines.push(
+		'<borders count="' +
+			borders.length +
+			'">' +
+			borders.map((border) => writeBorder(border)).join("") +
+			"</borders>",
+	);
 
 	// Cell Style Xfs - base format for the "Normal" style
 	lines.push('<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>');
@@ -692,7 +698,13 @@ export function writeStylesXml(_wb: any, _opts: any): string {
 		{ numFmtId: 0, fontId: 0, fillId: 0, borderId: 0 },
 		{ numFmtId: 0, fontId: 0, fillId: 0, borderId: 0 },
 	];
-	lines.push('<cellXfs count="' + cellXfs.length + '">' + cellXfs.map(writeCellXf).join("") + "</cellXfs>");
+	lines.push(
+		'<cellXfs count="' +
+			cellXfs.length +
+			'">' +
+			cellXfs.map((cellXf) => writeCellXf(cellXf)).join("") +
+			"</cellXfs>",
+	);
 
 	// Cell Styles - the built-in "Normal" style
 	lines.push('<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>');

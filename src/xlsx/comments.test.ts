@@ -15,8 +15,8 @@ describe("comments: insertCommentsIntoSheet", () => {
 		const ws: any = { A1: { t: "n", v: 1 }, "!ref": "A1" };
 		const comments = [{ ref: "A1", author: "Alice", t: "Hello", r: "<t>Hello</t>", h: "" }];
 		insertCommentsIntoSheet(ws, comments, false);
-		expect(ws["A1"].c).toBeDefined();
-		expect(ws["A1"].c[0].t).toBe("Hello");
+		expect(ws.A1.c).toBeDefined();
+		expect(ws.A1.c[0].t).toBe("Hello");
 	});
 
 	it("inserts threaded comment and removes legacy", () => {
@@ -24,7 +24,7 @@ describe("comments: insertCommentsIntoSheet", () => {
 		const comments = [{ ref: "A1", author: "Bob", t: "threaded", r: "<t>threaded</t>", h: "" }];
 		insertCommentsIntoSheet(ws, comments, true);
 		// Threaded should override legacy
-		expect(ws["A1"].c.some((c: any) => c.T === true)).toBe(true);
+		expect(ws.A1.c.some((c: any) => c.T === true)).toBe(true);
 	});
 
 	it("does not add legacy when threaded exists", () => {
@@ -32,15 +32,15 @@ describe("comments: insertCommentsIntoSheet", () => {
 		const comments = [{ ref: "A1", author: "Bob", t: "legacy", r: "<t>legacy</t>", h: "" }];
 		insertCommentsIntoSheet(ws, comments, false);
 		// Should not add legacy comment when threaded exists
-		expect(ws["A1"].c.length).toBe(1);
+		expect(ws.A1.c.length).toBe(1);
 	});
 
 	it("creates cell when it doesn't exist and expands range", () => {
 		const ws: any = { "!ref": "A1" };
 		const comments = [{ ref: "C3", author: "Alice", t: "New", r: "<t>New</t>", h: "" }];
 		insertCommentsIntoSheet(ws, comments, false);
-		expect(ws["C3"]).toBeDefined();
-		expect(ws["C3"].c).toBeDefined();
+		expect(ws.C3).toBeDefined();
+		expect(ws.C3.c).toBeDefined();
 		// Range should be expanded
 		expect(ws["!ref"]).not.toBe("A1");
 	});
@@ -203,15 +203,15 @@ describe("xlsx/comments", () => {
 		]);
 		const comments = [{ ref: "A1", author: "Test", t: "Comment text" }];
 		insertCommentsIntoSheet(ws, comments, false);
-		expect(ws["A1"].c).toBeDefined();
-		expect(ws["A1"].c![0].t).toBe("Comment text");
+		expect(ws.A1.c).toBeDefined();
+		expect(ws.A1.c![0].t).toBe("Comment text");
 	});
 
 	it("insertCommentsIntoSheet should create cells if needed", () => {
 		const ws = arrayToSheet([[1]]);
 		const comments = [{ ref: "C3", author: "Test", t: "On empty cell" }];
 		insertCommentsIntoSheet(ws, comments, false);
-		expect((ws as any)["C3"]).toBeDefined();
-		expect((ws as any)["C3"].c[0].t).toBe("On empty cell");
+		expect((ws as any).C3).toBeDefined();
+		expect((ws as any).C3.c[0].t).toBe("On empty cell");
 	});
 });

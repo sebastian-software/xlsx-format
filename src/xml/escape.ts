@@ -17,14 +17,14 @@ const XML_ESCAPE_MAP: Record<string, string> = {
 };
 
 // Matches XML named entities (&quot; etc.) and numeric character references (&#x1A; or &#26;)
-const encregex = /&(?:quot|apos|gt|lt|amp|#x?([\da-fA-F]+));/gi;
+const encregex = /&(?:quot|apos|gt|lt|amp|#x?([\da-f]+));/gi;
 // Matches OOXML-style escaped Unicode characters like _x0020_ (underscore-hex encoding)
 const coderegex = /_x([\da-fA-F]{4})_/g;
 // Matches characters that must be escaped in XML: & < > ' "
 const decregex = /[&<>'"]/g;
 // Matches XML-illegal control characters (U+0000-U+0008, U+000B-U+001F, U+FFFE-U+FFFF)
 // eslint-disable-next-line no-control-regex
-const charegex = /[\u0000-\u0008\u000b-\u001f\uFFFE-\uFFFF]/g;
+const charegex = /[\u0000-\u0008\u000b-\u001f\uFFFE\uFFFF]/g;
 
 /**
  * Recursively unescape XML entities, handling CDATA sections.
@@ -129,7 +129,7 @@ export function htmlDecode(str: string): string {
 		.replace(/>\s+/g, ">") // collapse whitespace after closing brackets
 		.replace(/\b\s+</g, "<") // collapse whitespace before opening brackets
 		.replace(/[\t\n\r ]+/g, " ") // normalize internal whitespace to single spaces
-		.replace(/<\s*[bB][rR]\s*\/?>/g, "\n") // convert <br> / <BR/> variants to newlines
+		.replace(/<\s*br\s*\/?>/gi, "\n") // convert <br> / <BR/> variants to newlines
 		.replace(/<[^<>]*>/g, ""); // strip all remaining HTML tags
 	for (let i = 0; i < entities.length; ++i) {
 		result = result.replace(entities[i][0], entities[i][1]);

@@ -152,7 +152,7 @@ function safe_parse_sheet(
 
 		// Scan sheet relationships for comments and threaded comments
 		const comments: any[] = [];
-		let tcomments: any[] = [];
+		const tcomments: any[] = [];
 		if (sheetRels[sheetName]) {
 			for (const n of Object.keys(sheetRels[sheetName])) {
 				// Skip internal keys
@@ -180,7 +180,7 @@ function safe_parse_sheet(
 					const dfile = resolve_path(rel.Target, path);
 					const tcData = getZipData(zip, dfile, true, opts);
 					if (tcData) {
-						tcomments = tcomments.concat(parseTcmntXml(tcData, opts));
+						tcomments.push(...parseTcmntXml(tcData, opts));
 					}
 				}
 			}
@@ -197,9 +197,9 @@ function safe_parse_sheet(
 				parseVml(utf8read(draw), _ws, comments);
 			}
 		}
-	} catch (e) {
+	} catch (error) {
 		if (opts.WTF) {
-			throw e;
+			throw error;
 		}
 	}
 }
@@ -250,9 +250,9 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 				if (sstData) {
 					strs = parseSstXml(sstData, options);
 				}
-			} catch (e) {
+			} catch (error) {
 				if (options.WTF) {
-					throw e;
+					throw error;
 				}
 			}
 		}
@@ -298,30 +298,28 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 	// Parse custom properties
 	let custprops: Record<string, any> = {};
-	if (!options.bookSheets || options.bookProps) {
-		if (dir.custprops.length) {
-			const custdata = getZipString(zip, stripLeadingSlash(dir.custprops[0]), true, options);
-			if (custdata) {
-				custprops = parseCustomProperties(custdata, options);
-			}
+	if ((!options.bookSheets || options.bookProps) && dir.custprops.length) {
+		const custdata = getZipString(zip, stripLeadingSlash(dir.custprops[0]), true, options);
+		if (custdata) {
+			custprops = parseCustomProperties(custdata, options);
 		}
 	}
 
 	// Early return for bookSheets/bookProps-only mode
 	const out: any = {};
 	if (options.bookSheets || options.bookProps) {
-		let sheets: string[] | undefined;
+		let sheetNames: string[] | undefined;
 		if (wb.Sheets) {
-			sheets = wb.Sheets.map((x: SheetEntry) => x.name);
+			sheetNames = wb.Sheets.map((x: SheetEntry) => x.name);
 		} else if (props.Worksheets && props.SheetNames?.length > 0) {
-			sheets = props.SheetNames;
+			sheetNames = props.SheetNames;
 		}
 		if (options.bookProps) {
 			out.Props = props;
 			out.Custprops = custprops;
 		}
-		if (options.bookSheets && sheets) {
-			out.SheetNames = sheets;
+		if (options.bookSheets && sheetNames) {
+			out.SheetNames = sheetNames;
 		}
 		if (options.bookSheets ? out.SheetNames : options.bookProps) {
 			return out as WorkBook;
@@ -385,12 +383,12 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 		let path: string;
 		if (wbrelsArr && wbrelsArr[i]) {
 			// Resolve the sheet path from relationships, trying multiple fallback locations
-			path = "xl/" + wbrelsArr[i][1].replace(/[/]?xl\//, "");
+			path = "xl/" + wbrelsArr[i][1].replace(/\/?xl\//, "");
 			if (!zipHas(zip, path)) {
 				path = wbrelsArr[i][1];
 			}
 			if (!zipHas(zip, path)) {
-				path = wbrelsfile.replace(/_rels\/[\S\s]*$/, "") + wbrelsArr[i][1];
+				path = wbrelsfile.replace(/_rels\/[\s\S]*$/, "") + wbrelsArr[i][1];
 			}
 			stype = wbrelsArr[i][2];
 		} else {

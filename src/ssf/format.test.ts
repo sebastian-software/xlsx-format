@@ -1,7 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatNumber } from "./format.js";
-
-import { parseExcelDateCode, isDateFormat } from "./format.js";
+import { formatNumber, parseExcelDateCode, isDateFormat } from "./format.js";
 
 describe("formatNumber", () => {
 	describe("General format", () => {
@@ -1141,7 +1139,7 @@ describe("SSF: special format patterns", () => {
 	});
 
 	it("formats 0.# suppressing trailing zero", () => {
-		const result = formatNumber("0.#", 3.0);
+		const result = formatNumber("0.#", 3);
 		expect(result).toBe("3.");
 	});
 

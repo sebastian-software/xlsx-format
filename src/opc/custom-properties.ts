@@ -1,6 +1,5 @@
-import { XML_HEADER, parseXmlTag } from "../xml/parser.js";
+import { XML_HEADER, parseXmlTag, parseXmlBoolean, stripNamespace } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
-import { parseXmlBoolean, stripNamespace } from "../xml/parser.js";
 import { writeXmlElement, writeVariantType } from "../xml/writer.js";
 import { XMLNS } from "../xml/namespaces.js";
 

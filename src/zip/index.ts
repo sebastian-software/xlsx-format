@@ -324,7 +324,7 @@ export async function zipWrite(archive: ZipArchive, compress?: boolean): Promise
 	let compressedDatas: Uint8Array[];
 	let methods: number[];
 	if (compress) {
-		const results = await Promise.all(rawEntries.map((e) => deflate(e.data)));
+		const results = await Promise.all(rawEntries.map(async (e) => deflate(e.data)));
 		compressedDatas = results;
 		methods = rawEntries.map(() => 8); // method 8 = deflate
 	} else {

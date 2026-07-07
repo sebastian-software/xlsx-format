@@ -28,9 +28,9 @@ describe("xlsx/vml", () => {
 
 	it("parseVml should set comment visibility", () => {
 		const ws = arrayToSheet([[1]]);
-		ws["A1"].c = [{ a: "Test", t: "Note" }];
+		ws.A1.c = [{ a: "Test", t: "Note" }];
 		const vml = `<xml><v:shape><x:ClientData ObjectType="Note"><x:Row>0</x:Row><x:Column>0</x:Column><x:Visible/></x:ClientData></v:shape></xml>`;
 		parseVml(vml, ws, [{ ref: "A1" }]);
-		expect(ws["A1"].c.hidden).toBe(false);
+		expect(ws.A1.c.hidden).toBe(false);
 	});
 });

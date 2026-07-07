@@ -21,7 +21,7 @@ function textOutput(text: string, type?: string): any {
 			return base64encode(textToUint8Array(text));
 		case "buffer":
 			if (typeof Buffer !== "undefined") {
-				return Buffer.from(text, "utf-8");
+				return Buffer.from(text, "utf8");
 			}
 			return textToUint8Array(text);
 		case "array":
@@ -50,7 +50,7 @@ export async function write(wb: WorkBook, opts?: WriteOptions): Promise<any> {
 	if (!opts || !(opts as any).unsafe) {
 		validateWorkbook(wb);
 	}
-	const options: any = { ...(opts || {}) };
+	const options: any = { ...opts };
 	// cellStyles implies cellNF (number format) and sheetStubs (empty cell placeholders)
 	if (options.cellStyles) {
 		options.cellNF = true;

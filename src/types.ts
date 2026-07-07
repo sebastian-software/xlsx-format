@@ -491,7 +491,7 @@ export interface WBProps {
 /** Top-level Workbook object containing all sheets, properties, and metadata */
 export interface WorkBook {
 	/** Map of sheet names to WorkSheet objects */
-	Sheets: { [sheet: string]: WorkSheet };
+	Sheets: Record<string, WorkSheet>;
 	/** Ordered list of sheet names (determines tab order) */
 	SheetNames: string[];
 	/** File and document properties */

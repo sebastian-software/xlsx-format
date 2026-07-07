@@ -126,7 +126,7 @@ describe("json.ts — addJsonToSheet edge cases", () => {
 		const ws = addJsonToSheet(null, [{ x: 1 }]);
 		const ws2 = addJsonToSheet(ws, [{ x: 2 }], { origin: -1 });
 		const rows = sheetToJson(ws2, { header: 1 });
-		expect(rows[rows.length - 1]).toEqual([2]);
+		expect(rows.at(-1)).toEqual([2]);
 	});
 
 	it("should handle skipHeader", () => {
@@ -137,7 +137,7 @@ describe("json.ts — addJsonToSheet edge cases", () => {
 
 	it("should handle pre-built cell objects", () => {
 		const ws = addJsonToSheet(null, [{ val: { t: "n", v: 42, f: "=6*7" } }]);
-		const cell = (ws as any)["A2"];
+		const cell = (ws as any).A2;
 		expect(cell.v).toBe(42);
 		expect(cell.f).toBe("=6*7");
 	});
@@ -145,14 +145,14 @@ describe("json.ts — addJsonToSheet edge cases", () => {
 	it("should handle Date values", () => {
 		const d = new Date("2024-01-15T00:00:00Z");
 		const ws = addJsonToSheet(null, [{ date: d }], { UTC: true });
-		const cell = (ws as any)["A2"];
+		const cell = (ws as any).A2;
 		expect(cell.t).toBe("n");
 		expect(cell.v).toBeGreaterThan(40000);
 	});
 
 	it("should handle nullError", () => {
 		const ws = addJsonToSheet(null, [{ val: null }], { nullError: true });
-		const cell = (ws as any)["A2"];
+		const cell = (ws as any).A2;
 		expect(cell.t).toBe("e");
 		expect(cell.v).toBe(0);
 	});
@@ -166,7 +166,7 @@ describe("json.ts — addJsonToSheet edge cases", () => {
 	it("should update existing cells in place", () => {
 		const ws = addJsonToSheet(null, [{ a: 1 }]);
 		const ws2 = addJsonToSheet(ws, [{ a: 999 }]);
-		const cell = (ws2 as any)["A2"];
+		const cell = (ws2 as any).A2;
 		expect(cell.v).toBe(999);
 	});
 });

@@ -13,13 +13,13 @@ describe("relationships: addRelationship", () => {
 	it("auto-sets TargetMode=External for hyperlink type", () => {
 		const rels: any = { "!id": {} };
 		addRelationship(rels, 1, "https://example.com", RELS.HLINK);
-		expect(rels["!id"]["rId1"].TargetMode).toBe("External");
+		expect(rels["!id"].rId1.TargetMode).toBe("External");
 	});
 
 	it("uses explicit targetmode when provided", () => {
 		const rels: any = { "!id": {} };
 		addRelationship(rels, 1, "target.xml", RELS.WS, "External");
-		expect(rels["!id"]["rId1"].TargetMode).toBe("External");
+		expect(rels["!id"].rId1.TargetMode).toBe("External");
 	});
 
 	it("throws on duplicate rId", () => {
@@ -32,7 +32,7 @@ describe("relationships: addRelationship", () => {
 		const rels: any = {};
 		addRelationship(rels, 1, "sheet1.xml", RELS.WS);
 		expect(rels["!id"]).toBeDefined();
-		expect(rels["!id"]["rId1"]).toBeDefined();
+		expect(rels["!id"].rId1).toBeDefined();
 	});
 });
 
@@ -42,8 +42,8 @@ describe("opc/relationships", () => {
 			<Relationship Id="rId1" Type="http://test/worksheet" Target="worksheets/sheet1.xml"/>
 		</Relationships>`;
 		const rels = parseRelationships(xml, "/xl/workbook.xml");
-		expect(rels["!id"]["rId1"]).toBeDefined();
-		expect(rels["!id"]["rId1"].Target).toBe("worksheets/sheet1.xml");
+		expect(rels["!id"].rId1).toBeDefined();
+		expect(rels["!id"].rId1.Target).toBe("worksheets/sheet1.xml");
 	});
 
 	it("parseRelationships should handle null input", () => {
@@ -59,7 +59,7 @@ describe("opc/relationships", () => {
 		const rels = parseRelationships(null, "/");
 		const id = addRelationship(rels, -1, "test.xml", "http://type");
 		expect(id).toBe(1);
-		expect(rels["!id"]["rId1"]).toBeDefined();
+		expect(rels["!id"].rId1).toBeDefined();
 	});
 
 	it("writeRelationships should produce valid XML", () => {
