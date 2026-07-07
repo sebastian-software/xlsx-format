@@ -57,7 +57,7 @@ function inferDateKind(date: Date, options?: any): DateTimeFormatKind {
 }
 
 function normalizeDateOutput(date: Date, options?: any): Date {
-	return options?.UTC === true ? date : utcToLocal(date);
+	return options?.UTC === false ? utcToLocal(date) : date;
 }
 
 /**
