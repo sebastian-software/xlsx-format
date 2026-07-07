@@ -84,7 +84,7 @@ function buildJsonRow(
 				}
 			/* falls through */
 			case "d": // date
-				if (!options || (!options.UTC && options.raw !== false)) {
+				if (!(options && (options.UTC || options.raw === false))) {
 					cellValue = utcToLocal(new Date(cellValue));
 				}
 				break;

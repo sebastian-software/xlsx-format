@@ -145,7 +145,7 @@ describe("String Handling", () => {
 		const ws = arrayToSheet([["alpha"], ["beta"], ["gamma"]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
 		const rows = sheetToJson<{ A: string }>(wb2.Sheets.S, { header: "A" });
-		expect(rows.map((r) => r.A)).toEqual(["alpha", "beta", "gamma"]);
+		expect(rows.map((r) => r.A)).toStrictEqual(["alpha", "beta", "gamma"]);
 	});
 
 	it("duplicate strings in multiple cells", async () => {
@@ -212,8 +212,8 @@ describe("Merged Cells", () => {
 		ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 1, c: 1 } }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
 		expect(wb2.Sheets.S["!merges"]).toHaveLength(1);
-		expect(wb2.Sheets.S["!merges"]![0].s).toEqual({ r: 0, c: 0 });
-		expect(wb2.Sheets.S["!merges"]![0].e).toEqual({ r: 1, c: 1 });
+		expect(wb2.Sheets.S["!merges"]![0].s).toStrictEqual({ r: 0, c: 0 });
+		expect(wb2.Sheets.S["!merges"]![0].e).toStrictEqual({ r: 1, c: 1 });
 	});
 
 	it("multiple merge ranges roundtrip", async () => {
@@ -480,8 +480,8 @@ describe("Multiple Sheets", () => {
 		appendSheet(wb, arrayToSheet([["alpha"]]), "A");
 		appendSheet(wb, arrayToSheet([["beta"]]), "B");
 		const wb2 = await roundtrip(wb);
-		expect(sheetToJson(wb2.Sheets.A, { header: 1 })).toEqual([["alpha"]]);
-		expect(sheetToJson(wb2.Sheets.B, { header: 1 })).toEqual([["beta"]]);
+		expect(sheetToJson(wb2.Sheets.A, { header: 1 })).toStrictEqual([["alpha"]]);
+		expect(sheetToJson(wb2.Sheets.B, { header: 1 })).toStrictEqual([["beta"]]);
 	});
 
 	it("sheet order preserved", async () => {
@@ -490,7 +490,7 @@ describe("Multiple Sheets", () => {
 		appendSheet(wb, arrayToSheet([[2]]), "A");
 		appendSheet(wb, arrayToSheet([[3]]), "M");
 		const wb2 = await roundtrip(wb);
-		expect(wb2.SheetNames).toEqual(["Z", "A", "M"]);
+		expect(wb2.SheetNames).toStrictEqual(["Z", "A", "M"]);
 	});
 
 	it("5 sheets roundtrip", async () => {
@@ -604,7 +604,7 @@ describe("bookProps / bookSheets", () => {
 		const wb = createWorkbook(arrayToSheet([[1]]), "Data");
 		appendSheet(wb, arrayToSheet([[2]]), "More");
 		const wb2 = await roundtrip(wb, undefined, { bookSheets: true });
-		expect(wb2.SheetNames).toEqual(["Data", "More"]);
+		expect(wb2.SheetNames).toStrictEqual(["Data", "More"]);
 		// Sheets object should not be populated with data
 		expect(wb2.Sheets).toBeUndefined();
 	});
@@ -752,8 +752,8 @@ describe("Styled XLSX Writing", () => {
 
 		const wb2 = await roundtrip(wb, { cellStyles: true }, { cellStyles: true });
 
-		expect(wb2.SheetNames).toEqual(["Overview", "Details"]);
-		expect(wb2.Sheets.Overview["!merges"]?.[0]).toEqual({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
+		expect(wb2.SheetNames).toStrictEqual(["Overview", "Details"]);
+		expect(wb2.Sheets.Overview["!merges"]?.[0]).toStrictEqual({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
 		expect(wb2.Sheets.Overview["!rows"]?.[0].hpt).toBe(30);
 		expect(wb2.Sheets.Overview["!cols"]?.[0].width).toBe(18);
 		expect(wb2.Sheets.Overview["!views"]?.[0].ySplit).toBe(1);
@@ -787,7 +787,7 @@ describe("Edge Cases", () => {
 	it("empty sheet roundtrips", async () => {
 		const ws = createSheet();
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.SheetNames).toEqual(["S"]);
+		expect(wb2.SheetNames).toStrictEqual(["S"]);
 	});
 
 	it("sparse data (A1 + Z100 only)", async () => {
@@ -828,6 +828,6 @@ describe("Edge Cases", () => {
 		expect(compressed.length).toBeLessThanOrEqual(uncompressed.length);
 		// Verify it reads back
 		const wb2 = await read(compressed);
-		expect(sheetToJson(wb2.Sheets.S, { header: 1 })).toEqual([["hello", "world", 123]]);
+		expect(sheetToJson(wb2.Sheets.S, { header: 1 })).toStrictEqual([["hello", "world", 123]]);
 	});
 });

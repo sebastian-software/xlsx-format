@@ -25,7 +25,7 @@ describe("xlsx/metadata", () => {
 	});
 
 	it("parseMetadataXml should handle empty input", () => {
-		expect(parseMetadataXml("").Types).toEqual([]);
+		expect(parseMetadataXml("").Types).toStrictEqual([]);
 	});
 
 	it("writeMetadataXml should produce XLDAPR metadata", () => {

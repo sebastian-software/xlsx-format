@@ -77,16 +77,16 @@ describe("decodeRow / encodeRow", () => {
 
 describe("decodeCell / encodeCell", () => {
 	it("should decode A1 to {c:0, r:0}", () => {
-		expect(decodeCell("A1")).toEqual({ c: 0, r: 0 });
+		expect(decodeCell("A1")).toStrictEqual({ c: 0, r: 0 });
 	});
 
 	it("should decode B3 to {c:1, r:2}", () => {
-		expect(decodeCell("B3")).toEqual({ c: 1, r: 2 });
+		expect(decodeCell("B3")).toStrictEqual({ c: 1, r: 2 });
 	});
 
 	it("should decode multi-letter cell references", () => {
-		expect(decodeCell("AA1")).toEqual({ c: 26, r: 0 });
-		expect(decodeCell("AB12")).toEqual({ c: 27, r: 11 });
+		expect(decodeCell("AA1")).toStrictEqual({ c: 26, r: 0 });
+		expect(decodeCell("AB12")).toStrictEqual({ c: 27, r: 11 });
 	});
 
 	it("should encode {c:0, r:0} to A1", () => {
@@ -112,14 +112,14 @@ describe("decodeCell / encodeCell", () => {
 describe("decodeRange / encodeRange", () => {
 	it("should decode a normal range", () => {
 		const r = decodeRange("A1:C5");
-		expect(r.s).toEqual({ c: 0, r: 0 });
-		expect(r.e).toEqual({ c: 2, r: 4 });
+		expect(r.s).toStrictEqual({ c: 0, r: 0 });
+		expect(r.e).toStrictEqual({ c: 2, r: 4 });
 	});
 
 	it("should decode a single-cell range", () => {
 		const r = decodeRange("B2");
-		expect(r.s).toEqual({ c: 1, r: 1 });
-		expect(r.e).toEqual({ c: 1, r: 1 });
+		expect(r.s).toStrictEqual({ c: 1, r: 1 });
+		expect(r.e).toStrictEqual({ c: 1, r: 1 });
 	});
 
 	it("should encode a range object", () => {

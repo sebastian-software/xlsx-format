@@ -24,7 +24,7 @@ import { dateToSerialNumber } from "../utils/date.js";
 import { formatTable, DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS } from "./table.js";
 
 /** Reverse a string character-by-character */
-const reverseString = (x: string): string => Array.from(x).reverse().join("");
+const reverseString = (x: string): string => x.split("").reverse().join("");
 /** Left-pad a value with zeros to a given width */
 const padWithZeros = (value: any, width: number): string => ("" + value).padStart(width, "0");
 /** Left-pad a value with spaces to a given width */
@@ -221,7 +221,7 @@ function SSF_normalize_exp(o: string): string {
 	if (o.indexOf("E") === -1) {
 		return o;
 	}
-	return o.replace(/(?:\.0*|(\.\d*[1-9])0+)E/i, "$1E").replace(/(E[+-])(\d)$/, "$10$2");
+	return o.replace(/(?:\.0*|(\.\d*[1-9])0+)[Ee]/, "$1E").replace(/(E[+-])(\d)$/, "$10$2");
 }
 
 /** Format a "small" number (magnitude <= 10^9) in the most compact representation */
@@ -257,7 +257,7 @@ function SSF_general_num(v: number): string {
 		return isNaN(v) ? "#NUM!" : "#DIV/0!";
 	}
 	// V = floor(log10(|v|)) = order of magnitude
-	const V = Math.floor(Math.log10(Math.abs(v)));
+	const V = Math.floor(Math.log(Math.abs(v)) * Math.LOG10E);
 	let o: string;
 
 	if (V >= -4 && V <= -1) {
@@ -320,7 +320,7 @@ function SSF_write_date(type: number, fmt: string, val: SSFDateVal, ss0?: number
 	let scaledSeconds = 0;
 	let scaleFactor = 0;
 	let year = val.year;
-	let numericOut = 0;
+	let numericOut: number = 0;
 	let outputLength = 0;
 	switch (type) {
 		case 98 /* 'b' buddhist year */:
@@ -498,12 +498,12 @@ function write_num_exp(fmt: string, val: number): string {
 		}
 		const period = fmt.indexOf(".");
 		const ee =
-			Math.floor(Math.log10(val)) % period < 0
-				? (Math.floor(Math.log10(val)) % period) + period
-				: Math.floor(Math.log10(val)) % period;
+			Math.floor(Math.log(val) * Math.LOG10E) % period < 0
+				? (Math.floor(Math.log(val) * Math.LOG10E) % period) + period
+				: Math.floor(Math.log(val) * Math.LOG10E) % period;
 		o = (val / Math.pow(10, ee)).toPrecision(idx + 1 + ((period + ee) % period));
 		if (o.indexOf("e") === -1) {
-			const fakee = Math.floor(Math.log10(val));
+			const fakee = Math.floor(Math.log(val) * Math.LOG10E);
 			if (o.indexOf(".") === -1) {
 				o = o.charAt(0) + "." + o.substring(1) + "E+" + (fakee - o.length + ee);
 			} else {
@@ -516,7 +516,7 @@ function write_num_exp(fmt: string, val: number): string {
 			o = o.replace(/\+-/, "-");
 		}
 		o = o.replace(
-			/^([+-]?)(\d*)\.(\d*)E/i,
+			/^([+-]?)(\d*)\.(\d*)[Ee]/,
 			($$, $1, $2, $3) => $1 + $2 + $3.substring(0, (period + ee) % period) + "." + $3.substring(ee) + "E",
 		);
 	} else {
@@ -524,7 +524,7 @@ function write_num_exp(fmt: string, val: number): string {
 	}
 	// Ensure 2-digit exponent if format uses E+00
 	if (fmt.match(/E\+00$/) && o.match(/e[+-]\d$/)) {
-		o = o.substring(0, o.length - 1) + "0" + o.at(-1);
+		o = o.substring(0, o.length - 1) + "0" + o.charAt(o.length - 1);
 	}
 	// If format uses E- (no explicit +), strip the "+" from positive exponents
 	if (fmt.match(/E-/) && o.match(/e\+/)) {
@@ -722,7 +722,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 	let ff: number[];
 	const aval = Math.abs(val);
 	const sign = val < 0 ? "-" : "";
-	if (fmt.match(/^0{2,}$/)) {
+	if (fmt.match(/^00+$/)) {
 		return sign + padRoundedZeros(aval, fmt.length);
 	}
 	if (fmt.match(/^[#?]+$/)) {
@@ -789,7 +789,7 @@ function write_num_flt(type: string, fmt: string, val: number): string {
 		ff = SSF_frac(aval, Math.pow(10, ri) - 1, false);
 		o = sign;
 		oa = write_num("n", r[1], ff[1]);
-		if (oa.at(-1) === " ") {
+		if (oa.charAt(oa.length - 1) === " ") {
 			oa = oa.substring(0, oa.length - 1) + "0";
 		}
 		o += oa + r[2] + "/" + r[3];
@@ -889,7 +889,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 	let ff: number[];
 	const aval = Math.abs(val);
 	const sign = val < 0 ? "-" : "";
-	if (fmt.match(/^0{2,}$/)) {
+	if (fmt.match(/^00+$/)) {
 		return sign + padWithZeros(aval, fmt.length);
 	}
 	if (fmt.match(/^[#?]+$/)) {
@@ -950,7 +950,7 @@ function write_num_int(type: string, fmt: string, val: number): string {
 		ff = SSF_frac(aval, Math.pow(10, ri) - 1, false);
 		o = sign;
 		oa = write_num("n", r[1], ff[1]);
-		if (oa.at(-1) === " ") {
+		if (oa.charAt(oa.length - 1) === " ") {
 			oa = oa.substring(0, oa.length - 1) + "0";
 		}
 		o += oa + r[2] + "/" + r[3];
@@ -1058,7 +1058,7 @@ function SSF_split_fmt(fmt: string): string[] {
 }
 
 /** Regex to detect absolute time tokens like [h], [mm], [ss] (including Thai equivalents) */
-const SSF_abstime = /\[[HMS\u0E0A\u0E19\u0E17]*\]/i;
+const SSF_abstime = /\[[HhMmSs\u0E0A\u0E19\u0E17]*\]/;
 
 /**
  * Determine if a format string represents a date/time format.
@@ -1274,7 +1274,7 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 				break;
 			case "@":
 				// Text placeholder: replaced with the cell's text value
-				out[out.length] = { type: "T", value };
+				out[out.length] = { type: "T", value: value };
 				++i;
 				break;
 			case "B":
@@ -1539,13 +1539,13 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 			case "X":
 				break;
 			case "Z":
-				if (dateTimePrecision < 1 && out[i]!.value.match(/H/i)) {
+				if (dateTimePrecision < 1 && out[i]!.value.match(/[Hh]/)) {
 					dateTimePrecision = 1;
 				}
-				if (dateTimePrecision < 2 && out[i]!.value.match(/M/i)) {
+				if (dateTimePrecision < 2 && out[i]!.value.match(/[Mm]/)) {
 					dateTimePrecision = 2;
 				}
-				if (dateTimePrecision < 3 && out[i]!.value.match(/S/i)) {
+				if (dateTimePrecision < 3 && out[i]!.value.match(/[Ss]/)) {
 					dateTimePrecision = 3;
 				}
 		}
@@ -1830,7 +1830,7 @@ function chkcond(v: number, rr: RegExpMatchArray | null): boolean {
 	const thresh = parseFloat(rr[2]);
 	switch (rr[1]) {
 		case "=":
-			if (v === thresh) {
+			if (v == thresh) {
 				return true;
 			}
 			break;
@@ -1845,7 +1845,7 @@ function chkcond(v: number, rr: RegExpMatchArray | null): boolean {
 			}
 			break;
 		case "<>":
-			if (v !== thresh) {
+			if (v != thresh) {
 				return true;
 			}
 			break;
@@ -1885,7 +1885,7 @@ function choose_fmt(fmtStr: string, value: any): [number, string] {
 	const sectionCount = fmt.length;
 	const lat = fmt[sectionCount - 1].indexOf("@"); // check if last section has text placeholder
 	let ll = sectionCount;
-	if (sectionCount < 4 && lat !== -1) {
+	if (sectionCount < 4 && lat > -1) {
 		--ll;
 	}
 	if (fmt.length > 4) {
@@ -1893,7 +1893,7 @@ function choose_fmt(fmtStr: string, value: any): [number, string] {
 	}
 	// Non-numeric values use the text section (section 4) or "@"
 	if (typeof value !== "number") {
-		return [4, fmt.length === 4 || lat !== -1 ? (fmt.at(-1) ?? "@") : "@"];
+		return [4, fmt.length === 4 || lat > -1 ? fmt[fmt.length - 1] : "@"];
 	}
 	if (typeof value === "number" && !isFinite(value)) {
 		value = 0;
@@ -1901,13 +1901,13 @@ function choose_fmt(fmtStr: string, value: any): [number, string] {
 	// Normalize to 4 sections based on how many were provided
 	switch (fmt.length) {
 		case 1:
-			fmt = lat !== -1 ? ["General", "General", "General", fmt[0]] : [fmt[0], fmt[0], fmt[0], "@"];
+			fmt = lat > -1 ? ["General", "General", "General", fmt[0]] : [fmt[0], fmt[0], fmt[0], "@"];
 			break;
 		case 2:
-			fmt = lat !== -1 ? [fmt[0], fmt[0], fmt[0], fmt[1]] : [fmt[0], fmt[1], fmt[0], "@"];
+			fmt = lat > -1 ? [fmt[0], fmt[0], fmt[0], fmt[1]] : [fmt[0], fmt[1], fmt[0], "@"];
 			break;
 		case 3:
-			fmt = lat !== -1 ? [fmt[0], fmt[1], fmt[0], fmt[2]] : [fmt[0], fmt[1], fmt[2], "@"];
+			fmt = lat > -1 ? [fmt[0], fmt[1], fmt[0], fmt[2]] : [fmt[0], fmt[1], fmt[2], "@"];
 			break;
 		case 4:
 			break;

@@ -1,4 +1,4 @@
-import { disableRule, getEslintConfig } from "eslint-config-setup";
+import { getEslintConfig } from "eslint-config-setup";
 
 const config = await getEslintConfig({ node: true });
 
@@ -8,6 +8,8 @@ const portedCodeDisabledRules = [
 	"@cspell/spellchecker",
 	"@typescript-eslint/array-type",
 	"@typescript-eslint/consistent-type-definitions",
+	"@typescript-eslint/no-inferrable-types",
+	"@typescript-eslint/no-shadow",
 	"@typescript-eslint/no-unsafe-type-assertion",
 	"@typescript-eslint/prefer-for-of",
 	"@typescript-eslint/prefer-includes",
@@ -15,9 +17,12 @@ const portedCodeDisabledRules = [
 	"@typescript-eslint/prefer-optional-chain",
 	"@typescript-eslint/prefer-regexp-exec",
 	"@typescript-eslint/prefer-string-starts-ends-with",
+	"@typescript-eslint/promise-function-async",
 	"@typescript-eslint/strict-boolean-expressions",
 	"@typescript-eslint/switch-exhaustiveness-check",
 	"complexity",
+	"de-morgan/no-negated-conjunction",
+	"eqeqeq",
 	"import/no-mutable-exports",
 	"jsdoc/check-param-names",
 	"jsdoc/require-throws-type",
@@ -27,6 +32,7 @@ const portedCodeDisabledRules = [
 	"max-params",
 	"max-statements",
 	"no-script-url",
+	"object-shorthand",
 	"perfectionist/sort-exports",
 	"perfectionist/sort-imports",
 	"perfectionist/sort-intersection-types",
@@ -34,19 +40,30 @@ const portedCodeDisabledRules = [
 	"perfectionist/sort-named-imports",
 	"perfectionist/sort-union-types",
 	"prefer-template",
+	"regexp/match-any",
 	"regexp/no-control-character",
 	"regexp/no-super-linear-move",
 	"regexp/no-unused-capturing-group",
+	"regexp/no-useless-character-class",
+	"regexp/no-useless-flag",
+	"regexp/optimal-quantifier-concatenation",
+	"regexp/use-ignore-case",
 	"security/detect-non-literal-regexp",
 	"security/detect-non-literal-fs-filename",
 	"security/detect-unsafe-regex",
 	"sonarjs/cognitive-complexity",
+	"sonarjs/no-collapsible-if",
 	"sonarjs/no-duplicated-branches",
+	"unicorn/catch-error-name",
+	"unicorn/consistent-existence-index-check",
 	"unicorn/consistent-function-scoping",
+	"unicorn/no-array-callback-reference",
 	"unicorn/no-for-loop",
 	"unicorn/numeric-separators-style",
+	"unicorn/prefer-at",
 	"unicorn/prefer-array-find",
 	"unicorn/prefer-includes",
+	"unicorn/prefer-modern-math-apis",
 	"unicorn/prefer-number-properties",
 	"unicorn/prefer-regexp-test",
 	"unicorn/prefer-spread",
@@ -56,15 +73,9 @@ const portedCodeDisabledRules = [
 	"vitest/no-conditional-expect",
 	"vitest/no-conditional-in-test",
 	"vitest/no-identical-title",
-	"vitest/prefer-strict-equal",
-	"vitest/prefer-to-be",
-	"vitest/prefer-to-have-length",
-	"vitest/require-to-throw-message",
 ];
 
-for (const rule of portedCodeDisabledRules) {
-	disableRule(config, rule);
-}
+const portedCodeRuleOverrides = Object.fromEntries(portedCodeDisabledRules.map((rule) => [rule, "off"]));
 
 config.unshift({
 	ignores: ["dist/", "node_modules/"],
@@ -81,6 +92,8 @@ config.push({
 		},
 	},
 	rules: {
+		...portedCodeRuleOverrides,
+
 		// Required for ported code — many intentional any casts
 		"@typescript-eslint/no-explicit-any": "off",
 		"@typescript-eslint/no-unsafe-argument": "off",

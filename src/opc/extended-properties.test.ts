@@ -21,6 +21,6 @@ describe("opc/extended-properties", () => {
 		</Properties>`;
 		const result = parseExtendedProperties(xml);
 		expect(result.Worksheets).toBe(2);
-		expect(result.SheetNames).toEqual(["Sheet1", "Sheet2"]);
+		expect(result.SheetNames).toStrictEqual(["Sheet1", "Sheet2"]);
 	});
 });

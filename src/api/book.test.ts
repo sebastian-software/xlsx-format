@@ -20,21 +20,21 @@ import { jsonToSheet } from "../index.js";
 describe("createWorkbook", () => {
 	it("should create an empty workbook", () => {
 		const wb = createWorkbook();
-		expect(wb.SheetNames).toEqual([]);
-		expect(wb.Sheets).toEqual({});
+		expect(wb.SheetNames).toStrictEqual([]);
+		expect(wb.Sheets).toStrictEqual({});
 	});
 
 	it("should create a workbook with an initial sheet", () => {
 		const ws = createSheet();
 		const wb = createWorkbook(ws, "Data");
-		expect(wb.SheetNames).toEqual(["Data"]);
+		expect(wb.SheetNames).toStrictEqual(["Data"]);
 		expect(wb.Sheets.Data).toBe(ws);
 	});
 
 	it("should default sheet name to Sheet1", () => {
 		const ws = createSheet();
 		const wb = createWorkbook(ws);
-		expect(wb.SheetNames).toEqual(["Sheet1"]);
+		expect(wb.SheetNames).toStrictEqual(["Sheet1"]);
 	});
 });
 
@@ -43,7 +43,7 @@ describe("appendSheet", () => {
 		const wb = createWorkbook();
 		appendSheet(wb, createSheet());
 		appendSheet(wb, createSheet());
-		expect(wb.SheetNames).toEqual(["Sheet1", "Sheet2"]);
+		expect(wb.SheetNames).toStrictEqual(["Sheet1", "Sheet2"]);
 	});
 
 	it("should throw on duplicate name", () => {
@@ -196,7 +196,7 @@ describe("setArrayFormula", () => {
 
 describe("sheetToFormulae", () => {
 	it("should return empty array for null sheet", () => {
-		expect(sheetToFormulae(null as any)).toEqual([]);
+		expect(sheetToFormulae(null as any)).toStrictEqual([]);
 	});
 
 	it("should return cell values as ref=value strings", () => {
@@ -348,8 +348,8 @@ describe("book.ts: API edge cases", () => {
 	});
 
 	it("sheetToFormulae returns empty for null sheet", () => {
-		expect(sheetToFormulae(null as any)).toEqual([]);
-		expect(sheetToFormulae({} as any)).toEqual([]);
+		expect(sheetToFormulae(null as any)).toStrictEqual([]);
+		expect(sheetToFormulae({} as any)).toStrictEqual([]);
 	});
 
 	it("sheetToFormulae with w property", () => {

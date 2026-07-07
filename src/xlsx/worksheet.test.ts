@@ -83,7 +83,7 @@ describe("worksheet.ts: parsing edge cases", () => {
 		expect((ws as any).A1).toMatchObject({ t: "s", v: "left" });
 		expect((ws as any).B1).toMatchObject({ t: "z" });
 		expect((ws as any).C1).toMatchObject({ t: "s", v: "right" });
-		expect(sheetToArray(ws, { defval: null })).toEqual([["left", null, "right"]]);
+		expect(sheetToArray(ws, { defval: null })).toStrictEqual([["left", null, "right"]]);
 	});
 
 	it("resolveSharedStrings works in sparse mode", () => {
@@ -299,6 +299,6 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 </worksheet>`;
 		const ws = parseWorksheetXml(xml);
 		expect(ws["!merges"]).toBeDefined();
-		expect(ws["!merges"]!.length).toBe(1);
+		expect(ws["!merges"]!).toHaveLength(1);
 	});
 });

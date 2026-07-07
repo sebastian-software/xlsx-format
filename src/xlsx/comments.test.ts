@@ -32,7 +32,7 @@ describe("comments: insertCommentsIntoSheet", () => {
 		const comments = [{ ref: "A1", author: "Bob", t: "legacy", r: "<t>legacy</t>", h: "" }];
 		insertCommentsIntoSheet(ws, comments, false);
 		// Should not add legacy comment when threaded exists
-		expect(ws.A1.c.length).toBe(1);
+		expect(ws.A1.c).toHaveLength(1);
 	});
 
 	it("creates cell when it doesn't exist and expands range", () => {
@@ -101,7 +101,7 @@ describe("comments: parseCommentsXml", () => {
 </comments>`;
 		const comments = parseCommentsXml(xml, { sheetRows: 10 });
 		// Comment on row 100 should be excluded
-		expect(comments.length).toBe(0);
+		expect(comments).toHaveLength(0);
 	});
 });
 
@@ -131,7 +131,7 @@ describe("xlsx/comments", () => {
 	});
 
 	it("parseCommentsXml should handle empty comments", () => {
-		expect(parseCommentsXml("<comments/>")).toEqual([]);
+		expect(parseCommentsXml("<comments/>")).toStrictEqual([]);
 	});
 
 	it("writeCommentsXml should produce valid XML", () => {

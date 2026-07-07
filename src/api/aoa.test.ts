@@ -9,7 +9,7 @@ describe("sheetToArray", () => {
 			["Bob", 25],
 		]);
 
-		expect(sheetToArray(ws)).toEqual([
+		expect(sheetToArray(ws)).toStrictEqual([
 			["Name", "Age"],
 			["Alice", 30],
 			["Bob", 25],
