@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.0...xlsx-format-v2.4.1) (2026-07-07)
+
+
+### Bug Fixes
+
+* **api:** keep CSV ISO datetimes timezone-stable ([7e17033](https://github.com/sebastian-software/xlsx-format/commit/7e17033e172497b165e7d7db1e64f4798413a1a1))
+
 ## [2.4.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.4...xlsx-format-v2.4.0) (2026-07-07)
 
 
