@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.4.0](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.4...xlsx-format-v2.4.0) (2026-07-07)
+
+
+### Features
+
+* **api:** add ISO date output for worksheet exports ([b5ab26e](https://github.com/sebastian-software/xlsx-format/commit/b5ab26efeebc4dd43d7ff73523626e9d99758bee))
+
+
+### Bug Fixes
+
+* **api:** preserve date output semantics ([019aa36](https://github.com/sebastian-software/xlsx-format/commit/019aa36deca8a99c35240d503811019cb5b77aa4))
+
 ## [2.3.4](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.3...xlsx-format-v2.3.4) (2026-07-07)
 
 
