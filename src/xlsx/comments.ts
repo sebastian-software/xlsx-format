@@ -216,7 +216,7 @@ export function writeCommentsXml(data: [string, any[]][]): string {
 			// For threaded comments, add a "tc=<ID>" pseudo-author for the root comment
 			if (w.T && w.ID && iauthor.indexOf("tc=" + w.ID) === -1) {
 				iauthor.push("tc=" + w.ID);
-				o.push("<author>" + "tc=" + w.ID + "</author>");
+				o.push("<author>tc=" + w.ID + "</author>");
 			}
 		});
 	});
@@ -347,7 +347,7 @@ export function parseTcmntXml(data: string, _opts?: any): RawComment[] {
 export function writeTcmntXml(comments: [string, any[]][], people: string[], opts: { tcid: number }): string {
 	const o: string[] = [
 		XML_HEADER,
-		writeXmlElement("ThreadedComments", null, { xmlns: XMLNS.TCMNT }).replace(/[/]>/, ">"),
+		writeXmlElement("ThreadedComments", null, { xmlns: XMLNS.TCMNT }).replace(/\/>/, ">"),
 	];
 	comments.forEach((carr) => {
 		let rootid = "";
@@ -432,7 +432,7 @@ export function writePeopleXml(people: string[]): string {
 		writeXmlElement("personList", null, {
 			xmlns: XMLNS.TCMNT,
 			"xmlns:x": XMLNS_main[0],
-		}).replace(/[/]>/, ">"),
+		}).replace(/\/>/, ">"),
 	];
 	people.forEach((person, idx) => {
 		o.push(

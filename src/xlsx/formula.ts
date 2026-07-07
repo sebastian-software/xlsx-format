@@ -1,5 +1,4 @@
-import { decodeRow, encodeRow, decodeCol, encodeCol } from "../utils/cell.js";
-import { decodeRange, decodeCell } from "../utils/cell.js";
+import { decodeRow, encodeRow, decodeCol, encodeCol, decodeRange, decodeCell } from "../utils/cell.js";
 import type { CellAddress } from "../types.js";
 
 /**
@@ -9,7 +8,7 @@ import type { CellAddress } from "../types.js";
  * The negative lookbehind prevents matching inside identifiers. The three capture
  * groups are: $1 = prefix char, $2 = row part, $3 = column part.
  */
-const rcregex = /(^|[^A-Za-z_])R(\[?-?\d+\]|[1-9]\d*|)C(\[?-?\d+\]|[1-9]\d*|)(?![A-Za-z0-9_])/g;
+const rcregex = /(^|[^A-Za-z_])R(\[?-?\d+\]|[1-9]\d*)?C(\[?-?\d+\]|[1-9]\d*)?(?!\w)/g;
 
 /**
  * Convert R1C1-style formula references to A1-style.
@@ -22,34 +21,36 @@ const rcregex = /(^|[^A-Za-z_])R(\[?-?\d+\]|[1-9]\d*|)C(\[?-?\d+\]|[1-9]\d*|)(?!
  * @returns Formula string with A1-style references
  */
 export function rcToA1(fstr: string, base: CellAddress): string {
-	return fstr.replace(rcregex, ($$, $1, $2, $3) => {
+	return fstr.replace(rcregex, (_match, prefix, rowPart = "", colPart = "") => {
+		let row = rowPart;
+		let col = colPart;
 		let cRel = false,
 			rRel = false;
 
 		// Empty row/col part means relative offset of 0 (e.g. "RC" = current row/col)
-		if ($2.length === 0) {
+		if (row.length === 0) {
 			rRel = true;
-		} else if ($2.charAt(0) === "[") {
+		} else if (row.charAt(0) === "[") {
 			rRel = true;
-			$2 = $2.slice(1, -1); // Strip brackets
+			row = row.slice(1, -1); // Strip brackets
 		}
 
-		if ($3.length === 0) {
+		if (col.length === 0) {
 			cRel = true;
-		} else if ($3.charAt(0) === "[") {
+		} else if (col.charAt(0) === "[") {
 			cRel = true;
-			$3 = $3.slice(1, -1); // Strip brackets
+			col = col.slice(1, -1); // Strip brackets
 		}
 
-		const R = $2.length > 0 ? parseInt($2, 10) | 0 : 0;
-		const C = $3.length > 0 ? parseInt($3, 10) | 0 : 0;
+		const R = row.length > 0 ? parseInt(row, 10) | 0 : 0;
+		const C = col.length > 0 ? parseInt(col, 10) | 0 : 0;
 
 		// Relative: offset from base; Absolute: R1C1 is 1-based so subtract 1
 		const cFinal = cRel ? C + base.c : C - 1;
 		const rFinal = rRel ? R + base.r : R - 1;
 
 		// Absolute references get a "$" prefix in A1 notation
-		return $1 + (cRel ? "" : "$") + encodeCol(cFinal) + (rRel ? "" : "$") + encodeRow(rFinal);
+		return prefix + (cRel ? "" : "$") + encodeCol(cFinal) + (rRel ? "" : "$") + encodeRow(rFinal);
 	});
 }
 
@@ -60,7 +61,7 @@ export function rcToA1(fstr: string, base: CellAddress): string {
  * The lookbehind and lookahead prevent matching inside identifiers or function names.
  */
 const crefregex =
-	/(^|[^._A-Za-z0-9])([$]?)([A-Z]{1,2}|[A-W][A-Z]{2}|X[A-E][A-Z]|XF[A-D])([$]?)(10[0-3]\d{4}|104[0-7]\d{3}|1048[0-4]\d{2}|10485[0-6]\d|104857[0-6]|[1-9]\d{0,5})(?![_.(A-Za-z0-9])/g;
+	/(^|[^.\w])(\$?)([A-Z]{1,2}|[A-W][A-Z]{2}|X[A-E][A-Z]|XF[A-D])(\$?)(10[0-3]\d{4}|104[0-7]\d{3}|1048[0-4]\d{2}|10485[0-6]\d|104857[0-6]|[1-9]\d{0,5})(?![\w.(])/g;
 
 /**
  * Convert A1-style formula references to R1C1-style.
@@ -127,10 +128,7 @@ export function shiftFormulaXlsx(f: string, range: string, cell: string): string
  * @returns true if the string looks like it could be a formula
  */
 export function isFuzzyFormula(f: string): boolean {
-	if (f.length === 1) {
-		return false;
-	}
-	return true;
+	return f.length !== 1;
 }
 
 /**

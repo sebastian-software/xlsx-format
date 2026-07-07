@@ -67,7 +67,7 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
 		const targetRow = originRow + rowIdx;
 		const rowData = data[rowIdx];
 		for (let colIdx = 0; colIdx < rowData.length; ++colIdx) {
-			if (typeof rowData[colIdx] === "undefined") {
+			if (rowData[colIdx] === undefined) {
 				continue;
 			}
 			let cell: any = { v: rowData[colIdx], t: "" };

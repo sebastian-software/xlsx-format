@@ -42,17 +42,17 @@ async function collectStream(readable: ReadableStream<Uint8Array>, maxBytes = In
 export async function inflate(data: Uint8Array, maxBytes = Infinity): Promise<Uint8Array> {
 	const ds = new DecompressionStream("deflate-raw");
 	const writer = ds.writable.getWriter();
-	const writePromise = writer.write(data as Uint8Array<ArrayBuffer>).then(() => writer.close());
+	const writePromise = writer.write(data as Uint8Array<ArrayBuffer>).then(async () => writer.close());
 	try {
 		const [result] = await Promise.all([collectStream(ds.readable, maxBytes), writePromise]);
 		return result;
-	} catch (err) {
+	} catch (error) {
 		try {
-			await writer.abort(err);
+			await writer.abort(error);
 		} catch {
 			/* ignore abort errors while preserving the original stream error */
 		}
-		throw err;
+		throw error;
 	}
 }
 
@@ -68,16 +68,16 @@ export async function inflate(data: Uint8Array, maxBytes = Infinity): Promise<Ui
 export async function deflate(data: Uint8Array): Promise<Uint8Array> {
 	const cs = new CompressionStream("deflate-raw");
 	const writer = cs.writable.getWriter();
-	const writePromise = writer.write(data as Uint8Array<ArrayBuffer>).then(() => writer.close());
+	const writePromise = writer.write(data as Uint8Array<ArrayBuffer>).then(async () => writer.close());
 	try {
 		const [result] = await Promise.all([collectStream(cs.readable), writePromise]);
 		return result;
-	} catch (err) {
+	} catch (error) {
 		try {
-			await writer.abort(err);
+			await writer.abort(error);
 		} catch {
 			/* ignore abort errors while preserving the original stream error */
 		}
-		throw err;
+		throw error;
 	}
 }

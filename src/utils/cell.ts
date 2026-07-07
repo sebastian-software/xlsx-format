@@ -175,7 +175,7 @@ export function decodeRange(range: string): Range {
  * @returns Range string in A1 notation (e.g. "A1:B2" or "A1")
  */
 export function encodeRange(cs: CellAddress | Range, ce?: CellAddress): string {
-	if (typeof ce === "undefined" || typeof ce === "number") {
+	if (ce === undefined || typeof ce === "number") {
 		return encodeRange((cs as Range).s, (cs as Range).e);
 	}
 	const s = typeof cs === "string" ? cs : encodeCell(cs as CellAddress);

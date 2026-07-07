@@ -87,13 +87,11 @@ export function assertXmlPartLimits(partName: string, data: string, opts?: XmlLi
 		const isSelfClosing = data.charCodeAt(closeOffset - 1) === 47;
 		if (isClosingTag) {
 			depth = Math.max(0, depth - 1);
-		} else if (!isProcessingOrDeclaration && !isSelfClosing) {
-			if (++depth > maxXmlNestingDepth) {
-				throw new XlsxError(
-					"LIMIT_EXCEEDED",
-					`Invalid XML: ${partName} nesting depth ${depth} exceeds limit ${maxXmlNestingDepth}`,
-				);
-			}
+		} else if (!isProcessingOrDeclaration && !isSelfClosing && ++depth > maxXmlNestingDepth) {
+			throw new XlsxError(
+				"LIMIT_EXCEEDED",
+				`Invalid XML: ${partName} nesting depth ${depth} exceeds limit ${maxXmlNestingDepth}`,
+			);
 		}
 		offset = closeOffset;
 	}

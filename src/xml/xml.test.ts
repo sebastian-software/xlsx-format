@@ -110,24 +110,24 @@ describe("parseXmlTag", () => {
 
 	it("should parse attributes", () => {
 		const result = parseXmlTag('tag id="123" name="test"');
-		expect(result["id"]).toBe("123");
-		expect(result["name"]).toBe("test");
+		expect(result.id).toBe("123");
+		expect(result.name).toBe("test");
 	});
 
 	it("should handle single-quoted attributes", () => {
 		const result = parseXmlTag("tag id='123'");
-		expect(result["id"]).toBe("123");
+		expect(result.id).toBe("123");
 	});
 
 	it("should skip root tag name when skip_root=true", () => {
 		const result = parseXmlTag('tag id="1"', true);
 		expect(result[0]).toBeUndefined();
-		expect(result["id"]).toBe("1");
+		expect(result.id).toBe("1");
 	});
 
 	it("should strip namespace prefixes from attributes", () => {
 		const result = parseXmlTag('tag r:id="rId1"');
-		expect(result["id"]).toBe("rId1");
+		expect(result.id).toBe("rId1");
 	});
 
 	it("should enforce the configured attribute limit", () => {

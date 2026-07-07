@@ -34,7 +34,7 @@ function generateLargeCsv(): string {
 
 const largeCsvPath = path.join(csvDir, "large-dataset.csv");
 console.log("Generating large-dataset.csv ...");
-fs.writeFileSync(largeCsvPath, generateLargeCsv(), "utf-8");
+fs.writeFileSync(largeCsvPath, generateLargeCsv(), "utf8");
 
 // --- Convert all CSVs to XLSX ---
 const csvFiles = fs.readdirSync(csvDir).filter((f) => f.endsWith(".csv"));
@@ -45,7 +45,7 @@ for (const csvFile of csvFiles) {
 	const xlsxPath = path.join(xlsxDir, xlsxFile);
 
 	console.log(`${csvFile} → ${xlsxFile}`);
-	const text = fs.readFileSync(csvPath, "utf-8");
+	const text = fs.readFileSync(csvPath, "utf8");
 	const ws = csvToSheet(text);
 	const wb = createWorkbook(ws, "Sheet1");
 	await writeFile(wb, xlsxPath);

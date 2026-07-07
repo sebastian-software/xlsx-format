@@ -39,7 +39,7 @@ describe("Cell Types", () => {
 	it("boolean true survives roundtrip", async () => {
 		const ws = arrayToSheet([[true]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const cell = wb2.Sheets["S"]["A1"];
+		const cell = wb2.Sheets.S.A1;
 		expect(cell.t).toBe("b");
 		expect(cell.v).toBe(true);
 	});
@@ -47,7 +47,7 @@ describe("Cell Types", () => {
 	it("boolean false survives roundtrip", async () => {
 		const ws = arrayToSheet([[false]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const cell = wb2.Sheets["S"]["A1"];
+		const cell = wb2.Sheets.S.A1;
 		expect(cell.t).toBe("b");
 		expect(cell.v).toBe(false);
 	});
@@ -55,17 +55,17 @@ describe("Cell Types", () => {
 	it("number survives roundtrip", async () => {
 		const ws = arrayToSheet([[42.5]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const cell = wb2.Sheets["S"]["A1"];
+		const cell = wb2.Sheets.S.A1;
 		expect(cell.t).toBe("n");
 		expect(cell.v).toBe(42.5);
 	});
 
 	it("error cell (#N/A) survives roundtrip", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "e", v: 0x2a }; // #N/A
+		ws.A1 = { t: "e", v: 0x2a }; // #N/A
 		ws["!ref"] = "A1";
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const cell = wb2.Sheets["S"]["A1"];
+		const cell = wb2.Sheets.S.A1;
 		expect(cell.t).toBe("e");
 		expect(cell.v).toBe(0x2a);
 	});
@@ -73,17 +73,17 @@ describe("Cell Types", () => {
 	it("string survives roundtrip", async () => {
 		const ws = arrayToSheet([["hello world"]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const cell = wb2.Sheets["S"]["A1"];
+		const cell = wb2.Sheets.S.A1;
 		expect(cell.t).toBe("s");
 		expect(cell.v).toBe("hello world");
 	});
 
 	it("date stored as serial number survives roundtrip", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "n", v: 44927 }; // 2023-01-01 as serial
+		ws.A1 = { t: "n", v: 44927 }; // 2023-01-01 as serial
 		ws["!ref"] = "A1";
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBe(44927);
+		expect(wb2.Sheets.S.A1.v).toBe(44927);
 	});
 });
 
@@ -94,19 +94,19 @@ describe("Number Values", () => {
 	it("floating point precision preserved", async () => {
 		const ws = arrayToSheet([[3.14159265358979]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBeCloseTo(3.14159265358979, 10);
+		expect(wb2.Sheets.S.A1.v).toBeCloseTo(3.14159265358979, 10);
 	});
 
 	it("negative number survives roundtrip", async () => {
 		const ws = arrayToSheet([[-999.99]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBe(-999.99);
+		expect(wb2.Sheets.S.A1.v).toBe(-999.99);
 	});
 
 	it("zero survives roundtrip", async () => {
 		const ws = arrayToSheet([[0]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBe(0);
+		expect(wb2.Sheets.S.A1.v).toBe(0);
 	});
 });
 
@@ -118,7 +118,7 @@ describe("Date Systems", () => {
 		const ws = arrayToSheet([[44927]]); // 2023-01-01
 		const wb = createWorkbook(ws, "S");
 		const wb2 = await roundtrip(wb);
-		expect(wb2.Sheets["S"]["A1"].v).toBe(44927);
+		expect(wb2.Sheets.S.A1.v).toBe(44927);
 	});
 
 	it("date1904 flag persists on roundtrip", async () => {
@@ -144,14 +144,14 @@ describe("String Handling", () => {
 	it("multiple distinct strings roundtrip", async () => {
 		const ws = arrayToSheet([["alpha"], ["beta"], ["gamma"]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const rows = sheetToJson<{ A: string }>(wb2.Sheets["S"], { header: "A" });
+		const rows = sheetToJson<{ A: string }>(wb2.Sheets.S, { header: "A" });
 		expect(rows.map((r) => r.A)).toEqual(["alpha", "beta", "gamma"]);
 	});
 
 	it("duplicate strings in multiple cells", async () => {
 		const ws = arrayToSheet([["dup"], ["dup"], ["dup"]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const rows = sheetToJson<{ A: string }>(wb2.Sheets["S"], { header: "A" });
+		const rows = sheetToJson<{ A: string }>(wb2.Sheets.S, { header: "A" });
 		expect(rows.every((r) => r.A === "dup")).toBe(true);
 	});
 });
@@ -162,11 +162,11 @@ describe("String Handling", () => {
 describe("Formulas", () => {
 	it("regular formula roundtrips", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "n", v: 3, f: "1+2" };
+		ws.A1 = { t: "n", v: 3, f: "1+2" };
 		ws["!ref"] = "A1";
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].f).toBe("1+2");
-		expect(wb2.Sheets["S"]["A1"].v).toBe(3);
+		expect(wb2.Sheets.S.A1.f).toBe("1+2");
+		expect(wb2.Sheets.S.A1.v).toBe(3);
 	});
 
 	it("array formula via setArrayFormula roundtrips", async () => {
@@ -176,30 +176,30 @@ describe("Formulas", () => {
 		]);
 		setArrayFormula(ws, "C1:C2", "A1:A2*B1:B2");
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const c1 = wb2.Sheets["S"]["C1"];
+		const c1 = wb2.Sheets.S.C1;
 		expect(c1.f).toBe("A1:A2*B1:B2");
 		expect(c1.F).toBe("C1:C2");
 	});
 
 	it("dynamic array formula flag set via API", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "n", v: 0 };
+		ws.A1 = { t: "n", v: 0 };
 		ws["!ref"] = "A1:A2";
 		setArrayFormula(ws, "A1:A2", "SORT(B1:B10)", true);
 		// Verify the API sets D flag on the source cell
-		expect(ws["A1"].D).toBe(true);
-		expect(ws["A1"].f).toBe("SORT(B1:B10)");
+		expect(ws.A1.D).toBe(true);
+		expect(ws.A1.f).toBe("SORT(B1:B10)");
 		// The writer does not emit the dynamic array attribute, so D is lost on roundtrip
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].f).toBe("SORT(B1:B10)");
+		expect(wb2.Sheets.S.A1.f).toBe("SORT(B1:B10)");
 	});
 
 	it("formula without pre-computed value", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "n", f: "1+1" }; // no .v
+		ws.A1 = { t: "n", f: "1+1" }; // no .v
 		ws["!ref"] = "A1";
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].f).toBe("1+1");
+		expect(wb2.Sheets.S.A1.f).toBe("1+1");
 	});
 });
 
@@ -211,9 +211,9 @@ describe("Merged Cells", () => {
 		const ws = arrayToSheet([["merged"]]);
 		ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 1, c: 1 } }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["!merges"]).toHaveLength(1);
-		expect(wb2.Sheets["S"]["!merges"]![0].s).toEqual({ r: 0, c: 0 });
-		expect(wb2.Sheets["S"]["!merges"]![0].e).toEqual({ r: 1, c: 1 });
+		expect(wb2.Sheets.S["!merges"]).toHaveLength(1);
+		expect(wb2.Sheets.S["!merges"]![0].s).toEqual({ r: 0, c: 0 });
+		expect(wb2.Sheets.S["!merges"]![0].e).toEqual({ r: 1, c: 1 });
 	});
 
 	it("multiple merge ranges roundtrip", async () => {
@@ -226,15 +226,15 @@ describe("Merged Cells", () => {
 			{ s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
 		];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["!merges"]).toHaveLength(2);
+		expect(wb2.Sheets.S["!merges"]).toHaveLength(2);
 	});
 
 	it("merge with cell data preserved", async () => {
 		const ws = arrayToSheet([["top-left"]]);
 		ws["!merges"] = [{ s: { r: 0, c: 0 }, e: { r: 2, c: 2 } }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBe("top-left");
-		expect(wb2.Sheets["S"]["!merges"]).toHaveLength(1);
+		expect(wb2.Sheets.S.A1.v).toBe("top-left");
+		expect(wb2.Sheets.S["!merges"]).toHaveLength(1);
 	});
 });
 
@@ -257,12 +257,12 @@ describe("Hyperlinks — API only", () => {
 
 	it("hyperlinks do not survive XLSX roundtrip (known limitation)", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "s", v: "link" };
-		setCellHyperlink(ws["A1"], "https://example.com");
+		ws.A1 = { t: "s", v: "link" };
+		setCellHyperlink(ws.A1, "https://example.com");
 		ws["!ref"] = "A1";
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
 		// Hyperlinks are not written by the XLSX writer
-		expect(wb2.Sheets["S"]["A1"].l).toBeUndefined();
+		expect(wb2.Sheets.S.A1.l).toBeUndefined();
 	});
 });
 
@@ -302,37 +302,37 @@ describe("Column/Row Properties", () => {
 		const ws = arrayToSheet([[1]]);
 		ws["!cols"] = [{ width: 20 }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"), undefined, { cellStyles: true });
-		expect(wb2.Sheets["S"]["!cols"]).toBeDefined();
-		expect(wb2.Sheets["S"]["!cols"]![0].width).toBeCloseTo(20, 0);
+		expect(wb2.Sheets.S["!cols"]).toBeDefined();
+		expect(wb2.Sheets.S["!cols"]![0].width).toBeCloseTo(20, 0);
 	});
 
 	it("hidden column roundtrips with cellStyles", async () => {
 		const ws = arrayToSheet([[1, 2]]);
 		ws["!cols"] = [undefined as any, { hidden: true, width: 9.140625 }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"), undefined, { cellStyles: true });
-		expect(wb2.Sheets["S"]["!cols"]![1].hidden).toBe(true);
+		expect(wb2.Sheets.S["!cols"]![1].hidden).toBe(true);
 	});
 
 	it("row height (hpt) roundtrips", async () => {
 		const ws = arrayToSheet([[1]]);
 		ws["!rows"] = [{ hpt: 30 }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["!rows"]).toBeDefined();
-		expect(wb2.Sheets["S"]["!rows"]![0].hpt).toBe(30);
+		expect(wb2.Sheets.S["!rows"]).toBeDefined();
+		expect(wb2.Sheets.S["!rows"]![0].hpt).toBe(30);
 	});
 
 	it("hidden row roundtrips", async () => {
 		const ws = arrayToSheet([[1], [2]]);
 		ws["!rows"] = [undefined as any, { hidden: true }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["!rows"]![1].hidden).toBe(true);
+		expect(wb2.Sheets.S["!rows"]![1].hidden).toBe(true);
 	});
 
 	it("multiple columns mixed properties", async () => {
 		const ws = arrayToSheet([[1, 2, 3]]);
 		ws["!cols"] = [{ width: 15 }, { hidden: true, width: 9.140625 }, { width: 25 }];
 		const wb2 = await roundtrip(createWorkbook(ws, "S"), undefined, { cellStyles: true });
-		const cols = wb2.Sheets["S"]["!cols"]!;
+		const cols = wb2.Sheets.S["!cols"]!;
 		expect(cols[0].width).toBeCloseTo(15, 0);
 		expect(cols[1].hidden).toBe(true);
 		expect(cols[2].width).toBeCloseTo(25, 0);
@@ -379,7 +379,7 @@ describe("AutoFilter", () => {
 		]);
 		ws["!autofilter"] = { ref: "A1:B2" };
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["!autofilter"]!.ref).toBe("A1:B2");
+		expect(wb2.Sheets.S["!autofilter"]!.ref).toBe("A1:B2");
 	});
 
 	it("autofilter with data", async () => {
@@ -391,8 +391,8 @@ describe("AutoFilter", () => {
 		]);
 		ws["!autofilter"] = { ref: "A1:B4" };
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["!autofilter"]!.ref).toBe("A1:B4");
-		const rows = sheetToJson(wb2.Sheets["S"]);
+		expect(wb2.Sheets.S["!autofilter"]!.ref).toBe("A1:B4");
+		const rows = sheetToJson(wb2.Sheets.S);
 		expect(rows).toHaveLength(3);
 	});
 });
@@ -448,17 +448,17 @@ describe("Page Margins", () => {
 		ws["!margins"] = {
 			left: 0.5,
 			right: 0.5,
-			top: 1.0,
-			bottom: 1.0,
+			top: 1,
+			bottom: 1,
 			header: 0.25,
 			footer: 0.25,
 		};
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const m = wb2.Sheets["S"]["!margins"]!;
+		const m = wb2.Sheets.S["!margins"]!;
 		expect(m.left).toBeCloseTo(0.5);
 		expect(m.right).toBeCloseTo(0.5);
-		expect(m.top).toBeCloseTo(1.0);
-		expect(m.bottom).toBeCloseTo(1.0);
+		expect(m.top).toBeCloseTo(1);
+		expect(m.bottom).toBeCloseTo(1);
 		expect(m.header).toBeCloseTo(0.25);
 		expect(m.footer).toBeCloseTo(0.25);
 	});
@@ -467,7 +467,7 @@ describe("Page Margins", () => {
 		const ws = arrayToSheet([[1]]);
 		// don't set !margins
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["!margins"]).toBeUndefined();
+		expect(wb2.Sheets.S["!margins"]).toBeUndefined();
 	});
 });
 
@@ -480,8 +480,8 @@ describe("Multiple Sheets", () => {
 		appendSheet(wb, arrayToSheet([["alpha"]]), "A");
 		appendSheet(wb, arrayToSheet([["beta"]]), "B");
 		const wb2 = await roundtrip(wb);
-		expect(sheetToJson(wb2.Sheets["A"], { header: 1 })).toEqual([["alpha"]]);
-		expect(sheetToJson(wb2.Sheets["B"], { header: 1 })).toEqual([["beta"]]);
+		expect(sheetToJson(wb2.Sheets.A, { header: 1 })).toEqual([["alpha"]]);
+		expect(sheetToJson(wb2.Sheets.B, { header: 1 })).toEqual([["beta"]]);
 	});
 
 	it("sheet order preserved", async () => {
@@ -501,7 +501,7 @@ describe("Multiple Sheets", () => {
 		const wb2 = await roundtrip(wb);
 		expect(wb2.SheetNames).toHaveLength(5);
 		for (let i = 0; i < 5; i++) {
-			expect(wb2.Sheets["Sheet" + (i + 1)]["A1"].v).toBe(i);
+			expect(wb2.Sheets["Sheet" + (i + 1)].A1.v).toBe(i);
 		}
 	});
 });
@@ -514,7 +514,7 @@ describe("Dense Mode", () => {
 		const ws = arrayToSheet([["hello", 42]]);
 		const wb = createWorkbook(ws, "S");
 		const wb2 = await roundtrip(wb, undefined, { dense: true });
-		const data = wb2.Sheets["S"]["!data"];
+		const data = wb2.Sheets.S["!data"];
 		expect(data).toBeDefined();
 		expect(data![0]![0]!.v).toBe("hello");
 		expect(data![0]![1]!.v).toBe(42);
@@ -530,16 +530,16 @@ describe("Dense Mode", () => {
 		);
 		expect(ws["!data"]).toBeDefined();
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const rows = sheetToJson(wb2.Sheets["S"]);
-		expect(rows[0]["a"]).toBe(1);
-		expect(rows[0]["b"]).toBe(2);
+		const rows = sheetToJson(wb2.Sheets.S);
+		expect(rows[0].a).toBe(1);
+		expect(rows[0].b).toBe(2);
 	});
 
 	it("dense data roundtrip back to dense", async () => {
 		const ws = arrayToSheet([[100, 200]], { dense: true });
 		const wb = createWorkbook(ws, "S");
 		const wb2 = await roundtrip(wb, undefined, { dense: true });
-		const data = wb2.Sheets["S"]["!data"];
+		const data = wb2.Sheets.S["!data"];
 		expect(data![0]![0]!.v).toBe(100);
 		expect(data![0]![1]!.v).toBe(200);
 	});
@@ -558,7 +558,7 @@ describe("Unicode", () => {
 	it("unicode cell values (CJK, accented)", async () => {
 		const ws = arrayToSheet([["日本語"], ["café"], ["über"]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		const rows = sheetToJson<{ A: string }>(wb2.Sheets["S"], { header: "A" });
+		const rows = sheetToJson<{ A: string }>(wb2.Sheets.S, { header: "A" });
 		expect(rows[0].A).toBe("日本語");
 		expect(rows[1].A).toBe("café");
 		expect(rows[2].A).toBe("über");
@@ -567,7 +567,7 @@ describe("Unicode", () => {
 	it("XML special characters in cell values", async () => {
 		const ws = arrayToSheet([["<tag>&\"quote\"'apos'"]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBe("<tag>&\"quote\"'apos'");
+		expect(wb2.Sheets.S.A1.v).toBe("<tag>&\"quote\"'apos'");
 	});
 });
 
@@ -580,7 +580,7 @@ describe("sheetRows Limit", () => {
 		const ws = arrayToSheet(data);
 		const wb = createWorkbook(ws, "S");
 		const wb2 = await roundtrip(wb, undefined, { sheetRows: 10 });
-		const rows = sheetToJson(wb2.Sheets["S"], { header: 1 });
+		const rows = sheetToJson(wb2.Sheets.S, { header: 1 });
 		expect(rows).toHaveLength(10);
 	});
 
@@ -590,7 +590,7 @@ describe("sheetRows Limit", () => {
 		const wb = createWorkbook(ws, "S");
 		const wb2 = await roundtrip(wb, undefined, { sheetRows: 5 });
 		// !fullref preserves the original extent
-		const fullref = (wb2.Sheets["S"] as any)["!fullref"];
+		const fullref = (wb2.Sheets.S as any)["!fullref"];
 		expect(fullref).toBeDefined();
 		expect(fullref).toMatch(/A50/);
 	});
@@ -634,15 +634,15 @@ describe("Large References", () => {
 		ws[ref] = { t: "n", v: 99 };
 		ws["!ref"] = `A1:${ref}`;
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"][ref].v).toBe(99);
+		expect(wb2.Sheets.S[ref].v).toBe(99);
 	});
 
 	it("cell at row 99999 roundtrips", async () => {
 		const ws = createSheet();
-		ws["A100000"] = { t: "n", v: 77 }; // row 99999 (0-based)
+		ws.A100000 = { t: "n", v: 77 }; // row 99999 (0-based)
 		ws["!ref"] = "A1:A100000";
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A100000"].v).toBe(77);
+		expect(wb2.Sheets.S.A100000.v).toBe(77);
 	});
 });
 
@@ -683,9 +683,9 @@ describe("Styled XLSX Writing", () => {
 			["Month", "Expected MWh", "Actual MWh", "Settlement"],
 			["Apr 2026", 12400, 12050, -18350],
 		]);
-		setCellStyle(ws["A1"], titleStyle);
+		setCellStyle(ws.A1, titleStyle);
 		styleRange(ws, "A3:D3", headerStyle);
-		setCellStyle(ws["D4"], { numFmt: "$#,##0;[Red]-$#,##0" });
+		setCellStyle(ws.D4, { numFmt: "$#,##0;[Red]-$#,##0" });
 		mergeCells(ws, "A1:D1");
 		setRowHeight(ws, 0, 30);
 		setColumnWidth(ws, 0, 18);
@@ -711,18 +711,18 @@ describe("Styled XLSX Writing", () => {
 
 	it("roundtrips supported style metadata with cellStyles", async () => {
 		const ws = arrayToSheet([["Title"], ["Month", "Settlement"], ["Apr 2026", -18350]]);
-		setCellStyle(ws["A1"], titleStyle);
+		setCellStyle(ws.A1, titleStyle);
 		styleRange(ws, "A2:B2", headerStyle);
-		setCellStyle(ws["B3"], { numFmt: "$#,##0;[Red]-$#,##0" });
+		setCellStyle(ws.B3, { numFmt: "$#,##0;[Red]-$#,##0" });
 
 		const wb2 = await roundtrip(createWorkbook(ws, "Overview"), { cellStyles: true }, { cellStyles: true });
 
-		expect(wb2.Sheets["Overview"]["A1"].s?.font?.bold).toBe(true);
-		expect(wb2.Sheets["Overview"]["A1"].s?.font?.color?.rgb).toBe(COLORS.white);
-		expect(wb2.Sheets["Overview"]["A2"].s?.fill?.fgColor?.rgb).toBe(COLORS.blue);
-		expect(wb2.Sheets["Overview"]["A2"].s?.border?.top?.style).toBe("thin");
-		expect(wb2.Sheets["Overview"]["A2"].s?.alignment?.wrapText).toBe(true);
-		expect(wb2.Sheets["Overview"]["B3"].s?.numFmt).toBe("$#,##0;[Red]-$#,##0");
+		expect(wb2.Sheets.Overview.A1.s?.font?.bold).toBe(true);
+		expect(wb2.Sheets.Overview.A1.s?.font?.color?.rgb).toBe(COLORS.white);
+		expect(wb2.Sheets.Overview.A2.s?.fill?.fgColor?.rgb).toBe(COLORS.blue);
+		expect(wb2.Sheets.Overview.A2.s?.border?.top?.style).toBe("thin");
+		expect(wb2.Sheets.Overview.A2.s?.alignment?.wrapText).toBe(true);
+		expect(wb2.Sheets.Overview.B3.s?.numFmt).toBe("$#,##0;[Red]-$#,##0");
 	});
 
 	it("helper APIs support report-style metadata and multiple sheets", async () => {
@@ -733,7 +733,7 @@ describe("Styled XLSX Writing", () => {
 			["Apr 2026", 12400, 12050, -18350],
 			["Q2 Total", 39700, 40490, 39370],
 		]);
-		setCellStyle(overview["A1"], titleStyle);
+		setCellStyle(overview.A1, titleStyle);
 		styleRange(overview, "A3:D3", headerStyle);
 		styleRange(overview, "A5:D5", {
 			fill: { patternType: "solid", fgColor: { argb: COLORS.totalBg } },
@@ -753,11 +753,11 @@ describe("Styled XLSX Writing", () => {
 		const wb2 = await roundtrip(wb, { cellStyles: true }, { cellStyles: true });
 
 		expect(wb2.SheetNames).toEqual(["Overview", "Details"]);
-		expect(wb2.Sheets["Overview"]["!merges"]?.[0]).toEqual({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
-		expect(wb2.Sheets["Overview"]["!rows"]?.[0].hpt).toBe(30);
-		expect(wb2.Sheets["Overview"]["!cols"]?.[0].width).toBe(18);
-		expect(wb2.Sheets["Overview"]["!views"]?.[0].ySplit).toBe(1);
-		expect(wb2.Sheets["Overview"]["A5"].s?.fill?.fgColor?.rgb).toBe(COLORS.totalBg);
+		expect(wb2.Sheets.Overview["!merges"]?.[0]).toEqual({ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } });
+		expect(wb2.Sheets.Overview["!rows"]?.[0].hpt).toBe(30);
+		expect(wb2.Sheets.Overview["!cols"]?.[0].width).toBe(18);
+		expect(wb2.Sheets.Overview["!views"]?.[0].ySplit).toBe(1);
+		expect(wb2.Sheets.Overview.A5.s?.fill?.fgColor?.rgb).toBe(COLORS.totalBg);
 	});
 
 	it("can write styled empty cells when styleRange creates stubs", async () => {
@@ -772,7 +772,7 @@ describe("Styled XLSX Writing", () => {
 
 	it("does not emit cell style indexes unless cellStyles is enabled", async () => {
 		const ws = arrayToSheet([["Styled but disabled"]]);
-		setCellStyle(ws["A1"], titleStyle);
+		setCellStyle(ws.A1, titleStyle);
 		const bytes = await write(createWorkbook(ws, "S"), { type: "array" });
 		const sheet = zipReadString(await zipRead(bytes), "xl/worksheets/sheet1.xml")!;
 
@@ -792,29 +792,29 @@ describe("Edge Cases", () => {
 
 	it("sparse data (A1 + Z100 only)", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "s", v: "start" };
-		ws["Z100"] = { t: "s", v: "end" };
+		ws.A1 = { t: "s", v: "start" };
+		ws.Z100 = { t: "s", v: "end" };
 		ws["!ref"] = "A1:Z100";
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBe("start");
-		expect(wb2.Sheets["S"]["Z100"].v).toBe("end");
+		expect(wb2.Sheets.S.A1.v).toBe("start");
+		expect(wb2.Sheets.S.Z100.v).toBe("end");
 	});
 
 	it("very long string (10000 chars)", async () => {
 		const longStr = "x".repeat(10000);
 		const ws = arrayToSheet([[longStr]]);
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"].v).toBe(longStr);
+		expect(wb2.Sheets.S.A1.v).toBe(longStr);
 	});
 
 	it("Infinity written as error", async () => {
 		const ws = createSheet();
-		ws["A1"] = { t: "n", v: Infinity };
+		ws.A1 = { t: "n", v: Infinity };
 		ws["!ref"] = "A1";
 		// Infinity is not valid in XLSX; behavior may vary
 		// just ensure write+read doesn't crash
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets["S"]["A1"]).toBeDefined();
+		expect(wb2.Sheets.S.A1).toBeDefined();
 	});
 
 	it("compressed output with compression: true", async () => {
@@ -828,6 +828,6 @@ describe("Edge Cases", () => {
 		expect(compressed.length).toBeLessThanOrEqual(uncompressed.length);
 		// Verify it reads back
 		const wb2 = await read(compressed);
-		expect(sheetToJson(wb2.Sheets["S"], { header: 1 })).toEqual([["hello", "world", 123]]);
+		expect(sheetToJson(wb2.Sheets.S, { header: 1 })).toEqual([["hello", "world", 123]]);
 	});
 });

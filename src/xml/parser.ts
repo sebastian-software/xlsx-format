@@ -3,10 +3,10 @@ import { assertXmlCountWithinLimit, DEFAULT_MAX_XML_ATTRIBUTES_PER_TAG, xmlOptio
 
 // Matches attribute key="value" pairs within an XML tag. Captures the attribute
 // name, then handles double-quoted, single-quoted, or unquoted values.
-const attregexg = /\s([^"\s?>/]+)\s*=\s*((?:")([^"]*)(?:")|(?:')([^']*)(?:')|([^'">\s]+))/g;
+const attregexg = /\s([^"\s?>/=]+)\s*=\s*("([^"]*)"|'([^']*)'|([^'">\s]+))/g;
 
 // Strict XML tag regex: matches well-formed tags with optional attributes
-const tagregex1 = /<[/?]?[a-zA-Z0-9:_-]+(?:\s+[^"\s?<>/]+\s*=\s*(?:"[^"]*"|'[^']*'|[^'"<>\s=]+))*\s*[/?]?>/gm;
+const tagregex1 = /<[/?]?[\w:-]+(?:\s+[^"\s?<>/]+\s*=\s*(?:"[^"]*"|'[^']*'|[^'"<>\s=]+))*\s*[/?]?>/g;
 // Lenient fallback: matches anything between < and >
 const tagregex2 = /<[^<>]*>/g;
 

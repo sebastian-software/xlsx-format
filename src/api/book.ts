@@ -103,7 +103,7 @@ export function getSheetIndex(wb: WorkBook, sh: number | string): number {
 		throw new XlsxError("NOT_FOUND", "Cannot find sheet # " + sh);
 	} else if (typeof sh === "string") {
 		const idx = wb.SheetNames.indexOf(sh);
-		if (idx > -1) {
+		if (idx !== -1) {
 			return idx;
 		}
 		throw new XlsxError("NOT_FOUND", "Cannot find sheet name |" + sh + "|");

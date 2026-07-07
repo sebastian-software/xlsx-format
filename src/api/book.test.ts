@@ -28,7 +28,7 @@ describe("createWorkbook", () => {
 		const ws = createSheet();
 		const wb = createWorkbook(ws, "Data");
 		expect(wb.SheetNames).toEqual(["Data"]);
-		expect(wb.Sheets["Data"]).toBe(ws);
+		expect(wb.Sheets.Data).toBe(ws);
 	});
 
 	it("should default sheet name to Sheet1", () => {
@@ -170,10 +170,10 @@ describe("setArrayFormula", () => {
 			[3, 4],
 		]);
 		setArrayFormula(ws, "C1:C2", "=A1:A2*B1:B2");
-		expect((ws as any)["C1"].f).toBe("=A1:A2*B1:B2");
-		expect((ws as any)["C1"].F).toBe("C1:C2");
-		expect((ws as any)["C2"].F).toBe("C1:C2");
-		expect((ws as any)["C2"].f).toBeUndefined();
+		expect((ws as any).C1.f).toBe("=A1:A2*B1:B2");
+		expect((ws as any).C1.F).toBe("C1:C2");
+		expect((ws as any).C2.F).toBe("C1:C2");
+		expect((ws as any).C2.f).toBeUndefined();
 	});
 
 	it("should set formula cells in dense worksheets", () => {
@@ -383,8 +383,8 @@ describe("book.ts: additional API coverage", () => {
 	it("sheetToFormulae returns formula strings", () => {
 		const ws: any = {};
 		ws["!ref"] = "A1:B1";
-		ws["A1"] = { t: "n", v: 1 };
-		ws["B1"] = { t: "n", v: 2, f: "A1+1" };
+		ws.A1 = { t: "n", v: 1 };
+		ws.B1 = { t: "n", v: 2, f: "A1+1" };
 		const formulae = sheetToFormulae(ws);
 		expect(formulae.some((f: string) => f.includes("A1+1"))).toBe(true);
 	});
@@ -392,11 +392,11 @@ describe("book.ts: additional API coverage", () => {
 	it("setArrayFormula sets formula on range", () => {
 		const ws: any = {};
 		ws["!ref"] = "A1:B2";
-		ws["A1"] = { t: "n", v: 1 };
-		ws["A2"] = { t: "n", v: 2 };
+		ws.A1 = { t: "n", v: 1 };
+		ws.A2 = { t: "n", v: 2 };
 		setArrayFormula(ws, "B1:B2", "A1:A2*2");
-		expect(ws["B1"]?.f).toBe("A1:A2*2");
-		expect(ws["B1"]?.F).toBe("B1:B2");
+		expect(ws.B1?.f).toBe("A1:A2*2");
+		expect(ws.B1?.F).toBe("B1:B2");
 	});
 
 	it("setCellHyperlink sets external link", () => {

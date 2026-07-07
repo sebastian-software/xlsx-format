@@ -8,9 +8,9 @@ import {
 	encodeCol,
 	decodeRow,
 	encodeRow,
+	quoteSheetName,
+	getCell,
 } from "./cell.js";
-
-import { quoteSheetName, getCell } from "./cell.js";
 
 describe("decodeCol / encodeCol", () => {
 	it("should decode single-letter columns", () => {

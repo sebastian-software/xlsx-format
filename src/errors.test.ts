@@ -62,8 +62,8 @@ function expectSyncXlsxError(action: () => unknown, code: XlsxError["code"], mes
 	let error: unknown;
 	try {
 		action();
-	} catch (caught) {
-		error = caught;
+	} catch (error_) {
+		error = error_;
 	}
 
 	expect(error).toBeInstanceOf(XlsxError);

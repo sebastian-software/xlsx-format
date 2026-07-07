@@ -114,9 +114,9 @@ describe("html.ts — htmlToSheet", () => {
 			<tr><td>42</td><td>TRUE</td><td>hello</td></tr>
 		</table>`;
 		const ws = htmlToSheet(html);
-		expect((ws as any)["A1"].v).toBe(42);
-		expect((ws as any)["B1"].v).toBe(true);
-		expect((ws as any)["C1"].v).toBe("hello");
+		expect((ws as any).A1.v).toBe(42);
+		expect((ws as any).B1.v).toBe(true);
+		expect((ws as any).C1.v).toBe("hello");
 	});
 
 	it("should handle data-t and data-v attributes", () => {
@@ -124,7 +124,7 @@ describe("html.ts — htmlToSheet", () => {
 			<tr><td data-t="n" data-v="99">formatted</td></tr>
 		</table>`;
 		const ws = htmlToSheet(html);
-		expect((ws as any)["A1"].v).toBe(99);
+		expect((ws as any).A1.v).toBe(99);
 	});
 
 	it("should return empty sheet for no table", () => {
@@ -148,6 +148,6 @@ describe("html.ts — htmlToSheet", () => {
 	it("should unescape HTML entities", () => {
 		const html = `<table><tr><td>&lt;b&gt;bold&lt;/b&gt;</td></tr></table>`;
 		const ws = htmlToSheet(html);
-		expect((ws as any)["A1"].v).toBe("<b>bold</b>");
+		expect((ws as any).A1.v).toBe("<b>bold</b>");
 	});
 });

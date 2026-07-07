@@ -52,7 +52,7 @@ describe("read.ts — input type handling", () => {
 		const ws = arrayToSheet([["Data"]]);
 		const wb = createWorkbook(ws, "Sheet1");
 		const u8 = await write(wb, { type: "array" });
-		const arr = Array.from(u8);
+		const arr = [...u8];
 		const result = await read(arr);
 		expect(result.SheetNames).toContain("Sheet1");
 	});

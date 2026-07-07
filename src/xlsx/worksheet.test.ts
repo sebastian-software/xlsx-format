@@ -32,11 +32,11 @@ describe("worksheet.ts: parsing edge cases", () => {
 		</sheetData>
 		</worksheet>`;
 		const ws = parseWorksheetXml(xml);
-		expect((ws as any)["A1"].t).toBe("b");
-		expect((ws as any)["A1"].v).toBe(true);
-		expect((ws as any)["B1"].t).toBe("e");
-		expect((ws as any)["C1"].t).toBe("s");
-		expect((ws as any)["C1"].v).toBe("Inline");
+		expect((ws as any).A1.t).toBe("b");
+		expect((ws as any).A1.v).toBe(true);
+		expect((ws as any).B1.t).toBe("e");
+		expect((ws as any).C1.t).toBe("s");
+		expect((ws as any).C1.v).toBe("Inline");
 	});
 
 	it("sheetRows limits parsing", () => {
@@ -51,8 +51,8 @@ describe("worksheet.ts: parsing edge cases", () => {
 		</sheetData>
 		</worksheet>`;
 		const ws = parseWorksheetXml(xml, { sheetRows: 2 });
-		expect((ws as any)["A1"]).toBeDefined();
-		expect((ws as any)["A3"]).toBeUndefined();
+		expect((ws as any).A1).toBeDefined();
+		expect((ws as any).A3).toBeUndefined();
 	});
 
 	it("sheetStubs creates z-type cells", () => {
@@ -63,8 +63,8 @@ describe("worksheet.ts: parsing edge cases", () => {
 		</sheetData>
 		</worksheet>`;
 		const ws = parseWorksheetXml(xml, { sheetStubs: true });
-		expect((ws as any)["A1"]).toBeDefined();
-		expect((ws as any)["A1"].t).toBe("z");
+		expect((ws as any).A1).toBeDefined();
+		expect((ws as any).A1.t).toBe("z");
 	});
 
 	it("preserves later cell positions after self-closing empty cells", () => {
@@ -80,9 +80,9 @@ describe("worksheet.ts: parsing edge cases", () => {
 		</sheetData>
 		</worksheet>`;
 		const ws = parseWorksheetXml(xml, { sheetStubs: true });
-		expect((ws as any)["A1"]).toMatchObject({ t: "s", v: "left" });
-		expect((ws as any)["B1"]).toMatchObject({ t: "z" });
-		expect((ws as any)["C1"]).toMatchObject({ t: "s", v: "right" });
+		expect((ws as any).A1).toMatchObject({ t: "s", v: "left" });
+		expect((ws as any).B1).toMatchObject({ t: "z" });
+		expect((ws as any).C1).toMatchObject({ t: "s", v: "right" });
 		expect(sheetToArray(ws, { defval: null })).toEqual([["left", null, "right"]]);
 	});
 
@@ -119,15 +119,15 @@ describe("worksheet: margins and autofilter roundtrip", () => {
 		ws["!margins"] = {
 			left: 0.5,
 			right: 0.5,
-			top: 1.0,
-			bottom: 1.0,
+			top: 1,
+			bottom: 1,
 			header: 0.25,
 			footer: 0.25,
 		};
 		const wb = createWorkbook(ws, "S1");
 		const buf = await write(wb);
 		const result = await read(buf);
-		expect(result.Sheets["S1"]["!margins"]).toBeDefined();
+		expect(result.Sheets.S1["!margins"]).toBeDefined();
 	});
 
 	it("roundtrips autofilter", async () => {
@@ -139,8 +139,8 @@ describe("worksheet: margins and autofilter roundtrip", () => {
 		const wb = createWorkbook(ws, "S1");
 		const buf = await write(wb);
 		const result = await read(buf);
-		expect(result.Sheets["S1"]["!autofilter"]).toBeDefined();
-		expect(result.Sheets["S1"]["!autofilter"]!.ref).toBe("A1:B3");
+		expect(result.Sheets.S1["!autofilter"]).toBeDefined();
+		expect(result.Sheets.S1["!autofilter"]!.ref).toBe("A1:B3");
 	});
 });
 
@@ -160,7 +160,7 @@ describe("worksheet: hyperlink parsing via parseWorksheetXml", () => {
 			"!id": { rId1: { Target: "https://example.com", TargetMode: "External" } },
 		};
 		const ws = parseWorksheetXml(xml, {}, 0, rels);
-		expect(ws["A1"]?.l?.Target).toBe("https://example.com");
+		expect(ws.A1?.l?.Target).toBe("https://example.com");
 	});
 
 	it("parses hyperlinks with tooltip from XML", () => {
@@ -178,8 +178,8 @@ describe("worksheet: hyperlink parsing via parseWorksheetXml", () => {
 			"!id": { rId1: { Target: "https://example.com", TargetMode: "External" } },
 		};
 		const ws = parseWorksheetXml(xml, {}, 0, rels);
-		expect(ws["A1"]?.l?.Target).toBe("https://example.com");
-		expect(ws["A1"]?.l?.Tooltip).toBe("Visit site");
+		expect(ws.A1?.l?.Target).toBe("https://example.com");
+		expect(ws.A1?.l?.Tooltip).toBe("Visit site");
 	});
 });
 
@@ -269,9 +269,9 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 			},
 		};
 		const ws = parseWorksheetXml(xml, {}, 0, rels);
-		expect(ws["A1"]?.l).toBeDefined();
-		expect(ws["A1"]?.l?.Target).toBe("https://example.com");
-		expect(ws["A1"]?.l?.Tooltip).toBe("Visit");
+		expect(ws.A1?.l).toBeDefined();
+		expect(ws.A1?.l?.Target).toBe("https://example.com");
+		expect(ws.A1?.l?.Tooltip).toBe("Visit");
 	});
 
 	it("parses worksheet with hyperlink location (internal link)", () => {
@@ -285,8 +285,8 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 </hyperlinks>
 </worksheet>`;
 		const ws = parseWorksheetXml(xml);
-		expect(ws["A1"]?.l).toBeDefined();
-		expect(ws["A1"]?.l?.Target).toContain("Sheet2");
+		expect(ws.A1?.l).toBeDefined();
+		expect(ws.A1?.l?.Target).toContain("Sheet2");
 	});
 
 	it("parses worksheet with merge cells", () => {

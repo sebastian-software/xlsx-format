@@ -172,7 +172,7 @@ export function is1904DateSystem(wb: WorkBook): string {
 }
 
 /** Characters forbidden in Excel sheet names */
-const badchars = ":][*?/\\".split("");
+const badchars = Array.from(":][*?/\\");
 
 /**
  * Validate a sheet name against Excel naming rules.
@@ -202,11 +202,11 @@ export function validateSheetName(n: string, safe?: boolean): boolean {
 				throw new XlsxError("INVALID_ARGUMENT", "Sheet name cannot contain : \\ / ? * [ ]");
 			}
 		}
-	} catch (e) {
+	} catch (error) {
 		if (safe) {
 			return false;
 		}
-		throw e;
+		throw error;
 	}
 	return true;
 }

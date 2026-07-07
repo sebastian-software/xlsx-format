@@ -9,7 +9,7 @@ const xlsxDir = path.join(fixturesDir, "xlsx");
 
 /** Read a CSV fixture and return header:1 array-of-arrays via csvToSheet */
 function loadCsvAsAoA(name: string): any[][] {
-	const text = fs.readFileSync(path.join(csvDir, name), "utf-8");
+	const text = fs.readFileSync(path.join(csvDir, name), "utf8");
 	const ws = csvToSheet(text);
 	return sheetToJson(ws, { header: 1 });
 }
@@ -39,19 +39,19 @@ describe("fixture roundtrip: basic-types", () => {
 	it("should have correct cell types", async () => {
 		const ws = await loadXlsxSheet("basic-types.xlsx");
 		// Row 2 = first data row (Alice, 30, 95.5, TRUE)
-		expect(ws["A2"].t).toBe("s"); // string
-		expect(ws["B2"].t).toBe("n"); // number
-		expect(ws["C2"].t).toBe("n"); // number
-		expect(ws["D2"].t).toBe("b"); // boolean
+		expect(ws.A2.t).toBe("s"); // string
+		expect(ws.B2.t).toBe("n"); // number
+		expect(ws.C2.t).toBe("n"); // number
+		expect(ws.D2.t).toBe("b"); // boolean
 	});
 
 	it("should have correct values", async () => {
 		const ws = await loadXlsxSheet("basic-types.xlsx");
-		expect(ws["A2"].v).toBe("Alice");
-		expect(ws["B2"].v).toBe(30);
-		expect(ws["C2"].v).toBe(95.5);
-		expect(ws["D2"].v).toBe(true);
-		expect(ws["D3"].v).toBe(false);
+		expect(ws.A2.v).toBe("Alice");
+		expect(ws.B2.v).toBe(30);
+		expect(ws.C2.v).toBe(95.5);
+		expect(ws.D2.v).toBe(true);
+		expect(ws.D3.v).toBe(false);
 	});
 });
 
@@ -64,27 +64,27 @@ describe("fixture roundtrip: unicode-data", () => {
 
 	it("should preserve CJK characters", async () => {
 		const ws = await loadXlsxSheet("unicode-data.xlsx");
-		expect(ws["A2"].v).toBe("田中太郎");
-		expect(ws["B2"].v).toBe("東京");
-		expect(ws["C2"].v).toBe("こんにちは");
+		expect(ws.A2.v).toBe("田中太郎");
+		expect(ws.B2.v).toBe("東京");
+		expect(ws.C2.v).toBe("こんにちは");
 	});
 
 	it("should preserve accented characters", async () => {
 		const ws = await loadXlsxSheet("unicode-data.xlsx");
-		expect(ws["A3"].v).toBe("Müller");
-		expect(ws["B3"].v).toBe("München");
-		expect(ws["C3"].v).toBe("Grüße");
+		expect(ws.A3.v).toBe("Müller");
+		expect(ws.B3.v).toBe("München");
+		expect(ws.C3.v).toBe("Grüße");
 	});
 
 	it("should preserve special Unicode characters", async () => {
 		const ws = await loadXlsxSheet("unicode-data.xlsx");
 		// José García
-		expect(ws["A4"].v).toBe("José García");
+		expect(ws.A4.v).toBe("José García");
 		// Icelandic
-		expect(ws["B5"].v).toBe("Reykjavík");
+		expect(ws.B5.v).toBe("Reykjavík");
 		// Polish
-		expect(ws["A6"].v).toBe("Łukasz");
-		expect(ws["B6"].v).toBe("Gdańsk");
+		expect(ws.A6.v).toBe("Łukasz");
+		expect(ws.B6.v).toBe("Gdańsk");
 	});
 });
 
@@ -97,28 +97,28 @@ describe("fixture roundtrip: edge-cases", () => {
 
 	it("should preserve commas in quoted fields", async () => {
 		const ws = await loadXlsxSheet("edge-cases.xlsx");
-		expect(ws["A3"].v).toBe("Has, comma");
-		expect(ws["C3"].v).toBe("Also, has comma");
+		expect(ws.A3.v).toBe("Has, comma");
+		expect(ws.C3.v).toBe("Also, has comma");
 	});
 
 	it("should preserve empty string cells", async () => {
 		const ws = await loadXlsxSheet("edge-cases.xlsx");
 		// Row 4 has empty label, empty value, empty notes, "data"
-		expect(ws["A4"].v).toBe("");
-		expect(ws["C4"].v).toBe("");
-		expect(ws["D4"].v).toBe("data");
+		expect(ws.A4.v).toBe("");
+		expect(ws.C4.v).toBe("");
+		expect(ws.D4.v).toBe("data");
 	});
 
 	it("should preserve escaped quotes", async () => {
 		const ws = await loadXlsxSheet("edge-cases.xlsx");
-		expect(ws["A5"].v).toBe('She said "hi"');
-		expect(ws["C5"].v).toBe('Quotes "inside"');
-		expect(ws["D5"].v).toBe('"quoted"');
+		expect(ws.A5.v).toBe('She said "hi"');
+		expect(ws.C5.v).toBe('Quotes "inside"');
+		expect(ws.D5.v).toBe('"quoted"');
 	});
 
 	it("should preserve long strings", async () => {
 		const ws = await loadXlsxSheet("edge-cases.xlsx");
-		const longValue = ws["A6"].v as string;
+		const longValue = ws.A6.v as string;
 		expect(longValue).toContain("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 		expect(longValue.length).toBeGreaterThan(100);
 	});

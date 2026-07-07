@@ -161,7 +161,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		const bytes = await write(wb);
 		const wb2 = await read(bytes, { cellFormula: true });
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
-		const a3 = (ws2 as any)["A3"];
+		const a3 = (ws2 as any).A3;
 		expect(a3).toBeDefined();
 		expect(a3.f).toBe("SUM(A1:A2)");
 	});
@@ -178,7 +178,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		const bytes = await write(wb);
 		const wb2 = await read(bytes, { cellFormula: true });
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
-		const c1 = (ws2 as any)["C1"];
+		const c1 = (ws2 as any).C1;
 		expect(c1).toBeDefined();
 		expect(c1.f).toBe("A1:A3*B1:B3");
 		expect(c1.F).toBe("C1:C3");
@@ -190,8 +190,8 @@ describe("XLSX roundtrip: workbook features", () => {
 		const bytes = await write(wb);
 		const wb2 = await read(bytes);
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
-		expect((ws2 as any)["A1"].v).toBe(true);
-		expect((ws2 as any)["A2"].v).toBe(false);
+		expect((ws2 as any).A1.v).toBe(true);
+		expect((ws2 as any).A2.v).toBe(false);
 	});
 
 	it("error cells survive roundtrip", async () => {
@@ -200,7 +200,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		const bytes = await write(wb);
 		const wb2 = await read(bytes);
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
-		expect((ws2 as any)["A1"].t).toBe("e");
+		expect((ws2 as any).A1.t).toBe("e");
 	});
 
 	it("date cells with cellDates option", async () => {
@@ -209,7 +209,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		const bytes = await write(wb, { cellDates: true });
 		const wb2 = await read(bytes, { cellDates: true });
 		const ws2 = wb2.Sheets[wb2.SheetNames[0]];
-		const a1 = (ws2 as any)["A1"];
+		const a1 = (ws2 as any).A1;
 		expect(a1).toBeDefined();
 	});
 
@@ -276,7 +276,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		expect(wb2.SheetNames).toContain("S2");
 		// S1 might still be in SheetNames (from workbook.xml) but its data shouldn't be loaded
 		if (wb2.SheetNames.includes("S1")) {
-			expect(wb2.Sheets["S1"]).toBeUndefined();
+			expect(wb2.Sheets.S1).toBeUndefined();
 		}
 	});
 
@@ -287,7 +287,7 @@ describe("XLSX roundtrip: workbook features", () => {
 		appendSheet(wb, ws2, "S2");
 		const bytes = await write(wb);
 		const wb2 = await read(bytes, { sheets: 1 });
-		expect(wb2.Sheets["S2"]).toBeDefined();
+		expect(wb2.Sheets.S2).toBeDefined();
 	});
 
 	it("sheets filter by array", async () => {
@@ -299,8 +299,8 @@ describe("XLSX roundtrip: workbook features", () => {
 		appendSheet(wb, ws3, "S3");
 		const bytes = await write(wb);
 		const wb2 = await read(bytes, { sheets: [0, "S3"] });
-		expect(wb2.Sheets["S1"]).toBeDefined();
-		expect(wb2.Sheets["S3"]).toBeDefined();
+		expect(wb2.Sheets.S1).toBeDefined();
+		expect(wb2.Sheets.S3).toBeDefined();
 	});
 
 	it("custom properties survive roundtrip", async () => {
@@ -382,10 +382,10 @@ describe("XLSX roundtrip", () => {
 		const wb = createWorkbook(ws, "Sheet1");
 		const u8 = await write(wb, { type: "array" });
 		const wb2 = await read(u8);
-		const s = wb2.Sheets["Sheet1"];
-		expect((s as any)["A1"].v).toBe(42);
-		expect((s as any)["B1"].v).toBeCloseTo(3.14);
-		expect((s as any)["C1"].v).toBe(-100);
+		const s = wb2.Sheets.Sheet1;
+		expect((s as any).A1.v).toBe(42);
+		expect((s as any).B1.v).toBeCloseTo(3.14);
+		expect((s as any).C1.v).toBe(-100);
 	});
 
 	it("should preserve boolean values", async () => {
@@ -393,8 +393,8 @@ describe("XLSX roundtrip", () => {
 		const wb = createWorkbook(ws, "Sheet1");
 		const u8 = await write(wb, { type: "array" });
 		const wb2 = await read(u8);
-		const s = wb2.Sheets["Sheet1"];
-		expect((s as any)["A1"].v).toBe(true);
-		expect((s as any)["B1"].v).toBe(false);
+		const s = wb2.Sheets.Sheet1;
+		expect((s as any).A1.v).toBe(true);
+		expect((s as any).B1.v).toBe(false);
 	});
 });
