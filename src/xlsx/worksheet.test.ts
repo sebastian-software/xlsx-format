@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseWorksheetXml, resolveSharedStrings } from "./worksheet.js";
-import { read, write, createWorkbook, jsonToSheet } from "../index.js";
+import { read, write, createWorkbook, jsonToSheet, sheetToArray } from "../index.js";
 
 describe("worksheet.ts: parsing edge cases", () => {
 	it("empty data returns empty sheet", () => {
@@ -65,6 +65,25 @@ describe("worksheet.ts: parsing edge cases", () => {
 		const ws = parseWorksheetXml(xml, { sheetStubs: true });
 		expect((ws as any)["A1"]).toBeDefined();
 		expect((ws as any)["A1"].t).toBe("z");
+	});
+
+	it("preserves later cell positions after self-closing empty cells", () => {
+		const xml = `<?xml version="1.0"?>
+		<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+		<dimension ref="A1:C1"/>
+		<sheetData>
+		<row r="1">
+			<c r="A1" t="str"><v>left</v></c>
+			<c r="B1" s="0"/>
+			<c r="C1" t="str"><v>right</v></c>
+		</row>
+		</sheetData>
+		</worksheet>`;
+		const ws = parseWorksheetXml(xml, { sheetStubs: true });
+		expect((ws as any)["A1"]).toMatchObject({ t: "s", v: "left" });
+		expect((ws as any)["B1"]).toMatchObject({ t: "z" });
+		expect((ws as any)["C1"]).toMatchObject({ t: "s", v: "right" });
+		expect(sheetToArray(ws, { defval: null })).toEqual([["left", null, "right"]]);
 	});
 
 	it("resolveSharedStrings works in sparse mode", () => {
