@@ -75,9 +75,6 @@ function buildJsonRow(
 				break;
 			case "n": {
 				// Number may actually represent a date if the format is date-like.
-				if (!options.dateOutput && options.raw !== false) {
-					break;
-				}
 				const fmtKind = getCellDateTimeFormatKind(val, options);
 				if (fmtKind === "none" || fmtKind === "time") {
 					break;
@@ -90,7 +87,7 @@ function buildJsonRow(
 			}
 			/* falls through */
 			case "d": // date
-				if (!(options && (options.UTC || options.raw === false))) {
+				if (!(options && (options.UTC || options.raw === false || options.dateOutput === "iso"))) {
 					cellValue = utcToLocal(new Date(cellValue));
 				}
 				break;
