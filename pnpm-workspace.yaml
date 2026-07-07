@@ -2,6 +2,10 @@ packages:
     - "docs"
 allowBuilds:
     esbuild: true
+    unrs-resolver: false
+peerDependencyRules:
+    allowedVersions:
+        eslint-plugin-jsx-a11y>eslint: "10"
 minimumReleaseAgeExclude:
     - "@oxfmt/binding-android-arm-eabi@0.58.0"
     - "@oxfmt/binding-android-arm64@0.58.0"
