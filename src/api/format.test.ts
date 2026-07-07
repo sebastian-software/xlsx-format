@@ -56,6 +56,21 @@ describe("api/format", () => {
 		).toBe("2024-01-01T12:00:00");
 	});
 
+	it("formats local ISO strings once when UTC is false", () => {
+		const originalTimezone = process.env.TZ;
+		process.env.TZ = "Etc/GMT-5";
+		try {
+			expect(
+				formatCellForOutput({ t: "n", v: 45292.5, z: "m/d/yy h:mm" }, null, {
+					dateOutput: "iso",
+					UTC: false,
+				}),
+			).toBe("2024-01-01T17:00:00");
+		} finally {
+			process.env.TZ = originalTimezone;
+		}
+	});
+
 	it("infers ISO output shape for Date objects without explicit formats", () => {
 		expect(
 			formatCellForOutput({ t: "d", v: new Date("2024-01-01T00:00:00Z") }, null, {
@@ -69,5 +84,14 @@ describe("api/format", () => {
 				UTC: true,
 			}),
 		).toBe("2024-01-01T12:34:56");
+	});
+
+	it("pads ISO years before 1000 to four digits", () => {
+		expect(
+			formatCellForOutput({ t: "d", v: new Date("0100-03-25T00:00:00.000Z"), z: "yyyy-mm-dd" }, null, {
+				dateOutput: "iso",
+				UTC: true,
+			}),
+		).toBe("0100-03-25");
 	});
 });

@@ -32,6 +32,14 @@ describe("sheetToArray", () => {
 		]);
 	});
 
+	it("keeps default Date object output for date-formatted numeric cells", () => {
+		const ws = arrayToSheet([["Date"], [{ t: "n", v: 45292, z: "m/d/yy" }]]);
+
+		const rows = sheetToArray(ws);
+
+		expect(rows[1][0]).toBeInstanceOf(Date);
+	});
+
 	it("emits ISO strings for date and datetime formats", () => {
 		const ws = arrayToSheet([
 			["Date", "DateTime", "Time"],
@@ -50,6 +58,21 @@ describe("sheetToArray", () => {
 			["Date", "DateTime", "Time"],
 			["2024-01-01", "2024-01-01T12:00:00", "12:00"],
 		]);
+	});
+
+	it("emits local ISO strings once when UTC is false", () => {
+		const originalTimezone = process.env.TZ;
+		process.env.TZ = "Etc/GMT-5";
+		try {
+			const ws = arrayToSheet([["DateTime"], [{ t: "n", v: 45292.5, z: "m/d/yy h:mm" }]]);
+
+			expect(sheetToArray(ws, { dateOutput: "iso", UTC: false })).toStrictEqual([
+				["DateTime"],
+				["2024-01-01T17:00:00"],
+			]);
+		} finally {
+			process.env.TZ = originalTimezone;
+		}
 	});
 });
 

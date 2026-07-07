@@ -2,7 +2,7 @@ import type { CellObject } from "../types.js";
 import { BErr } from "../types.js";
 import { formatNumber, getDateTimeFormatKind, type DateTimeFormatKind } from "../ssf/format.js";
 import { DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS, formatTable } from "../ssf/table.js";
-import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
+import { dateToSerialNumber, serialNumberToDate, utcToLocal } from "../utils/date.js";
 
 function resolveNumberFormat(fmt: unknown, options?: any): string | undefined {
 	if (typeof fmt === "string") {
@@ -32,15 +32,15 @@ function pad2(value: number): string {
 	return value < 10 ? "0" + value : "" + value;
 }
 
-function formatDateIso(date: Date, kind: DateTimeFormatKind, options?: any): string {
-	const useUtc = options?.UTC !== false;
-	const year = useUtc ? date.getUTCFullYear() : date.getFullYear();
-	const month = (useUtc ? date.getUTCMonth() : date.getMonth()) + 1;
-	const day = useUtc ? date.getUTCDate() : date.getDate();
-	const hours = useUtc ? date.getUTCHours() : date.getHours();
-	const minutes = useUtc ? date.getUTCMinutes() : date.getMinutes();
-	const seconds = useUtc ? date.getUTCSeconds() : date.getSeconds();
-	const datePart = `${year}-${pad2(month)}-${pad2(day)}`;
+function formatDateIso(date: Date, kind: DateTimeFormatKind): string {
+	const year = date.getUTCFullYear();
+	const month = date.getUTCMonth() + 1;
+	const day = date.getUTCDate();
+	const hours = date.getUTCHours();
+	const minutes = date.getUTCMinutes();
+	const seconds = date.getUTCSeconds();
+	const yearPart = year < 1000 ? String(year).padStart(4, "0") : String(year);
+	const datePart = `${yearPart}-${pad2(month)}-${pad2(day)}`;
 	if (kind === "date") {
 		return datePart;
 	}
@@ -54,6 +54,10 @@ function inferDateKind(date: Date, options?: any): DateTimeFormatKind {
 	const seconds = useUtc ? date.getUTCSeconds() : date.getSeconds();
 	const ms = useUtc ? date.getUTCMilliseconds() : date.getMilliseconds();
 	return hours || minutes || seconds || ms ? "datetime" : "date";
+}
+
+function normalizeDateOutput(date: Date, options?: any): Date {
+	return options?.UTC === true ? date : utcToLocal(date);
 }
 
 /**
@@ -131,15 +135,14 @@ export function formatCellForOutput(cell: CellObject, value?: any, options?: any
 	const kind = getCellDateTimeFormatKind(cell, options);
 	if (cell.t === "n" && typeof cellValue === "number") {
 		if (kind === "date" || kind === "datetime") {
-			return formatDateIso(serialNumberToDate(cellValue, options?.date1904), kind, options);
+			return formatDateIso(normalizeDateOutput(serialNumberToDate(cellValue, options?.date1904), options), kind);
 		}
 		return formatCell(cell, value, options);
 	}
 	if (cellValue instanceof Date) {
 		return formatDateIso(
-			cellValue,
+			normalizeDateOutput(cellValue, options),
 			kind === "none" || kind === "time" ? inferDateKind(cellValue, options) : kind,
-			options,
 		);
 	}
 	return formatCell(cell, value, options);
