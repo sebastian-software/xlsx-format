@@ -160,7 +160,7 @@ function parseWorksheetXml_hlinks(s: WorkSheet, hlinks: string[], rels: Relation
 }
 
 /** Regex to match <c> (cell) elements, capturing inner content */
-const cellregex = /<(?:\w+:)?c\b[^>]*(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g;
+const cellregex = /<(?:\w+:)?c\b[^>]*?(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g;
 
 /**
  * Parse the <sheetData> XML into cell objects within the worksheet.
