@@ -528,6 +528,8 @@ export interface Sheet2CSVOpts {
 	dateNF?: NumberFormat;
 	/** If "iso", emit date/datetime cells as machine-readable ISO-like strings */
 	dateOutput?: "iso";
+	/** If true, interpret dates as UTC */
+	UTC?: boolean;
 	/** If true, use 1904 date system for date serial numbers */
 	date1904?: boolean;
 }

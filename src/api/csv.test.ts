@@ -69,6 +69,26 @@ describe("csv.ts: advanced CSV features", () => {
 		);
 	});
 
+	it("sheetToCsv keeps default ISO datetime output timezone-stable", () => {
+		const originalTimezone = process.env.TZ;
+		process.env.TZ = "Europe/Berlin";
+		try {
+			const ws = arrayToSheet([
+				["Date", "Text"],
+				[{ t: "n", v: 45292.5, z: "m/d/yy h:mm" }, "hello"],
+			]);
+
+			expect(sheetToCsv(ws, { dateOutput: "iso", strip: true, blankrows: false })).toBe(
+				"Date,Text\n2024-01-01T12:00:00,hello",
+			);
+			expect(sheetToCsv(ws, { dateOutput: "iso", UTC: false, strip: true, blankrows: false })).toBe(
+				"Date,Text\n2024-01-01T13:00:00,hello",
+			);
+		} finally {
+			process.env.TZ = originalTimezone;
+		}
+	});
+
 	it("sheetToCsv quotes commas", () => {
 		const ws = arrayToSheet([["A,B"]]);
 		const csv = sheetToCsv(ws);
