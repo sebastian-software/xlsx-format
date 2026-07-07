@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.3.4](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.3...xlsx-format-v2.3.4) (2026-07-07)
+
+
+### Bug Fixes
+
+* preserve positions after self-closing cells ([f16f6f1](https://github.com/sebastian-software/xlsx-format/commit/f16f6f191edde447fe786b90a323e023f2bec76a))
+
+
+### Refactoring
+
+* **lint:** address low-count shared config rules ([2b5eec5](https://github.com/sebastian-software/xlsx-format/commit/2b5eec5f7857684f0992a8ec84bba30a66c7c9f3))
+* **lint:** scope deferred rules and tighten tests ([3a409e9](https://github.com/sebastian-software/xlsx-format/commit/3a409e9ecfeaa24758563c142bcf956429d12e72))
+
 ## [2.3.3](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.3.2...xlsx-format-v2.3.3) (2026-06-18)
 
 

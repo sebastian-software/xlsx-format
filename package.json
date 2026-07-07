@@ -1,6 +1,6 @@
 {
 	"name": "xlsx-format",
-	"version": "2.3.3",
+	"version": "2.3.4",
 	"description": "Modern XLSX reader/writer for TypeScript, Node.js, and browsers. Zero dependencies, async APIs, styled report exports.",
 	"keywords": [
 		"excel",
