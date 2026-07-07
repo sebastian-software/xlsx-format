@@ -52,7 +52,7 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: pnpm run test:coverage
-            - uses: codecov/codecov-action@v5
+            - uses: codecov/codecov-action@v7
               if: matrix.node-version == 24
               with:
                   token: ${{ secrets.CODECOV_TOKEN }}
