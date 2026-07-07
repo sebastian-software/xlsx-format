@@ -1084,7 +1084,7 @@ export function isDateFormat(fmt: string): boolean {
 				break;
 			case '"':
 				// Skip quoted string literal (everything between double quotes)
-				for (; fmt.charCodeAt(++i) !== 34 && i < fmt.length; ) {
+				for (; fmt.charCodeAt(++i) !== 34 && i < fmt.length;) {
 					/* empty */
 				}
 				++i;
@@ -1253,7 +1253,7 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 				break;
 			case '"':
 				// Quoted string literal: collect everything until the closing quote (charCode 34)
-				for (tokenStr = ""; (charCode = fmt.charCodeAt(++i)) !== 34 && i < fmt.length; ) {
+				for (tokenStr = ""; (charCode = fmt.charCodeAt(++i)) !== 34 && i < fmt.length;) {
 					tokenStr += String.fromCharCode(charCode);
 				}
 				out[out.length] = { type: "t", value: tokenStr };
