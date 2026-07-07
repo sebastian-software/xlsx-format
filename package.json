@@ -44,8 +44,8 @@
 		"generate-fixtures": "tsx src/__fixtures__/generate.ts",
 		"lint": "eslint src/",
 		"lint:fix": "eslint --fix src/",
-		"format": "prettier --write src/",
-		"format:check": "prettier --check src/",
+		"format": "oxfmt src/",
+		"format:check": "oxfmt --check src/",
 		"prepare": "husky"
 	},
 	"devDependencies": {
@@ -56,7 +56,7 @@
 		"eslint-config-prettier": "^10.1.8",
 		"husky": "^9.1.7",
 		"lint-staged": "^17.0.7",
-		"prettier": "^3.8.4",
+		"oxfmt": "0.58.0",
 		"tsdown": "^0.22.3",
 		"tsx": "^4.22.4",
 		"typescript": "^6.0.3",
@@ -70,11 +70,11 @@
 	"lint-staged": {
 		"src/**/*.{ts,js}": [
 			"eslint --fix",
-			"prettier --write"
+			"oxfmt --no-error-on-unmatched-pattern"
 		],
-		"*.{config,conf}.{ts,js,mjs}": "prettier --write",
-		"scripts/**/*.{js,mjs}": "prettier --write",
-		"*.{json,md,yml,yaml}": "prettier --write"
+		"*.{config,conf}.{ts,js,mjs}": "oxfmt --no-error-on-unmatched-pattern",
+		"scripts/**/*.{js,mjs}": "oxfmt --no-error-on-unmatched-pattern",
+		"*.{json,md,yml,yaml}": "oxfmt --no-error-on-unmatched-pattern"
 	},
 	"license": "Apache-2.0",
 	"repository": {
