@@ -5,11 +5,11 @@
 	"type": "module",
 	"scripts": {
 		"dev": "react-router dev",
-		"build": "react-router build && node scripts/flatten-github-pages-output.mjs",
+		"build": "react-router build",
 		"preview": "vite preview"
 	},
 	"dependencies": {
-		"ardo": "^3.7.0",
+		"ardo": "^3.8.1",
 		"isbot": "^5.1.44",
 		"lucide-react": "^1.23.0",
 		"react": "^19.2.7",

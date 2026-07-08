@@ -1,8 +1,7 @@
 import type { Config } from "@react-router/dev/config";
-import { detectGitHubBasename } from "ardo/vite";
+import { withArdoGitHubPages } from "ardo/vite";
 
-export default {
+export default withArdoGitHubPages({
 	ssr: false,
 	prerender: true,
-	basename: detectGitHubBasename(),
-} satisfies Config;
+} satisfies Config);
