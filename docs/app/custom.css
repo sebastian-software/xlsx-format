@@ -11,12 +11,25 @@
    ---------------------------------------------------------------- */
 
 :root {
+	--xf-brand-hue: 162;
+	--xf-accent-hue: 79;
+	--xf-chrome-hue: 172;
+
 	/* Brand (committed — Sebastian Software green), kept across themes */
+	--ardo-hue-brand: var(--xf-brand-hue);
+	--ardo-hue-accent: var(--xf-accent-hue);
+	--ardo-hue-neutral: var(--xf-chrome-hue);
 	--ardo-color-brand: oklch(0.52 0.13 162);
 	--ardo-color-brandLight: oklch(0.64 0.13 158);
 	--ardo-color-brandDark: oklch(0.4 0.115 165);
 	--ardo-color-brandSubtle: oklch(0.95 0.035 162);
 	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.52 0.13 162) 0%, oklch(0.64 0.13 158) 100%);
+	--ardo-color-brandInk: oklch(0.99 0.01 162);
+	--ardo-color-ring: oklch(0.52 0.13 162 / 0.38);
+	--ardo-color-accent: oklch(0.5 0.11 64);
+	--ardo-color-accentLight: oklch(0.76 0.155 79);
+	--ardo-color-accentDark: oklch(0.42 0.095 64);
+	--ardo-color-accentSubtle: oklch(0.95 0.05 86);
 
 	/* ----- One knob for ardo's neutral tint -----
 	   ardo bakes its brand hue (default 356 = magenta) into every neutral token,
@@ -24,7 +37,6 @@
 	   ramp ourselves from ONE hue: change --xf-chrome-hue and the header,
 	   sidebar, prose surfaces, borders, and the footer strip all follow.
 	   L/C values are ardo's own, so the light/dark hierarchy is unchanged. */
-	--xf-chrome-hue: 172;
 	--ardo-color-bg: oklch(0.992 0.0015 var(--xf-chrome-hue));
 	--ardo-color-bgSoft: oklch(0.975 0.003 var(--xf-chrome-hue));
 	--ardo-color-bgMute: oklch(0.955 0.004 var(--xf-chrome-hue));
@@ -33,7 +45,14 @@
 	--ardo-color-borderLight: oklch(0.925 0.003 var(--xf-chrome-hue));
 	--ardo-color-divider: oklch(0.89 0.004 var(--xf-chrome-hue));
 	--ardo-color-sidebarBg: oklch(0.965 0.004 var(--xf-chrome-hue));
+	--ardo-color-sidebarRailBg: oklch(0.94 0.008 var(--xf-chrome-hue));
 	--ardo-color-sidebarBorder: oklch(0.885 0.005 var(--xf-chrome-hue));
+	--ardo-color-headerBg: oklch(0.992 0.006 var(--xf-chrome-hue) / 0.86);
+	--ardo-color-heroWash:
+		radial-gradient(90rem 42rem at 50% -12rem, oklch(0.91 0.055 var(--xf-brand-hue) / 0.58) 0%, transparent 62%),
+		radial-gradient(64rem 36rem at 84% -8rem, oklch(0.92 0.04 var(--xf-accent-hue) / 0.38) 0%, transparent 58%),
+		linear-gradient(180deg, oklch(0.978 0.006 var(--xf-chrome-hue)) 0%, oklch(0.992 0.0015 var(--xf-chrome-hue)) 100%);
+	--ardo-color-heroGrid: radial-gradient(circle at 1px 1px, oklch(0.52 0.13 var(--xf-brand-hue) / 0.16) 1px, transparent 1.5px);
 	--ardo-color-text: oklch(0.17 0.008 var(--xf-chrome-hue));
 	--ardo-color-textLight: oklch(0.4 0.007 var(--xf-chrome-hue));
 	--ardo-color-textLighter: oklch(0.55 0.007 var(--xf-chrome-hue));
@@ -94,11 +113,20 @@
 }
 
 .dark {
+	--ardo-hue-brand: var(--xf-brand-hue);
+	--ardo-hue-accent: var(--xf-accent-hue);
+	--ardo-hue-neutral: var(--xf-chrome-hue);
 	--ardo-color-brand: oklch(0.74 0.12 158);
 	--ardo-color-brandLight: oklch(0.83 0.1 152);
 	--ardo-color-brandDark: oklch(0.6 0.13 162);
 	--ardo-color-brandSubtle: oklch(0.27 0.05 162);
 	--ardo-color-brandGradient: linear-gradient(135deg, oklch(0.74 0.12 158) 0%, oklch(0.83 0.1 152) 100%);
+	--ardo-color-brandInk: oklch(0.16 0.055 162);
+	--ardo-color-ring: oklch(0.74 0.12 158 / 0.5);
+	--ardo-color-accent: oklch(0.81 0.15 82);
+	--ardo-color-accentLight: oklch(0.88 0.13 84);
+	--ardo-color-accentDark: oklch(0.66 0.13 76);
+	--ardo-color-accentSubtle: oklch(0.3 0.06 80);
 
 	/* Same --xf-chrome-hue knob (inherited from :root), ardo's dark L/C ramp. */
 	--ardo-color-bg: oklch(0.155 0.008 var(--xf-chrome-hue));
@@ -109,7 +137,14 @@
 	--ardo-color-borderLight: oklch(0.35 0.01 var(--xf-chrome-hue));
 	--ardo-color-divider: oklch(0.29 0.01 var(--xf-chrome-hue));
 	--ardo-color-sidebarBg: oklch(0.13 0.008 var(--xf-chrome-hue));
+	--ardo-color-sidebarRailBg: oklch(0.105 0.012 var(--xf-chrome-hue));
 	--ardo-color-sidebarBorder: oklch(0.265 0.011 var(--xf-chrome-hue));
+	--ardo-color-headerBg: oklch(0.155 0.012 var(--xf-chrome-hue) / 0.84);
+	--ardo-color-heroWash:
+		radial-gradient(90rem 42rem at 50% -12rem, oklch(0.34 0.08 var(--xf-brand-hue) / 0.54) 0%, transparent 62%),
+		radial-gradient(64rem 36rem at 84% -8rem, oklch(0.32 0.06 var(--xf-accent-hue) / 0.38) 0%, transparent 58%),
+		linear-gradient(180deg, oklch(0.175 0.012 var(--xf-chrome-hue)) 0%, oklch(0.155 0.008 var(--xf-chrome-hue)) 100%);
+	--ardo-color-heroGrid: radial-gradient(circle at 1px 1px, oklch(0.74 0.12 var(--xf-brand-hue) / 0.14) 1px, transparent 1.5px);
 	--ardo-color-text: oklch(0.94 0.004 var(--xf-chrome-hue));
 	--ardo-color-textLight: oklch(0.72 0.007 var(--xf-chrome-hue));
 	--ardo-color-textLighter: oklch(0.56 0.005 var(--xf-chrome-hue));
