@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.2](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.1...xlsx-format-v2.4.2) (2026-07-08)
+
+
+### Bug Fixes
+
+* **docs:** align ardo chrome colors ([c3c1e30](https://github.com/sebastian-software/xlsx-format/commit/c3c1e3039ae81c2c8c6a56740c0a54b5ad2fb1eb))
+* **docs:** restore API reference pages ([2be5f1b](https://github.com/sebastian-software/xlsx-format/commit/2be5f1b27deed5e6036bb69a2c4956bd64926721))
+* **docs:** use ardo github pages build hook ([18a36a6](https://github.com/sebastian-software/xlsx-format/commit/18a36a63bdfc73f499752f03df49c4d4c95daba6))
+
 ## [2.4.1](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.0...xlsx-format-v2.4.1) (2026-07-07)
 
 
