@@ -38,4 +38,4 @@ minimumReleaseAgeExclude:
     - "@typescript-eslint/utils@8.63.0"
     - "@typescript-eslint/visitor-keys@8.63.0"
     - typescript-eslint@8.63.0
-    - ardo@3.7.0
+    - ardo@3.8.1
