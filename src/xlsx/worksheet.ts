@@ -1,4 +1,13 @@
-import type { WorkSheet, CellObject, Range, ColInfo, MarginInfo, SheetView } from "../types.js";
+import {
+	BErr,
+	RBErr,
+	type WorkSheet,
+	type CellObject,
+	type Range,
+	type ColInfo,
+	type MarginInfo,
+	type SheetView,
+} from "../types.js";
 import { parseXmlTag, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
@@ -39,14 +48,33 @@ function parseWorksheetXml_dim(ws: WorkSheet, s: string): void {
 
 /** Parse <pageMargins> attributes with defaults matching Excel's standard margins */
 function parseWorksheetXml_margins(tag: Record<string, any>): MarginInfo {
-	return {
-		left: parseFloat(tag.left) || 0.7,
-		right: parseFloat(tag.right) || 0.7,
-		top: parseFloat(tag.top) || 0.75,
-		bottom: parseFloat(tag.bottom) || 0.75,
-		header: parseFloat(tag.header) || 0.3,
-		footer: parseFloat(tag.footer) || 0.3,
+	const margin = (value: unknown, fallback: number): number => {
+		const parsed = typeof value === "string" ? parseFloat(value) : Number(value);
+		return Number.isFinite(parsed) ? parsed : fallback;
 	};
+	return {
+		left: margin(tag.left, 0.7),
+		right: margin(tag.right, 0.7),
+		top: margin(tag.top, 0.75),
+		bottom: margin(tag.bottom, 0.75),
+		header: margin(tag.header, 0.3),
+		footer: margin(tag.footer, 0.3),
+	};
+}
+
+function parseWorksheetXml_error(value: string | null): string | number {
+	if (value === null) {
+		return "";
+	}
+	const token = unescapeXml(value);
+	return Object.hasOwn(RBErr, token) ? RBErr[token] : token;
+}
+
+function serializeWorksheetXml_error(value: unknown): string {
+	if (typeof value === "number") {
+		return BErr[value] ?? String(value);
+	}
+	return typeof value === "string" ? value : "";
 }
 
 /** Parse <autoFilter> element extracting the filter reference range */
@@ -210,15 +238,18 @@ function parseSheetData(
 
 		const rowIsWithinLimit = !opts.sheetRows || R < opts.sheetRows;
 		// Extract row properties (height, hidden) only for retained rows.
-		if (rowIsWithinLimit && (rowTag.ht || rowTag.hidden)) {
+		if (rowIsWithinLimit && (rowTag.ht !== undefined || rowTag.hidden !== undefined)) {
 			if (!s["!rows"]) {
 				s["!rows"] = [];
 			}
 			if (!s["!rows"][R]) {
 				s["!rows"][R] = {};
 			}
-			if (rowTag.ht) {
-				s["!rows"][R].hpt = parseFloat(rowTag.ht);
+			if (rowTag.ht !== undefined) {
+				const hpt = parseFloat(rowTag.ht);
+				if (Number.isFinite(hpt)) {
+					s["!rows"][R].hpt = hpt;
+				}
 			}
 			if (rowTag.hidden === "1") {
 				s["!rows"][R].hidden = true;
@@ -354,8 +385,8 @@ function parseSheetData(
 					cell = { t: "b", v: v === "1" };
 					break;
 				case "e": // error
-					cell = { t: "e", v: v ? parseInt(v, 10) || 0 : 0 };
-					(cell as any).w = v || "";
+					cell = { t: "e", v: parseWorksheetXml_error(v) };
+					(cell as any).w = v === null ? "" : unescapeXml(v);
 					break;
 				case "d": // ISO 8601 date string
 					if (v) {
@@ -807,6 +838,36 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 
 	const dense = ws["!data"] != null;
 	const range = safeDecodeRange(ref);
+	const appendRow = (rowIdx: number, rowCells: string[]): void => {
+		const rowInfo = ws["!rows"]?.[rowIdx];
+		const hasFiniteHeight = rowInfo != null && Number.isFinite(rowInfo.hpt);
+		const hasMetadata = hasFiniteHeight || rowInfo?.hidden === true;
+		if (rowCells.length === 0 && !hasMetadata) {
+			return;
+		}
+		let rowTag = '<row r="' + (rowIdx + 1) + '"'; // 1-based row number
+		if (rowInfo) {
+			if (hasFiniteHeight) {
+				rowTag += ' ht="' + rowInfo.hpt + '" customHeight="1"';
+			}
+			if (rowInfo.hidden === true) {
+				rowTag += ' hidden="1"';
+			}
+		}
+		rowTag += ">";
+		lines.push(rowTag);
+		lines.push(rowCells.join(""));
+		lines.push("</row>");
+	};
+	const extraRows = Object.keys(ws["!rows"] ?? {})
+		.map(Number)
+		.filter((rowIdx) => Number.isSafeInteger(rowIdx) && rowIdx >= 0 && (rowIdx < range.s.r || rowIdx > range.e.r))
+		.sort((a, b) => a - b);
+	for (const rowIdx of extraRows) {
+		if (rowIdx < range.s.r) {
+			appendRow(rowIdx, []);
+		}
+	}
 
 	for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
 		const row_cells: string[] = [];
@@ -839,7 +900,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 					}
 					break;
 				case "e":
-					cellValueStr = String(cell.v);
+					cellValueStr = escapeXml(serializeWorksheetXml_error(cell.v));
 					cellTypeAttr = "e";
 					break;
 				case "d":
@@ -887,21 +948,14 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 			cellXml += "</c>";
 			row_cells.push(cellXml);
 		}
-		// Only emit rows that contain at least one cell
-		if (row_cells.length > 0) {
-			let rowTag = '<row r="' + (rowIdx + 1) + '"'; // 1-based row number
-			if (ws["!rows"]?.[rowIdx]) {
-				if (ws["!rows"][rowIdx].hpt) {
-					rowTag += ' ht="' + ws["!rows"][rowIdx].hpt + '" customHeight="1"';
-				}
-				if (ws["!rows"][rowIdx].hidden) {
-					rowTag += ' hidden="1"';
-				}
-			}
-			rowTag += ">";
-			lines.push(rowTag);
-			lines.push(row_cells.join(""));
-			lines.push("</row>");
+		appendRow(rowIdx, row_cells);
+	}
+
+	// A worksheet's data range does not necessarily include rows with only layout metadata.
+	// Iterate the existing sparse metadata keys so a distant row cannot cause a huge scan.
+	for (const rowIdx of extraRows) {
+		if (rowIdx > range.e.r) {
+			appendRow(rowIdx, []);
 		}
 	}
 
@@ -922,12 +976,12 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 		const margins = ws["!margins"];
 		lines.push(
 			writeXmlElement("pageMargins", null, {
-				left: String(margins.left || 0.7),
-				right: String(margins.right || 0.7),
-				top: String(margins.top || 0.75),
-				bottom: String(margins.bottom || 0.75),
-				header: String(margins.header || 0.3),
-				footer: String(margins.footer || 0.3),
+				left: String(margins.left ?? 0.7),
+				right: String(margins.right ?? 0.7),
+				top: String(margins.top ?? 0.75),
+				bottom: String(margins.bottom ?? 0.75),
+				header: String(margins.header ?? 0.3),
+				footer: String(margins.footer ?? 0.3),
 			}),
 		);
 	}
