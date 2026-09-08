@@ -73,7 +73,7 @@ export interface CommonOptions {
 	sheetStubs?: boolean;
 	/** If true, include style/theme information on cells */
 	cellStyles?: boolean;
-	/** Workbook password for encrypted files */
+	/** Password for encrypted workbooks; non-empty values are unsupported and throw XlsxError ("UNSUPPORTED") */
 	password?: string;
 }
 

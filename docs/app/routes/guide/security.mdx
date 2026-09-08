@@ -43,6 +43,10 @@ const previewRows = sheetToJson(firstSheet);
 
 The default ZIP and XML limits are intentionally high enough for ordinary workbooks. Lower them when a service receives arbitrary uploads and does not need to parse very large sheets.
 
+## Password-protected workbooks
+
+xlsx-format does not read or write encrypted or password-protected workbooks. Passing a non-empty `password` option to `read()` or `write()` throws an `XlsxError` with code `UNSUPPORTED` before parsing or serialization starts. Omit the option for ordinary unencrypted workbooks.
+
 ## Handling errors
 
 xlsx-format throws `XlsxError`, a subclass of `Error`, for deterministic library failures. Existing `catch` blocks keep working, but new integrations should branch on `error.code` instead of matching message text.
