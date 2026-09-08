@@ -79,8 +79,11 @@ function sheetToWorkBook(ws: any, name?: string): WorkBook {
  * @throws XlsxError if the input is a PDF, PNG, or other unsupported format
  */
 export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
-	resetFormatTable();
 	const options: any = opts ? { ...opts } : {};
+	if (options.password) {
+		throw new XlsxError("UNSUPPORTED", "Password-protected workbooks are not supported");
+	}
+	resetFormatTable();
 	if (!options.type) {
 		options.type = detect_type(data);
 	}
