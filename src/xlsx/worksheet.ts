@@ -10,7 +10,7 @@ import {
 	DEFAULT_MAX_WORKSHEET_ROWS,
 	xmlOptionLimit,
 } from "../xml/limits.js";
-import { safeDecodeRange, encodeRange, encodeCell } from "../utils/cell.js";
+import { safeDecodeRange, encodeRange, encodeCell, decodeCell } from "../utils/cell.js";
 import { formatNumber, getDateTimeFormatKind } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
@@ -18,6 +18,7 @@ import type { SST } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
 import { getCellStyleIndex, getStyleFromXf } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
+import { shiftFormulaStr } from "./formula.js";
 
 /** Regex patterns for extracting various worksheet XML elements */
 const mergecregex = /<(?:\w+:)?mergeCell ref=["'][A-Z0-9:]+['"]\s*[/]?>/g;
@@ -181,6 +182,8 @@ function parseSheetData(
 	const maxWorksheetCells = xmlOptionLimit(opts.maxWorksheetCells, DEFAULT_MAX_WORKSHEET_CELLS, "maxWorksheetCells");
 	let rowCount = 0;
 	let cellCount = 0;
+	const sharedFormulas = new Map<string, { formula: string; origin: string }>();
+	const pendingSharedFormulas: { cell: CellObject; ref: string; si: string }[] = [];
 
 	// Split by </row> boundaries to isolate each row's content
 	const rows = sdata.split(/<\/(?:\w+:)?row>/);
@@ -278,8 +281,10 @@ function parseSheetData(
 
 			// Extract <v> (value), <f> (formula), and <is> (inline string) sub-elements
 			const vMatch = cellValue.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/);
-			const fMatch = cellValue.match(/<(?:\w+:)?f[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/);
+			const fTagMatch = cellValue.match(/<(?:\w+:)?f\b[^>]*>/);
+			const fMatch = cellValue.match(/<(?:\w+:)?f\b[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/);
 			const isMatch = cellValue.match(/<(?:\w+:)?is>([\s\S]*?)<\/(?:\w+:)?is>/);
+			const preserveFormula = fTagMatch != null && opts.cellFormula !== false;
 
 			const v = vMatch ? vMatch[1] : null;
 
@@ -323,10 +328,10 @@ function parseSheetData(
 					if (v !== null) {
 						cell = { t: "n", v: parseFloat(v) };
 					} else {
-						if (!opts.sheetStubs) {
+						if (!preserveFormula && !opts.sheetStubs) {
 							continue;
 						}
-						cell = { t: "z" };
+						cell = preserveFormula ? { t: "n" } : { t: "z" };
 					}
 					break;
 			}
@@ -352,20 +357,34 @@ function parseSheetData(
 			}
 
 			// Extract formula
-			if (fMatch && opts.cellFormula !== false) {
-				cell.f = unescapeXml(fMatch[1]);
-				const fTag = parseXmlTag(
-					cellValue.match(/<(?:\w+:)?f[^>]*/)?.[0] + ">" || "",
-					undefined,
-					undefined,
-					opts,
-				);
+			if (fTagMatch && opts.cellFormula !== false) {
+				const fTag = parseXmlTag(fTagMatch[0], undefined, undefined, opts);
+				const formula = fMatch ? unescapeXml(fMatch[1]) : undefined;
 				if (fTag.t === "shared" && fTag.si != null) {
-					// Shared formula (master or reference)
+					const si = String(fTag.si);
+					if (formula) {
+						cell.f = formula;
+						sharedFormulas.set(si, { formula, origin: ref });
+					} else {
+						const master = sharedFormulas.get(si);
+						if (master) {
+							const origin = decodeCell(master.origin);
+							const target = decodeCell(ref);
+							cell.f = shiftFormulaStr(master.formula, {
+								r: target.r - origin.r,
+								c: target.c - origin.c,
+							});
+						} else {
+							pendingSharedFormulas.push({ cell, ref, si });
+						}
+					}
+				} else if (formula !== undefined) {
+					cell.f = formula;
 				}
 				if (fTag.t === "array" && fTag.ref) {
 					cell.F = fTag.ref; // Array formula range
-					cell.D = fTag.dt === "1"; // Dynamic array flag
+					const cellMetadata = cellTag.cm ? opts.xlmeta?.Cell?.[Number(cellTag.cm) - 1] : undefined;
+					cell.D = fTag.dt === "1" || cellMetadata?.type === "XLDAPR";
 				}
 			}
 
@@ -373,7 +392,7 @@ function parseSheetData(
 			if (cell.t === "n") {
 				const numFmtId = cell.XF?.numFmtId ?? 0;
 				const nfmt = cell.z || cell.XF?.numFmt || styles?.NumberFmt[numFmtId] || formatTable[numFmtId];
-				if (opts.cellText !== false) {
+				if (opts.cellText !== false && typeof cell.v === "number") {
 					if (nfmt) {
 						try {
 							cell.w = formatNumber(nfmt, cell.v, { date1904, dateNF: opts.dateNF });
@@ -400,6 +419,19 @@ function parseSheetData(
 				s[ref] = cell;
 			}
 		}
+	}
+
+	for (const pending of pendingSharedFormulas) {
+		const master = sharedFormulas.get(pending.si);
+		if (!master) {
+			continue;
+		}
+		const origin = decodeCell(master.origin);
+		const target = decodeCell(pending.ref);
+		pending.cell.f = shiftFormulaStr(master.formula, {
+			r: target.r - origin.r,
+			c: target.c - origin.c,
+		});
 	}
 }
 
@@ -758,7 +790,9 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 					cellTypeAttr = "b";
 					break;
 				case "n":
-					cellValueStr = String(cell.v);
+					if (cell.v != null) {
+						cellValueStr = String(cell.v);
+					}
 					break;
 				case "e":
 					cellValueStr = String(cell.v);
@@ -785,6 +819,9 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 			}
 			if (styleIndex != null && styleIndex > 0) {
 				cellXml += ' s="' + styleIndex + '"';
+			}
+			if (cell.D) {
+				cellXml += ' cm="1"';
 			}
 			if (!cell.f && cellValueStr === "") {
 				cellXml += "/>";

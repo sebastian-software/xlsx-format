@@ -91,13 +91,38 @@ export function a1ToRc(fstr: string, base: CellAddress): string {
  * @returns Formula string with shifted references
  */
 export function shiftFormulaStr(f: string, delta: CellAddress): string {
-	return f.replace(crefregex, ($0, $1, $2, $3, $4, $5) => {
-		return (
-			$1 +
-			($2 === "$" ? $2 + $3 : encodeCol(decodeCol($3) + delta.c)) +
-			($4 === "$" ? $4 + $5 : encodeRow(decodeRow($5) + delta.r))
-		);
-	});
+	const shiftReferences = (segment: string): string =>
+		segment.replace(crefregex, ($0, $1, $2, $3, $4, $5) => {
+			return (
+				$1 +
+				($2 === "$" ? $2 + $3 : encodeCol(decodeCol($3) + delta.c)) +
+				($4 === "$" ? $4 + $5 : encodeRow(decodeRow($5) + delta.r))
+			);
+		});
+
+	let result = "";
+	let segmentStart = 0;
+	for (let i = 0; i < f.length; ++i) {
+		if (f[i] !== '"') {
+			continue;
+		}
+		result += shiftReferences(f.slice(segmentStart, i));
+		const stringStart = i++;
+		while (i < f.length) {
+			if (f[i] !== '"') {
+				++i;
+				continue;
+			}
+			if (f[i + 1] === '"') {
+				i += 2;
+				continue;
+			}
+			break;
+		}
+		result += f.slice(stringStart, Math.min(i + 1, f.length));
+		segmentStart = i + 1;
+	}
+	return result + shiftReferences(f.slice(segmentStart));
 }
 
 /**

@@ -201,17 +201,20 @@ describe("Formulas", () => {
 		// Verify the API sets D flag on the source cell
 		expect(ws.A1.D).toBe(true);
 		expect(ws.A1.f).toBe("SORT(B1:B10)");
-		// The writer does not emit the dynamic array attribute, so D is lost on roundtrip
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
 		expect(wb2.Sheets.S.A1.f).toBe("SORT(B1:B10)");
+		expect(wb2.Sheets.S.A1.D).toBe(true);
 	});
 
 	it("formula without pre-computed value", async () => {
 		const ws = createSheet();
 		ws.A1 = { t: "n", f: "1+1" }; // no .v
 		ws["!ref"] = "A1";
-		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets.S.A1.f).toBe("1+1");
+		setCellStyle(ws.A1, { numFmt: "0.00" });
+		const wb2 = await roundtrip(createWorkbook(ws, "S"), { cellStyles: true }, { cellStyles: true });
+		expect(wb2.Sheets.S.A1).toMatchObject({ t: "n", f: "1+1" });
+		expect(wb2.Sheets.S.A1.v).toBeUndefined();
+		expect(wb2.Sheets.S.A1.s?.numFmt).toBe("0.00");
 	});
 });
 

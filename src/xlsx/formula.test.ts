@@ -29,6 +29,11 @@ describe("xlsx/formula", () => {
 		expect(result).toBe("$A$1+C3");
 	});
 
+	it("shiftFormulaStr should not shift references inside string literals", () => {
+		const result = shiftFormulaStr('B1+$C1+D$1+$E$1+"B1 says ""A1"""', { r: 1, c: 1 });
+		expect(result).toBe('C2+$C2+E$1+$E$1+"B1 says ""A1"""');
+	});
+
 	it("shiftFormulaXlsx should shift based on range and cell", () => {
 		const result = shiftFormulaXlsx("A1*2", "A1:A10", "A3");
 		expect(result).toBe("A3*2");

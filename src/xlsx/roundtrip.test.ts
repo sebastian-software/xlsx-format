@@ -175,6 +175,36 @@ describe("XLSX roundtrip: workbook features", () => {
 		expect(a3.f).toBe("SUM(A1:A2)");
 	});
 
+	it("reads shared formulas without cached values", async () => {
+		const base = await write(createWorkbook(arrayToSheet([[0]]), "Sheet1"));
+		const fixture = await replaceZipPart(
+			base,
+			"xl/worksheets/sheet1.xml",
+			'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+				'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+				'<dimension ref="A1:A3"/><sheetData>' +
+				'<row r="1"><c r="A1"><f t="shared" si="0"/></c></row>' +
+				'<row r="2"><c r="A2"><f t="shared" ref="A1:A3" si="0">B2+$C2+D$2+$E$2+"B2"</f><v>4</v></c></row>' +
+				'<row r="3"><c r="A3"><f t="shared" si="0"></f></c></row>' +
+				"</sheetData></worksheet>",
+		);
+
+		const wb = await read(fixture);
+		const ws = wb.Sheets.Sheet1;
+		expect(ws.A1).toMatchObject({ t: "n", f: 'B1+$C1+D$2+$E$2+"B2"' });
+		expect(ws.A2).toMatchObject({ t: "n", v: 4, f: 'B2+$C2+D$2+$E$2+"B2"' });
+		expect(ws.A3).toMatchObject({ t: "n", f: 'B3+$C3+D$2+$E$2+"B2"' });
+		expect(ws.A1.v).toBeUndefined();
+		expect(ws.A3.v).toBeUndefined();
+
+		const withoutFormulaWorkbook = await read(fixture, { cellFormula: false });
+		const withoutFormulas = withoutFormulaWorkbook.Sheets.Sheet1;
+		expect(withoutFormulas.A1).toBeUndefined();
+		expect(withoutFormulas.A2).toMatchObject({ t: "n", v: 4 });
+		expect(withoutFormulas.A2.f).toBeUndefined();
+		expect(withoutFormulas.A3).toBeUndefined();
+	});
+
 	it("array formulas survive roundtrip", async () => {
 		const ws = arrayToSheet([
 			[1, 10],
@@ -191,6 +221,39 @@ describe("XLSX roundtrip: workbook features", () => {
 		expect(c1).toBeDefined();
 		expect(c1.f).toBe("A1:A3*B1:B3");
 		expect(c1.F).toBe("C1:C3");
+	});
+
+	it("writes fresh dynamic array formulas with metadata and no fake cached value", async () => {
+		const ws = arrayToSheet([]);
+		setArrayFormula(ws, "B2:C3", "SEQUENCE(2,2)", true);
+		expect(ws["!ref"]).toBe("B2:C3");
+
+		const bytes = await write(createWorkbook(ws, "Sheet1"));
+		const zip = await zipRead(bytes);
+		const sheetXml = zipReadString(zip, "xl/worksheets/sheet1.xml");
+		const metadataXml = zipReadString(zip, "xl/metadata.xml");
+		expect(sheetXml).toContain('<c r="B2" cm="1"><f ref="B2:C3" t="array">SEQUENCE(2,2)</f></c>');
+		expect(sheetXml).not.toMatch(/undefined|NaN|#NUM!/);
+		expect(metadataXml).toContain('metadataType name="XLDAPR"');
+		expect(metadataXml).toContain('<xda:dynamicArrayProperties fDynamic="1"');
+
+		const roundtrippedWorkbook = await read(bytes);
+		const roundtripped = roundtrippedWorkbook.Sheets.Sheet1;
+		expect(roundtripped.B2).toMatchObject({ t: "n", f: "SEQUENCE(2,2)", F: "B2:C3", D: true });
+		expect(roundtripped.B2.v).toBeUndefined();
+	});
+
+	it("expands an existing sheet range for an array formula", async () => {
+		const ws = arrayToSheet([[42]]);
+		setArrayFormula(ws, "C5:D6", "A1*2");
+		expect(ws["!ref"]).toBe("A1:D6");
+
+		const bytes = await write(createWorkbook(ws, "Sheet1"));
+		const roundtrippedWorkbook = await read(bytes);
+		const roundtripped = roundtrippedWorkbook.Sheets.Sheet1;
+		expect(roundtripped.A1).toMatchObject({ t: "n", v: 42 });
+		expect(roundtripped.C5).toMatchObject({ t: "n", f: "A1*2", F: "C5:D6" });
+		expect(roundtripped.C5.v).toBeUndefined();
 	});
 
 	it("boolean cells survive roundtrip", async () => {
