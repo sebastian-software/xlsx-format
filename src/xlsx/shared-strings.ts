@@ -301,7 +301,7 @@ const sirregex = /<(?:\w+:)?r\b[^<>]*>/;
  * Parse a single string item (<si>) from the shared string table.
  * Handles both plain text (<t>) and rich text (<r>) formats.
  */
-function parseStringItem(x: string, opts?: SstParseOptions): XLString {
+export function parseStringItem(x: string, opts?: SstParseOptions): XLString {
 	const html = opts ? opts.cellHTML !== false : true;
 	const result: any = {};
 	if (!x) {
@@ -325,7 +325,7 @@ function parseStringItem(x: string, opts?: SstParseOptions): XLString {
 		// Join all <t> content and strip tags to get plain text
 		result.t = unescapeXml(matches.join("").replace(XML_TAG_REGEX, ""), true);
 		if (html) {
-			result.h = richTextToHtml(parseRichTextRuns(result.r, opts));
+			result.h = richTextToHtml(parseRichTextRuns(stripped, opts));
 		}
 	}
 	return result;

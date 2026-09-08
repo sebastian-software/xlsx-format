@@ -14,7 +14,7 @@ import { safeDecodeRange, encodeRange, encodeCell } from "../utils/cell.js";
 import { formatNumber, getDateTimeFormatKind } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
-import type { SST } from "./shared-strings.js";
+import { parseStringItem, type SST, type XLString } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
 import { getCellStyleIndex, getStyleFromXf } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
@@ -279,7 +279,7 @@ function parseSheetData(
 			// Extract <v> (value), <f> (formula), and <is> (inline string) sub-elements
 			const vMatch = cellValue.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/);
 			const fMatch = cellValue.match(/<(?:\w+:)?f[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/);
-			const isMatch = cellValue.match(/<(?:\w+:)?is>([\s\S]*?)<\/(?:\w+:)?is>/);
+			const isMatch = cellValue.match(/<(?:\w+:)?is\b[^>]*>([\s\S]*?)<\/(?:\w+:)?is\s*>/);
 
 			const v = vMatch ? vMatch[1] : null;
 
@@ -299,8 +299,14 @@ function parseSheetData(
 					break;
 				case "inlineStr":
 					if (isMatch) {
-						const tMatch = isMatch[1].match(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/);
-						cell = { t: "s", v: tMatch ? unescapeXml(tMatch[1]) : "" };
+						const inlineString = parseStringItem(isMatch[1], opts);
+						cell = { t: "s", v: inlineString.t };
+						if (inlineString.r !== undefined) {
+							cell.r = inlineString.r;
+						}
+						if (inlineString.h !== undefined) {
+							cell.h = inlineString.h;
+						}
 					} else {
 						cell = { t: "s", v: "" };
 					}
@@ -674,6 +680,28 @@ function writeWorksheetXml_sheetViews(ws: WorkSheet, idx: number): string {
 	return '<sheetViews><sheetView workbookViewId="0"' + attrs + ">" + pane + selection + "</sheetView></sheetViews>";
 }
 
+/** Add a string cell to the workbook-wide shared string table and return its index. */
+function addSharedString(cell: CellObject, opts: { Strings: SST; revStrings: Map<string, number> }): number {
+	const text = String(cell.v);
+	const richText = typeof cell.r === "string" && cell.r.length > 0 ? cell.r : undefined;
+	const key = richText === undefined ? "t\0" + text : "r\0" + richText;
+	const existing = opts.revStrings.get(key);
+	opts.Strings.Count = (opts.Strings.Count || 0) + 1;
+	if (existing !== undefined) {
+		return existing;
+	}
+
+	const entry: XLString = { t: text };
+	if (richText !== undefined) {
+		entry.r = richText;
+	}
+	const index = opts.Strings.length;
+	opts.Strings.push(entry);
+	opts.Strings.Unique = (opts.Strings.Unique || 0) + 1;
+	opts.revStrings.set(key, index);
+	return index;
+}
+
 /**
  * Write a worksheet as XML.
  *
@@ -753,6 +781,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 			const addr = encodeCell({ r: rowIdx, c: colIdx });
 			let cellValueStr = "";
 			let cellTypeAttr = "";
+			let cellValueTag = "v";
 
 			switch (cell.t) {
 				case "b":
@@ -776,8 +805,17 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 					}
 					break;
 				case "s":
-					cellValueStr = escapeXml(String(cell.v));
-					cellTypeAttr = "str"; // Inline string (not shared)
+					if (!cell.f && opts.bookSST) {
+						cellValueStr = String(addSharedString(cell, opts));
+						cellTypeAttr = "s";
+					} else if (!cell.f && typeof cell.r === "string" && cell.r.length > 0) {
+						cellValueStr = cell.r;
+						cellTypeAttr = "inlineStr";
+						cellValueTag = "is";
+					} else {
+						cellValueStr = escapeXml(String(cell.v));
+						cellTypeAttr = "str"; // Formula result or plain inline value
+					}
 					break;
 			}
 
@@ -803,7 +841,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 				cellXml += ">" + escapeXml(cell.f) + "</f>";
 			}
 			if (cellValueStr !== "") {
-				cellXml += "<v>" + cellValueStr + "</v>";
+				cellXml += "<" + cellValueTag + ">" + cellValueStr + "</" + cellValueTag + ">";
 			}
 			cellXml += "</c>";
 			row_cells.push(cellXml);
