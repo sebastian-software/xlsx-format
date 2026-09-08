@@ -1000,6 +1000,33 @@ describe("SSF: percentage format", () => {
 	});
 });
 
+describe("SSF: integer redistribution", () => {
+	it("preserves all digits when an integer overflows its placeholders", () => {
+		expect(formatNumber("0", 0)).toBe("0");
+		expect(formatNumber("0", 12)).toBe("12");
+		expect(formatNumber("0", 123)).toBe("123");
+		expect(formatNumber("000", 1234)).toBe("1234");
+	});
+
+	it("preserves signs, grouping, and fractional output", () => {
+		expect(formatNumber("0", -12)).toBe("-12");
+		expect(formatNumber("#,##0", 1234567)).toBe("1,234,567");
+		expect(formatNumber("0.00", 12.5)).toBe("12.50");
+	});
+
+	it("preserves percent output across sections and repeated percent tokens", () => {
+		expect(formatNumber("0%", 0.25)).toBe("25%");
+		expect(formatNumber("0.00%", 0.25)).toBe("25.00%");
+		expect(formatNumber("0%%", 0.25)).toBe("2500%%");
+		expect(formatNumber("0;[Red]-0", -12)).toBe("-12");
+	});
+
+	it("does not scale escaped or quoted literal percent signs", () => {
+		expect(formatNumber('0"%"', 25)).toBe("25%");
+		expect(formatNumber("0\\%", 25)).toBe("25%");
+	});
+});
+
 describe("SSF: scientific notation", () => {
 	it("formats basic scientific notation", () => {
 		const result = formatNumber("0.00E+00", 12345);

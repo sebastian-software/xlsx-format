@@ -1787,7 +1787,7 @@ function eval_fmt(fmt: string, value: any, opts: any, flen: number): string {
 				}
 				if (numFmtIdx >= out[i]!.value.length - 1) {
 					numFmtIdx -= out[i]!.value.length;
-					out[i]!.value = formattedNumber.substring(numFmtIdx + 1, out[i]!.value.length);
+					out[i]!.value = formattedNumber.substring(numFmtIdx + 1, numFmtIdx + 1 + out[i]!.value.length);
 				} else if (numFmtIdx < 0) {
 					out[i]!.value = "";
 				} else {
