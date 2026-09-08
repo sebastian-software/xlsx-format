@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { read, write, arrayToSheet, sheetToJson, createWorkbook } from "./index.js";
+import { zipAddString, zipRead, zipReadString, zipWrite } from "./zip/index.js";
 
 describe("read.ts — input type handling", () => {
 	it("should read from ArrayBuffer", async () => {
@@ -28,6 +29,26 @@ describe("read.ts — input type handling", () => {
 		expect(rows[1]).toContain(2);
 	});
 
+	it("should forward the field separator for plain text", async () => {
+		const result = await read("A\tB\n1\t2", { type: "string", FS: "\t" });
+		const rows = sheetToJson(result.Sheets[result.SheetNames[0]], { header: 1 });
+		expect(rows).toStrictEqual([
+			["A", "B"],
+			[1, 2],
+		]);
+	});
+
+	it("should apply metadata-only shapes to plain-text reads", async () => {
+		const sheetNames = await read("A,B", { type: "string", bookSheets: true });
+		expect(sheetNames).toStrictEqual({ SheetNames: ["Sheet1"] });
+
+		const properties = await read("A,B", { type: "string", bookProps: true });
+		expect(properties).toStrictEqual({ Props: {}, Custprops: {} });
+
+		const combined = await read("A,B", { type: "string", bookSheets: true, bookProps: true });
+		expect(combined).toStrictEqual({ SheetNames: ["Sheet1"], Props: {}, Custprops: {} });
+	});
+
 	it("should read HTML string", async () => {
 		const result = await read("<table><tr><td>Hi</td></tr></table>", { type: "string" });
 		expect(result.SheetNames).toHaveLength(1);
@@ -54,6 +75,38 @@ describe("read.ts — input type handling", () => {
 			code: "UNSUPPORTED",
 			message: "Password-protected workbooks are not supported",
 		});
+	});
+
+	it.each(["bookFiles", "bookVBA", "bookDeps", "xlfn"] as const)(
+		"should reject unsupported %s requests",
+		async (option) => {
+			await expect(read(new Uint8Array([0x00]), { [option]: true })).rejects.toMatchObject({
+				name: "XlsxError",
+				code: "UNSUPPORTED",
+				message: `Read option "${option}" is not supported`,
+			});
+		},
+	);
+
+	it("should preserve false compatibility options", async () => {
+		const bytes = await write(createWorkbook(arrayToSheet([["Data"]]), "Sheet1"));
+		await expect(
+			read(bytes, { bookFiles: false, bookVBA: false, bookDeps: false, xlfn: false }),
+		).resolves.toMatchObject({ SheetNames: ["Sheet1"] });
+	});
+
+	it("should ignore stored dimensions and infer an A1-anchored range with nodim", async () => {
+		const bytes = await write(createWorkbook(arrayToSheet([["Data"]]), "Sheet1"));
+		const zip = await zipRead(bytes);
+		const sheetXml = zipReadString(zip, "xl/worksheets/sheet1.xml");
+		zipAddString(zip, "xl/worksheets/sheet1.xml", sheetXml.replace('ref="A1"', 'ref="A1:Z99"'));
+		const modified = await zipWrite(zip);
+
+		const stored = await read(modified);
+		expect(stored.Sheets.Sheet1["!ref"]).toBe("A1:Z99");
+
+		const inferred = await read(modified, { nodim: true });
+		expect(inferred.Sheets.Sheet1["!ref"]).toBe("A1");
 	});
 
 	it("should read from plain number array", async () => {
