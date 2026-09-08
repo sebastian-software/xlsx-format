@@ -60,6 +60,15 @@ function buildJsonRow(
 			continue;
 		}
 		let cellValue: any = val.v;
+		// Formula cells may legitimately omit their cached numeric result. Treat
+		// them as blank before date-like number formats attempt serial conversion.
+		if (val.t === "n" && cellValue == null && (val.f != null || val.F != null)) {
+			if (defval !== undefined && headers[colIdx] != null) {
+				setRowValue(row, headers[colIdx], defval);
+				isempty = false;
+			}
+			continue;
+		}
 		switch (val.t) {
 			case "z": // stub/blank cell
 				if (cellValue == null) {

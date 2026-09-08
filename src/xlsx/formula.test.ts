@@ -29,6 +29,24 @@ describe("xlsx/formula", () => {
 		expect(result).toBe("$A$1+C3");
 	});
 
+	it("shiftFormulaStr should not shift references inside string literals", () => {
+		const result = shiftFormulaStr('B1+$C1+D$1+$E$1+"B1 says ""A1"""', { r: 1, c: 1 });
+		expect(result).toBe('C2+$C2+E$1+$E$1+"B1 says ""A1"""');
+	});
+
+	it("shiftFormulaStr should respect formula reference token boundaries", () => {
+		const formula =
+			"'A1'!B1+'Budget A1'!B1+'Joe''s A1'!B1+A1!B1+SUM(A1:B2!C3)+SUM(Table1[[#Headers],[A1]])+A:A+1:1+$A:$A+$1:$1+XFD1+A1048576";
+		const result = shiftFormulaStr(formula, { r: 1, c: 1 });
+		expect(result).toBe(
+			"'A1'!C2+'Budget A1'!C2+'Joe''s A1'!C2+A1!C2+SUM(A1:B2!D4)+SUM(Table1[[#Headers],[A1]])+B:B+2:2+$A:$A+$1:$1+#REF!+#REF!",
+		);
+	});
+
+	it("shiftFormulaStr should reject references shifted before the worksheet origin", () => {
+		expect(shiftFormulaStr("A1+$A1+A$1+$A$1+A:A+1:1", { r: -1, c: -1 })).toBe("#REF!+#REF!+#REF!+$A$1+#REF!+#REF!");
+	});
+
 	it("shiftFormulaXlsx should shift based on range and cell", () => {
 		const result = shiftFormulaXlsx("A1*2", "A1:A10", "A3");
 		expect(result).toBe("A3*2");

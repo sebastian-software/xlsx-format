@@ -61,7 +61,13 @@ export function rcToA1(fstr: string, base: CellAddress): string {
  * The lookbehind and lookahead prevent matching inside identifiers or function names.
  */
 const crefregex =
-	/(^|[^.\w])(\$?)([A-Z]{1,2}|[A-W][A-Z]{2}|X[A-E][A-Z]|XF[A-D])(\$?)(10[0-3]\d{4}|104[0-7]\d{3}|1048[0-4]\d{2}|10485[0-6]\d|104857[0-6]|[1-9]\d{0,5})(?![\w.(])/g;
+	/(^|[^.\w])(\$?)([A-Z]{1,2}|[A-W][A-Z]{2}|X[A-E][A-Z]|XF[A-D])(\$?)(10[0-3]\d{4}|104[0-7]\d{3}|1048[0-4]\d{2}|10485[0-6]\d|104857[0-6]|[1-9]\d{0,5})(?![\w.(![])/g;
+
+const wholeColumnRegex =
+	/(^|[^.\w])(\$?)([A-Z]{1,2}|[A-W][A-Z]{2}|X[A-E][A-Z]|XF[A-D]):(\$?)([A-Z]{1,2}|[A-W][A-Z]{2}|X[A-E][A-Z]|XF[A-D])(?![\w.(![])/g;
+const wholeRowRegex =
+	/(^|[^.\w])(\$?)(10[0-3]\d{4}|104[0-7]\d{3}|1048[0-4]\d{2}|10485[0-6]\d|104857[0-6]|[1-9]\d{0,5}):(\$?)(10[0-3]\d{4}|104[0-7]\d{3}|1048[0-4]\d{2}|10485[0-6]\d|104857[0-6]|[1-9]\d{0,5})(?![\w.(![])/g;
+const protectedFormulaTokenRegex = /("(?:[^"]|"")*"|'(?:[^']|'')*'!|[A-Za-z_][\w.]*(?::[A-Za-z_][\w.]*)?!|\[[^\]]*\])/g;
 
 /**
  * Convert A1-style formula references to R1C1-style.
@@ -91,13 +97,36 @@ export function a1ToRc(fstr: string, base: CellAddress): string {
  * @returns Formula string with shifted references
  */
 export function shiftFormulaStr(f: string, delta: CellAddress): string {
-	return f.replace(crefregex, ($0, $1, $2, $3, $4, $5) => {
-		return (
-			$1 +
-			($2 === "$" ? $2 + $3 : encodeCol(decodeCol($3) + delta.c)) +
-			($4 === "$" ? $4 + $5 : encodeRow(decodeRow($5) + delta.r))
-		);
-	});
+	const shiftColumn = (anchor: string, column: string): string | undefined => {
+		const shifted = decodeCol(column) + (anchor ? 0 : delta.c);
+		return shifted < 0 || shifted >= 16_384 ? undefined : anchor + encodeCol(shifted);
+	};
+	const shiftRow = (anchor: string, row: string): string | undefined => {
+		const shifted = decodeRow(row) + (anchor ? 0 : delta.r);
+		return shifted < 0 || shifted >= 1_048_576 ? undefined : anchor + encodeRow(shifted);
+	};
+	const shiftReferences = (segment: string): string =>
+		segment
+			.replace(wholeColumnRegex, ($0, prefix, startAnchor, startColumn, endAnchor, endColumn) => {
+				const start = shiftColumn(startAnchor, startColumn);
+				const end = shiftColumn(endAnchor, endColumn);
+				return prefix + (start && end ? start + ":" + end : "#REF!");
+			})
+			.replace(wholeRowRegex, ($0, prefix, startAnchor, startRow, endAnchor, endRow) => {
+				const start = shiftRow(startAnchor, startRow);
+				const end = shiftRow(endAnchor, endRow);
+				return prefix + (start && end ? start + ":" + end : "#REF!");
+			})
+			.replace(crefregex, ($0, prefix, columnAnchor, column, rowAnchor, row) => {
+				const shiftedColumn = shiftColumn(columnAnchor, column);
+				const shiftedRow = shiftRow(rowAnchor, row);
+				return prefix + (shiftedColumn && shiftedRow ? shiftedColumn + shiftedRow : "#REF!");
+			});
+
+	return f
+		.split(protectedFormulaTokenRegex)
+		.map((segment, index) => (index % 2 === 0 ? shiftReferences(segment) : segment))
+		.join("");
 }
 
 /**
