@@ -1,9 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { addCellComment, arrayToSheet, createWorkbook, read, write } from "./index.js";
+import { addCellComment, arrayToSheet, createWorkbook, decodeCell, read, write } from "./index.js";
 import { zipAddString, zipHas, zipRead, zipReadString, zipWrite } from "./zip/index.js";
 
 function denseCell(sheet: any, row = 0, column = 0): any {
 	return sheet["!data"]?.[row]?.[column];
+}
+
+function sheetCell(sheet: any, ref: string): any {
+	if (sheet["!data"] == null) {
+		return sheet[ref];
+	}
+	const address = decodeCell(ref);
+	return sheet["!data"]?.[address.r]?.[address.c];
 }
 
 describe("comment XLSX roundtrips", () => {
@@ -111,7 +119,7 @@ describe("comment XLSX roundtrips", () => {
 		expect(sheet.A1.c!.map((comment) => ({ ...comment }))).toStrictEqual(original);
 	});
 
-	it("matches coordinate-free VML shapes to commented cells rather than individual comments", async () => {
+	it.each([false, true])("matches coordinate-free VML shapes to commented cells with dense=%s", async (dense) => {
 		const sheet = arrayToSheet([
 			["A", null],
 			[null, "B"],
@@ -127,11 +135,13 @@ describe("comment XLSX roundtrips", () => {
 		const vml = zipReadString(zip, vmlPath)!;
 		zipAddString(zip, vmlPath, vml.replace(/<x:(?:Row|Column)>[^<]*<\/x:(?:Row|Column)>/g, ""));
 
-		const result = await read(await zipWrite(zip));
-		expect(result.Sheets.VML.A1.c).toHaveLength(2);
-		expect(result.Sheets.VML.A1.c!.hidden).toBe(true);
-		expect(result.Sheets.VML.B2.c).toHaveLength(1);
-		expect(result.Sheets.VML.B2.c!.hidden).toBe(false);
+		const result = await read(await zipWrite(zip), { dense });
+		const a1 = sheetCell(result.Sheets.VML, "A1");
+		const b2 = sheetCell(result.Sheets.VML, "B2");
+		expect(a1.c).toHaveLength(2);
+		expect(a1.c.hidden).toBe(true);
+		expect(b2.c).toHaveLength(1);
+		expect(b2.c.hidden).toBe(false);
 	});
 
 	it("ignores non-cell worksheet properties that happen to contain comments", async () => {
