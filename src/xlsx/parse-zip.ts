@@ -107,10 +107,24 @@ function safe_parse_wbrels(wbrels: Relationships, sheets: SheetEntry[]): [string
 }
 
 /**
- * Safely parse a single sheet from the ZIP, including its relationships,
+ * Optional worksheet relationships and annotations are best-effort in normal
+ * mode. Caller configuration failures must still surface, since retrying after
+ * silently ignoring a configured limit would bypass the caller's policy.
+ */
+function tolerateOptionalSheetError(error: unknown, opts: ReadOptions): void {
+	if (
+		opts.WTF ||
+		(error instanceof XlsxError && (error.code === "LIMIT_EXCEEDED" || error.code === "INVALID_ARGUMENT"))
+	) {
+		throw error;
+	}
+}
+
+/**
+ * Parse a required worksheet and then best-effort optional relationships,
  * comments, threaded comments, and VML drawings.
  */
-function safe_parse_sheet(
+function parse_sheet(
 	zip: ZipArchive,
 	path: string,
 	relsPath: string,
@@ -125,40 +139,40 @@ function safe_parse_sheet(
 	styles: StylesData,
 	strs: SST,
 ): void {
+	// Unsupported sheet types are listed in SheetNames but are not materialized.
+	if (stype !== "sheet") {
+		return;
+	}
+
+	let relationships: Relationships;
 	try {
-		sheetRels[sheetName] = parseRelationships(getZipString(zip, relsPath, true, opts), path, opts);
-		const data = getZipData(zip, path, false, opts);
-		if (!data) {
-			return;
-		}
+		relationships = parseRelationships(getZipString(zip, relsPath, true, opts), path, opts);
+	} catch (error) {
+		tolerateOptionalSheetError(error, opts);
+		relationships = parseRelationships(null, path, opts);
+	}
+	sheetRels[sheetName] = relationships;
 
-		let _ws: WorkSheet | undefined;
-		switch (stype) {
-			case "sheet":
-				_ws = parseWorksheetXml(data, opts, idx, sheetRels[sheetName], wb, themes, styles);
-				break;
-			default:
-				return;
-		}
-		if (!_ws) {
-			return;
-		}
+	const data = getZipData(zip, path, false, opts)!;
 
-		// Replace SST index placeholders with actual string values
-		resolveSharedStrings(_ws, strs, opts);
+	const _ws = parseWorksheetXml(data, opts, idx, relationships, wb, themes, styles);
 
-		sheets[sheetName] = _ws;
+	// Replace SST index placeholders with actual string values
+	resolveSharedStrings(_ws, strs, opts);
 
+	sheets[sheetName] = _ws;
+
+	try {
 		// Scan sheet relationships for comments and threaded comments
 		const comments: any[] = [];
 		let tcomments: any[] = [];
-		if (sheetRels[sheetName]) {
-			for (const n of Object.keys(sheetRels[sheetName])) {
+		if (relationships) {
+			for (const n of Object.keys(relationships)) {
 				// Skip internal keys
 				if (n === "!id" || n === "!idx") {
 					continue;
 				}
-				const rel = sheetRels[sheetName][n];
+				const rel = relationships[n];
 				if (!rel || !rel.Type) {
 					continue;
 				}
@@ -189,17 +203,15 @@ function safe_parse_sheet(
 		}
 
 		// Parse legacy VML drawings (comment anchor shapes)
-		if ((_ws as any)["!legdrawel"] && sheetRels[sheetName]) {
+		if ((_ws as any)["!legdrawel"] && relationships) {
 			const dfile = resolve_path((_ws as any)["!legdrawel"].Target, path);
 			const draw = getZipString(zip, dfile, true, opts);
 			if (draw) {
 				parseVml(draw, _ws, comments);
 			}
 		}
-	} catch (e) {
-		if (opts.WTF) {
-			throw e;
-		}
+	} catch (error) {
+		tolerateOptionalSheetError(error, opts);
 	}
 }
 
@@ -244,16 +256,8 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 	if (!options.bookSheets && !options.bookProps) {
 		// Shared String Table
 		if (dir.sst) {
-			try {
-				const sstData = getZipData(zip, stripLeadingSlash(dir.sst), false, options);
-				if (sstData) {
-					strs = parseSstXml(sstData, options);
-				}
-			} catch (e) {
-				if (options.WTF) {
-					throw e;
-				}
-			}
+			const sstData = getZipData(zip, stripLeadingSlash(dir.sst), false, options)!;
+			strs = parseSstXml(sstData, options);
 		}
 
 		// Theme (color scheme for styled cells)
@@ -427,7 +431,7 @@ export function parseZip(zip: ZipArchive, opts?: ReadOptions): WorkBook {
 
 		// Derive the per-sheet .rels path from the sheet path
 		const relsPath = path.replace(/^(.*)(\/)([^/]*)$/, "$1/_rels/$3.rels");
-		safe_parse_sheet(
+		parse_sheet(
 			zip,
 			path,
 			relsPath,

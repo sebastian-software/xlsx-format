@@ -81,6 +81,8 @@ Stable error codes:
 | `NOT_FOUND`        | A required workbook part or worksheet reference is missing.      |
 | `DUPLICATE`        | A workbook or archive structure contains a duplicate entry.      |
 
+A full XLSX read rejects missing selected worksheets and missing shared string tables declared by the package. Sheet-name-only and property-only reads do not load those parts. Optional worksheet relationships, comments, and legacy drawing annotations remain best-effort when `WTF` is false; set `WTF: true` to surface malformed optional parts. Configured limits and invalid option values always throw, regardless of `WTF`.
+
 ## Exporting CSV
 
 CSV files opened in spreadsheet applications can interpret text that starts with characters such as `=`, `+`, `-`, `@`, tab, or carriage return as formulas. This is commonly called CSV injection or formula injection.
