@@ -165,6 +165,7 @@ function parse_sheet(
 	try {
 		// Scan sheet relationships for comments and threaded comments
 		const comments: any[] = [];
+		const commentCells = new Set<string>();
 		let tcomments: any[] = [];
 		if (relationships) {
 			for (const n of Object.keys(relationships)) {
@@ -184,7 +185,12 @@ function parse_sheet(
 					if (cmntData) {
 						const parsedComments = parseCommentsXml(cmntData, opts);
 						if (parsedComments && parsedComments.length > 0) {
-							comments.push(...parsedComments);
+							for (const comment of parsedComments) {
+								if (!commentCells.has(comment.ref)) {
+									commentCells.add(comment.ref);
+									comments.push(comment);
+								}
+							}
 							insertCommentsIntoSheet(_ws, parsedComments, false);
 						}
 					}
