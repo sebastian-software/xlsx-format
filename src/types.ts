@@ -279,7 +279,11 @@ export interface CellObject {
 	/** Style object (when cellStyles option is enabled) */
 	s?: CellStyle;
 	/** Raw XF (extended format) record data */
-	XF?: { numFmtId?: number };
+	XF?: {
+		numFmtId?: number;
+		/** Resolved number format retained from the source workbook */
+		numFmt?: NumberFormat;
+	};
 }
 
 /** Zero-based cell address with column (c) and row (r) indices */

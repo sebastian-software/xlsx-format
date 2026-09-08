@@ -332,10 +332,11 @@ function parseSheetData(
 			}
 
 			// Apply style reference from the cellXf table
-			if (cellStyle > 0 && styles) {
+			if (styles) {
 				const xf = styles.CellXf[cellStyle];
 				if (xf) {
-					cell.XF = { numFmtId: xf.numFmtId };
+					const numberFormat = styles.NumberFmt[xf.numFmtId] || formatTable[xf.numFmtId];
+					cell.XF = { numFmtId: xf.numFmtId, numFmt: numberFormat };
 					if (opts.cellStyles) {
 						const style = getStyleFromXf(styles, cellStyle);
 						if (style) {
@@ -343,9 +344,8 @@ function parseSheetData(
 						}
 					}
 					if (opts.cellNF) {
-						const nf = styles.NumberFmt[xf.numFmtId] || formatTable[xf.numFmtId];
-						if (nf) {
-							cell.z = nf;
+						if (numberFormat) {
+							cell.z = numberFormat;
 						}
 					}
 				}
@@ -370,25 +370,22 @@ function parseSheetData(
 			}
 
 			// Format the cell value as display text
-			if (opts.cellText !== false) {
-				if (cell.t === "n") {
-					const nfmt =
-						cell.z ||
-						(cell.XF && cell.XF.numFmtId != null && styles?.NumberFmt[cell.XF.numFmtId]) ||
-						formatTable[(cell.XF && cell.XF.numFmtId) || 0];
+			if (cell.t === "n") {
+				const numFmtId = cell.XF?.numFmtId ?? 0;
+				const nfmt = cell.z || cell.XF?.numFmt || styles?.NumberFmt[numFmtId] || formatTable[numFmtId];
+				if (opts.cellText !== false) {
 					if (nfmt) {
 						try {
-							cell.w = formatNumber(nfmt, cell.v, { date1904 });
+							cell.w = formatNumber(nfmt, cell.v, { date1904, dateNF: opts.dateNF });
 						} catch {}
 					}
-					// Convert numeric cells with date formats to Date objects if cellDates is enabled
-					if (opts.cellDates && cell.XF) {
-						const fmtStr = nfmt || formatTable[cell.XF.numFmtId || 0] || "";
-						const fmtKind = typeof fmtStr === "string" ? getDateTimeFormatKind(fmtStr) : "none";
-						if (fmtKind !== "none" && fmtKind !== "time" && typeof cell.v === "number") {
-							cell.t = "d";
-							cell.v = serialNumberToDate(cell.v, date1904);
-						}
+				}
+				// Date typing is independent from display-text generation.
+				if (opts.cellDates && cell.XF) {
+					const fmtKind = typeof nfmt === "string" ? getDateTimeFormatKind(nfmt) : "none";
+					if (fmtKind !== "none" && fmtKind !== "time" && typeof cell.v === "number") {
+						cell.t = "d";
+						cell.v = serialNumberToDate(cell.v, date1904);
 					}
 				}
 			}
@@ -773,7 +770,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 						cellTypeAttr = "d";
 					} else {
 						// Convert date to serial number for non-cellDates mode
-						cellValueStr = String(dateToSerialNumber(cell.v as Date));
+						cellValueStr = String(dateToSerialNumber(cell.v as Date, _wb?.Workbook?.WBProps?.date1904));
 					}
 					break;
 				case "s":

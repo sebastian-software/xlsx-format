@@ -9,8 +9,17 @@ import {
 	setArrayFormula,
 	setSheetVisibility,
 	jsonToSheet,
+	formatCell,
+	setCellStyle,
 } from "../index.js";
 import { is1904DateSystem } from "./workbook.js";
+import { zipAddString, zipRead, zipReadString, zipWrite } from "../zip/index.js";
+
+async function replaceZipPart(bytes: Uint8Array, path: string, content: string): Promise<Uint8Array> {
+	const zip = await zipRead(bytes);
+	zipAddString(zip, path, content);
+	return zipWrite(zip);
+}
 
 describe("XLSX roundtrip: workbook features", () => {
 	it("hidden sheets survive roundtrip", async () => {
@@ -373,6 +382,122 @@ describe("XLSX roundtrip: workbook properties", () => {
 		const wb2 = await read(buf);
 
 		expect(is1904DateSystem(wb2)).toBe("true");
+	});
+
+	it.each([
+		{ date1904: false, expectedSerial: 46037.52425925926 },
+		{ date1904: true, expectedSerial: 44575.52425925926 },
+	])("serializes Date cells with the $date1904 workbook date system", async ({ date1904, expectedSerial }) => {
+		const date = new Date("2026-01-15T12:34:56.000Z");
+		const ws = arrayToSheet([[date]], { cellDates: true, UTC: true });
+		const wb = createWorkbook(ws, "S");
+		wb.Workbook = { WBProps: { date1904 } };
+
+		const bytes = await write(wb, { cellStyles: true });
+		const numeric = await read(bytes, { cellText: false });
+		const dated = await read(bytes, { cellDates: true, cellText: false });
+
+		expect(numeric.Sheets.S.A1.v).toBeCloseTo(expectedSerial, 8);
+		expect(dated.Sheets.S.A1).toMatchObject({ t: "d" });
+		expect((dated.Sheets.S.A1.v as Date).toISOString()).toBe(date.toISOString());
+	});
+
+	it("keeps explicit ISO date cells independent of the workbook date system", async () => {
+		const date = new Date("2026-01-15T12:34:56.000Z");
+		const ws = arrayToSheet([[date]], { cellDates: true, UTC: true });
+		const wb = createWorkbook(ws, "S");
+		wb.Workbook = { WBProps: { date1904: true } };
+
+		const bytes = await write(wb, { cellDates: true });
+		const zip = await zipRead(bytes);
+		const sheetXml = zipReadString(zip, "xl/worksheets/sheet1.xml");
+		const result = await read(bytes, { cellDates: true, cellText: false });
+
+		expect(sheetXml).toContain('<c r="A1" t="d"><v>2026-01-15T12:34:56.000Z</v></c>');
+		expect((result.Sheets.S.A1.v as Date).toISOString()).toBe(date.toISOString());
+	});
+});
+
+describe("XLSX read formatting", () => {
+	it("applies implicit style index zero and explicit positive style indexes", async () => {
+		const source = await write(createWorkbook(arrayToSheet([[45292, 12.5]]), "S"));
+		const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFF0000"/><name val="Calibri"/></font></fonts>
+<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="2"><xf numFmtId="14" fontId="1" fillId="0" borderId="0" applyNumberFormat="1" applyFont="1"/><xf numFmtId="2" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+		const withStyles = await replaceZipPart(source, "xl/styles.xml", styles);
+		const zip = await zipRead(withStyles);
+		const sheetXml = zipReadString(zip, "xl/worksheets/sheet1.xml")!.replace('<c r="B1">', '<c r="B1" s="1">');
+		const fixture = await replaceZipPart(withStyles, "xl/worksheets/sheet1.xml", sheetXml);
+
+		const result = await read(fixture, { cellDates: true, cellNF: true, cellStyles: true });
+
+		expect(result.Sheets.S.A1.t).toBe("d");
+		expect((result.Sheets.S.A1.v as Date).toISOString()).toBe("2024-01-01T00:00:00.000Z");
+		expect(result.Sheets.S.A1).toMatchObject({
+			z: "m/d/yy",
+			s: { font: { bold: true, color: { rgb: "FFFF0000" } } },
+		});
+		expect(result.Sheets.S.B1).toMatchObject({ t: "n", v: 12.5, z: "0.00", w: "12.50" });
+	});
+
+	it("keeps date conversion independent from cell text and honors dateNF", async () => {
+		const ws = arrayToSheet([[45292, 45292, 0.5]]);
+		setCellStyle(ws.A1, { numFmt: 14 });
+		setCellStyle(ws.B1, { numFmt: "yyyy-mm-dd" });
+		setCellStyle(ws.C1, { numFmt: 20 });
+		const bytes = await write(createWorkbook(ws, "S"), { cellStyles: true });
+
+		const withoutText = await read(bytes, { cellDates: true, cellText: false });
+		const withText = await read(bytes, { cellDates: true, dateNF: "yyyy-mm-dd" });
+		const numeric = await read(bytes, { cellDates: false, cellText: false });
+
+		expect(withoutText.Sheets.S.A1.t).toBe("d");
+		expect(withoutText.Sheets.S.B1.t).toBe("d");
+		expect(withoutText.Sheets.S.C1).toMatchObject({ t: "n", v: 0.5 });
+		expect(withoutText.Sheets.S.A1.w).toBeUndefined();
+		expect(withoutText.Sheets.S.B1.w).toBeUndefined();
+		expect(withText.Sheets.S.A1).toMatchObject({ t: "d", w: "2024-01-01" });
+		expect(withText.Sheets.S.B1).toMatchObject({ t: "d", w: "2024-01-01" });
+		expect(withText.Sheets.S.C1).toMatchObject({ t: "n", v: 0.5, w: "12:00" });
+		expect(numeric.Sheets.S.A1).toMatchObject({ t: "n", v: 45292 });
+		expect(numeric.Sheets.S.B1).toMatchObject({ t: "n", v: 45292 });
+	});
+
+	it.each([
+		{ date1904: false, serial: 45292, expected: "2024-01-01T00:00:00.000Z" },
+		{ date1904: true, serial: 0, expected: "1904-01-01T00:00:00.000Z" },
+	])("converts styled dates using the $date1904 workbook date system", async ({ date1904, serial, expected }) => {
+		const ws = arrayToSheet([[serial]]);
+		setCellStyle(ws.A1, { numFmt: 14 });
+		const wb = createWorkbook(ws, "S");
+		wb.Workbook = { WBProps: { date1904 } };
+		const result = await read(await write(wb, { cellStyles: true }), { cellDates: true, cellText: false });
+
+		expect(result.Sheets.S.A1.t).toBe("d");
+		expect((result.Sheets.S.A1.v as Date).toISOString()).toBe(expected);
+	});
+
+	it("keeps custom formats stable across interleaved workbook operations", async () => {
+		const percentage = arrayToSheet([[0.25]]);
+		setCellStyle(percentage.A1, { numFmt: "0.0%" });
+		const first = await read(await write(createWorkbook(percentage, "S"), { cellStyles: true }), {
+			cellText: false,
+		});
+		const retainedCell = { ...first.Sheets.S.A1 };
+
+		const measurement = arrayToSheet([[0.25]]);
+		setCellStyle(measurement.A1, { numFmt: '0.00 "kg"' });
+		await read(await write(createWorkbook(measurement, "S"), { cellStyles: true }), { cellText: false });
+
+		expect(formatCell(retainedCell)).toBe("25.0%");
+		const rewritten = await read(await write(first, { cellStyles: true }), { cellText: false });
+		expect(formatCell({ ...rewritten.Sheets.S.A1 })).toBe("25.0%");
 	});
 });
 
