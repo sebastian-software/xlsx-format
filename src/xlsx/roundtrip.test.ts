@@ -182,20 +182,31 @@ describe("XLSX roundtrip: workbook features", () => {
 			"xl/worksheets/sheet1.xml",
 			'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
 				'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-				'<dimension ref="A1:A3"/><sheetData>' +
+				'<dimension ref="A1:B3"/><sheetData>' +
 				'<row r="1"><c r="A1"><f t="shared" si="0"/></c></row>' +
-				'<row r="2"><c r="A2"><f t="shared" ref="A1:A3" si="0">B2+$C2+D$2+$E$2+"B2"</f><v>4</v></c></row>' +
-				'<row r="3"><c r="A3"><f t="shared" si="0"></f></c></row>' +
+				'<row r="2"><c r="A2"><f t="shared" ref="A1:B3" si="0">B2+$C2+D$2+$E$2+\'Budget A1\'!B2+\'Joe\'\'s A1\'!C2+A1!D2+SUM(A1:B2!C2)+SUM(Table1[A1])+E:E+2:2+XFD2+A1048576+"B2"</f><v>4</v></c></row>' +
+				'<row r="3"><c r="A3"><f t="shared" si="0"></f></c><c r="B3"><f t="shared" si="0"/></c></row>' +
 				"</sheetData></worksheet>",
 		);
 
 		const wb = await read(fixture);
 		const ws = wb.Sheets.Sheet1;
-		expect(ws.A1).toMatchObject({ t: "n", f: 'B1+$C1+D$2+$E$2+"B2"' });
-		expect(ws.A2).toMatchObject({ t: "n", v: 4, f: 'B2+$C2+D$2+$E$2+"B2"' });
-		expect(ws.A3).toMatchObject({ t: "n", f: 'B3+$C3+D$2+$E$2+"B2"' });
+		expect(ws.A1.f).toBe(
+			"B1+$C1+D$2+$E$2+'Budget A1'!B1+'Joe''s A1'!C1+A1!D1+SUM(A1:B2!C1)+SUM(Table1[A1])+E:E+1:1+XFD1+A1048575+\"B2\"",
+		);
+		expect(ws.A2).toMatchObject({ t: "n", v: 4 });
+		expect(ws.A2.f).toBe(
+			"B2+$C2+D$2+$E$2+'Budget A1'!B2+'Joe''s A1'!C2+A1!D2+SUM(A1:B2!C2)+SUM(Table1[A1])+E:E+2:2+XFD2+A1048576+\"B2\"",
+		);
+		expect(ws.A3.f).toBe(
+			"B3+$C3+D$2+$E$2+'Budget A1'!B3+'Joe''s A1'!C3+A1!D3+SUM(A1:B2!C3)+SUM(Table1[A1])+E:E+3:3+XFD3+#REF!+\"B2\"",
+		);
+		expect(ws.B3.f).toBe(
+			"C3+$C3+E$2+$E$2+'Budget A1'!C3+'Joe''s A1'!D3+A1!E3+SUM(A1:B2!D3)+SUM(Table1[A1])+F:F+3:3+#REF!+#REF!+\"B2\"",
+		);
 		expect(ws.A1.v).toBeUndefined();
 		expect(ws.A3.v).toBeUndefined();
+		expect(ws.B3.v).toBeUndefined();
 
 		const withoutFormulaWorkbook = await read(fixture, { cellFormula: false });
 		const withoutFormulas = withoutFormulaWorkbook.Sheets.Sheet1;
