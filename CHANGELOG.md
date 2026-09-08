@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.4.3](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.2...xlsx-format-v2.4.3) (2026-09-08)
+
+
+### Bug Fixes
+
+* **deps:** update actions/setup-node action to v7 ([#132](https://github.com/sebastian-software/xlsx-format/issues/132)) ([0d2e3af](https://github.com/sebastian-software/xlsx-format/commit/0d2e3af79a32eb7e836f5025dc82cd8417638233))
+* **deps:** update pnpm to v12 ([#133](https://github.com/sebastian-software/xlsx-format/issues/133)) ([d971f66](https://github.com/sebastian-software/xlsx-format/commit/d971f6630fe997640e98ccff4f51aee70237539a))
+* harden workbook authoring helpers ([#123](https://github.com/sebastian-software/xlsx-format/issues/123)) ([19b53d0](https://github.com/sebastian-software/xlsx-format/commit/19b53d0a9b7d819a57698bf54013ede373e54ec5))
+* preserve CSV boundaries and formula quoting ([#126](https://github.com/sebastian-software/xlsx-format/issues/126)) ([ad82385](https://github.com/sebastian-software/xlsx-format/commit/ad823855f608d5786799b390e11ad3cda6f55782))
+* preserve integer number format output ([#128](https://github.com/sebastian-software/xlsx-format/issues/128)) ([d05244c](https://github.com/sebastian-software/xlsx-format/commit/d05244cf0e922eab6923f88ae905d88f469d8068))
+* preserve worksheet date and format semantics ([#125](https://github.com/sebastian-software/xlsx-format/issues/125)) ([ec0ad55](https://github.com/sebastian-software/xlsx-format/commit/ec0ad5574a76747f1c8b075eebecf56745ef4c72))
+* preserve XML escape sequences and code points ([#113](https://github.com/sebastian-software/xlsx-format/issues/113)) ([0a065df](https://github.com/sebastian-software/xlsx-format/commit/0a065dfabe467a39918ce17f735fde9d44ac65b9))
+* reject unsupported workbook passwords ([#121](https://github.com/sebastian-software/xlsx-format/issues/121)) ([39189c7](https://github.com/sebastian-software/xlsx-format/commit/39189c77c78c7452a3092c5dc263985c04e1026d))
+* secure HTML conversion and typed roundtrips ([#127](https://github.com/sebastian-software/xlsx-format/issues/127)) ([ebf38f1](https://github.com/sebastian-software/xlsx-format/commit/ebf38f118ad5d3b761ea7a405be00b2d1c6892f3))
+
 ## [2.4.2](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.1...xlsx-format-v2.4.2) (2026-09-08)
 
 
