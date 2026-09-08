@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.4.4](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.3...xlsx-format-v2.4.4) (2026-09-08)
+
+
+### Bug Fixes
+
+* preserve rich strings and wire bookSST ([#137](https://github.com/sebastian-software/xlsx-format/issues/137)) ([4715d03](https://github.com/sebastian-software/xlsx-format/commit/4715d03ac230b65096660c0eacde8159b671d843))
+* preserve shared and array formulas ([#129](https://github.com/sebastian-software/xlsx-format/issues/129)) ([d4d259b](https://github.com/sebastian-software/xlsx-format/commit/d4d259ba0f821eadc7e4881c2923a8fbf7dc8292))
+* preserve XLSX errors and worksheet layout metadata ([#134](https://github.com/sebastian-software/xlsx-format/issues/134)) ([06921bf](https://github.com/sebastian-software/xlsx-format/commit/06921bf88df8e51d8e9e8270a121aaa1c4fdb588))
+* propagate workbook read failures ([#130](https://github.com/sebastian-software/xlsx-format/issues/130)) ([fe81a04](https://github.com/sebastian-software/xlsx-format/commit/fe81a04b8abc3994da5d4be961dee59330a5b8b8))
+
+
+### Documentation
+
+* align migration and verification guidance ([#131](https://github.com/sebastian-software/xlsx-format/issues/131)) ([f436ab4](https://github.com/sebastian-software/xlsx-format/commit/f436ab435527614841a132b4bbc20a5568a5450a))
+
 ## [2.4.3](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.2...xlsx-format-v2.4.3) (2026-09-08)
 
 
