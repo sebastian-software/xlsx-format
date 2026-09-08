@@ -6,6 +6,7 @@ import { escapeHtml } from "../xml/escape.js";
 import { escapeHtmlAttribute, writeHtmlElement } from "../xml/writer.js";
 import { formatCell } from "./format.js";
 import { arrayToSheet } from "./aoa.js";
+import { HTML_ENTITY_VALUES } from "./html-entities.js";
 
 /** Default HTML document prefix wrapping the table in a minimal page structure */
 const HTML_BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
@@ -252,24 +253,52 @@ export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
 	return out.join("");
 }
 
-const HTML_ENTITY_VALUES: Record<string, string> = {
-	amp: "&",
-	lt: "<",
-	gt: ">",
-	quot: '"',
-	apos: "'",
-	nbsp: " ",
-	middot: "\u00b7",
+const NUMERIC_REFERENCE_REPLACEMENTS: Readonly<Record<number, number>> = {
+	0x80: 0x20ac,
+	0x82: 0x201a,
+	0x83: 0x0192,
+	0x84: 0x201e,
+	0x85: 0x2026,
+	0x86: 0x2020,
+	0x87: 0x2021,
+	0x88: 0x02c6,
+	0x89: 0x2030,
+	0x8a: 0x0160,
+	0x8b: 0x2039,
+	0x8c: 0x0152,
+	0x8e: 0x017d,
+	0x91: 0x2018,
+	0x92: 0x2019,
+	0x93: 0x201c,
+	0x94: 0x201d,
+	0x95: 0x2022,
+	0x96: 0x2013,
+	0x97: 0x2014,
+	0x98: 0x02dc,
+	0x99: 0x2122,
+	0x9a: 0x0161,
+	0x9b: 0x203a,
+	0x9c: 0x0153,
+	0x9e: 0x017e,
+	0x9f: 0x0178,
 };
 
-/** Decode supported named, decimal, and hexadecimal entities exactly once. */
+function decodeNumericReference(codePoint: number): string {
+	if (codePoint === 0 || codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) {
+		return "\ufffd";
+	}
+	return String.fromCodePoint(NUMERIC_REFERENCE_REPLACEMENTS[codePoint] ?? codePoint);
+}
+
+/** Decode semicolon-terminated HTML named and numeric character references exactly once. */
 function decodeHtmlEntities(s: string): string {
-	return s.replace(/&(?:#(\d+)|#x([\da-f]+)|(amp|lt|gt|quot|apos|nbsp|middot));/gi, (entity, decimal, hex, name) => {
+	return s.replace(/&(?:#(\d+)|#[xX]([\dA-Fa-f]+)|([\dA-Za-z]+));/g, (entity, decimal, hex, name) => {
 		if (name) {
-			return HTML_ENTITY_VALUES[String(name).toLowerCase()];
+			const normalizedName = String(name);
+			return Object.hasOwn(HTML_ENTITY_VALUES, normalizedName) ? HTML_ENTITY_VALUES[normalizedName] : entity;
 		}
 		const codePoint = parseInt(decimal || hex, decimal ? 10 : 16);
-		return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : entity;
+		return decodeNumericReference(codePoint);
 	});
 }
 
@@ -355,6 +384,9 @@ function textFromHtml(innerHtml: string): string {
  *
  * Handles `rowspan`/`colspan` attributes and uses `data-t`/`data-v`
  * attributes (when present) for round-trip fidelity.
+ * This is a lightweight table parser: it recognizes quoted attributes,
+ * table cells, ordinary `<br>` line breaks, and semicolon-terminated HTML
+ * character references without implementing full browser DOM parsing.
  *
  * @param html - HTML string containing a table
  * @returns A WorkSheet with the parsed table data

@@ -231,16 +231,22 @@ describe("html.ts — htmlToSheet", () => {
 		const html = `<table><tr>
 			<td data-t="s" data-v="caf&#233; &#x0009; &amp;lt;">ignored</td>
 			<td>line 1<br>line 2 &amp;amp;</td>
+			<td data-t="s" data-v="a&nbsp;b caf&eacute; &Eacute; &CounterClockwiseContourIntegral; &Afr; &eAcute; &toString; &constructor; &copy">ignored</td>
+			<td data-t="s" data-v="&#x1F600; &amp;nbsp; &#128;">ignored</td>
 		</tr></table>`;
 		const ws: any = htmlToSheet(html);
 
 		expect(ws.A1).toMatchObject({ t: "s", v: "café \t &lt;" });
 		expect(ws.B1.v).toBe("line 1\nline 2 &amp;");
+		expect(ws.C1.v).toBe("a\u00a0b café É ∳ 𝔄 &eAcute; &toString; &constructor; &copy");
+		expect(ws.D1.v).toBe("😀 &nbsp; €");
 	});
 
-	it("leaves out-of-range numeric entities encoded", () => {
-		const ws: any = htmlToSheet('<table><tr><td data-t="s" data-v="&#1114112;">ignored</td></tr></table>');
-		expect(ws.A1.v).toBe("&#1114112;");
+	it("replaces invalid numeric character references", () => {
+		const ws: any = htmlToSheet(
+			'<table><tr><td data-t="s" data-v="&#0; &#xD800; &#1114112;">ignored</td></tr></table>',
+		);
+		expect(ws.A1.v).toBe("� � �");
 	});
 
 	it("supports single-quoted typed attributes and falls back for invalid metadata", () => {
