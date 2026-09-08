@@ -3,7 +3,6 @@ import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace, parseXmlBoolean
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main, XMLNS } from "../xml/namespaces.js";
-import { utf8read } from "../utils/buffer.js";
 import type { WorkBook } from "../types.js";
 
 /** Parsed workbook.xml structure */
@@ -384,7 +383,7 @@ export function parseWorkbookXml(data: string, _opts?: any): WorkbookFile {
 					}
 				});
 				if (parsedTag.codeName) {
-					workbook.WBProps.CodeName = utf8read(parsedTag.codeName);
+					workbook.WBProps.CodeName = parsedTag.codeName;
 				}
 				break;
 
@@ -407,14 +406,14 @@ export function parseWorkbookXml(data: string, _opts?: any): WorkbookFile {
 						parsedTag.Hidden = 0;
 				}
 				delete parsedTag.state;
-				parsedTag.name = unescapeXml(utf8read(parsedTag.name));
+				parsedTag.name = unescapeXml(parsedTag.name);
 				delete parsedTag[0];
 				workbook.Sheets.push(parsedTag);
 				break;
 
 			case "<definedName": {
 				dname = {};
-				dname.Name = utf8read(parsedTag.name);
+				dname.Name = parsedTag.name;
 				if (parsedTag.comment) {
 					dname.Comment = parsedTag.comment;
 				}
@@ -430,7 +429,7 @@ export function parseWorkbookXml(data: string, _opts?: any): WorkbookFile {
 			}
 			case "</definedName>": {
 				// Extract the defined name reference formula from between open/close tags
-				dname.Ref = unescapeXml(utf8read(data.slice(dnstart, idx)));
+				dname.Ref = unescapeXml(data.slice(dnstart, idx));
 				workbook.Names.push(dname);
 				break;
 			}
