@@ -73,13 +73,30 @@ describe("write.ts — output types", () => {
 		});
 	});
 
-	it("should reject non-empty VBA payloads instead of dropping them", async () => {
+	it.each([
+		["string", "macro"],
+		["array", [1]],
+		["ArrayBuffer", new Uint8Array([1]).buffer],
+		["DataView", new DataView(new Uint8Array([1]).buffer)],
+		["Uint8Array", new Uint8Array([1])],
+	])("should reject non-empty %s VBA payloads instead of dropping them", async (_kind, payload) => {
 		const wb = simpleWb();
-		wb.vbaraw = new Uint8Array([1]);
+		wb.vbaraw = payload;
 		await expect(write(wb, { bookType: "xlsm" })).rejects.toMatchObject({
 			code: "UNSUPPORTED",
 			message: "Workbooks containing VBA data cannot be written",
 		});
+	});
+
+	it.each([
+		["string", ""],
+		["array", []],
+		["ArrayBuffer", new ArrayBuffer(0)],
+		["DataView", new DataView(new ArrayBuffer(0))],
+	])("should preserve empty %s VBA compatibility payloads", async (_kind, payload) => {
+		const wb = simpleWb();
+		wb.vbaraw = payload;
+		await expect(write(wb)).resolves.toBeInstanceOf(Uint8Array);
 	});
 
 	it.each([null, undefined, {}])(
