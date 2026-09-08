@@ -29,6 +29,51 @@ function formatXmlAttributes(attributes: Record<string, string>): string {
 		.join("");
 }
 
+const HTML_ATTRIBUTE_ESCAPE_MAP: Record<string, string> = {
+	"&": "&amp;",
+	"<": "&lt;",
+	">": "&gt;",
+	'"': "&quot;",
+	"'": "&#39;",
+};
+
+// Attribute values cannot use the HTML text escaper: newlines must remain
+// inside the attribute instead of becoming <br/> markup.
+// eslint-disable-next-line no-control-regex
+const htmlAttributeEscapeRegex = /[&<>"'\u0000-\u001f\u007f]/g;
+
+/** Escape a value for a double-quoted HTML attribute. */
+export function escapeHtmlAttribute(value: string): string {
+	return value.replace(htmlAttributeEscapeRegex, (character) => {
+		return (
+			HTML_ATTRIBUTE_ESCAPE_MAP[character] || "&#x" + character.charCodeAt(0).toString(16).padStart(4, "0") + ";"
+		);
+	});
+}
+
+function formatHtmlAttributes(attributes: Record<string, string>): string {
+	return Object.keys(attributes)
+		.map((key) => " " + key + '="' + escapeHtmlAttribute(attributes[key]) + '"')
+		.join("");
+}
+
+/**
+ * Write an HTML element whose content is already safe markup and whose
+ * attribute values are escaped for a double-quoted HTML attribute context.
+ */
+export function writeHtmlElement(tagName: string, content: string, attributes?: Record<string, string> | null): string {
+	return (
+		"<" +
+		tagName +
+		(attributes != null ? formatHtmlAttributes(attributes) : "") +
+		">" +
+		content +
+		"</" +
+		tagName +
+		">"
+	);
+}
+
 /**
  * Write an XML element with optional attributes and optional content.
  * When content is null/undefined, emits a self-closing tag (`<tag .../>`).

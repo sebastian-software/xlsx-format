@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { writeXmlTag, writeXmlElement, writeW3cDatetime, writeVariantType } from "./writer.js";
+import {
+	escapeHtmlAttribute,
+	writeHtmlElement,
+	writeXmlTag,
+	writeXmlElement,
+	writeW3cDatetime,
+	writeVariantType,
+} from "./writer.js";
 
 describe("xml/writer", () => {
 	it("writeXmlTag should wrap content", () => {
@@ -25,6 +32,15 @@ describe("xml/writer", () => {
 		const result = writeXmlElement("img", null, { src: "a.png" });
 		expect(result).toContain('src="a.png"');
 		expect(result).toContain("/>");
+	});
+
+	it("escapes HTML attribute boundaries without inserting markup", () => {
+		expect(escapeHtmlAttribute('line 1\nline 2 "quoted" <tag> & value')).toBe(
+			"line 1&#x000a;line 2 &quot;quoted&quot; &lt;tag&gt; &amp; value",
+		);
+		expect(writeHtmlElement("td", "text", { "data-z": '0 "units"\nnext' })).toBe(
+			'<td data-z="0 &quot;units&quot;&#x000a;next">text</td>',
+		);
 	});
 
 	it("writeW3cDatetime should format dates", () => {

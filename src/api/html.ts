@@ -1,11 +1,12 @@
-import type { WorkSheet, Sheet2HTMLOpts, Range } from "../types.js";
+import type { WorkSheet, Sheet2HTMLOpts, Range, CellObject } from "../types.js";
 import { BErr } from "../types.js";
 import { encodeCol, encodeRow, decodeRange, getCell } from "../utils/cell.js";
 import { clampLargeExportRange } from "../utils/export-range.js";
 import { escapeHtml } from "../xml/escape.js";
-import { writeXmlElement } from "../xml/writer.js";
+import { escapeHtmlAttribute, writeHtmlElement } from "../xml/writer.js";
 import { formatCell } from "./format.js";
 import { arrayToSheet } from "./aoa.js";
+import { HTML_ENTITY_VALUES } from "./html-entities.js";
 
 /** Default HTML document prefix wrapping the table in a minimal page structure */
 const HTML_BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
@@ -36,6 +37,96 @@ function isSanitizedLinkTarget(target: string): boolean {
 	}
 	normalized = normalized.toLowerCase();
 	return !UNSAFE_LINK_TARGET_RE.test(normalized);
+}
+
+function sanitizeRichTextStyle(styleText: string): string {
+	const safeDeclarations: string[] = [];
+	for (const declaration of styleText.split(";")) {
+		const separator = declaration.indexOf(":");
+		if (separator === -1) {
+			continue;
+		}
+		const property = declaration.slice(0, separator).trim().toLowerCase();
+		const value = declaration
+			.slice(separator + 1)
+			.trim()
+			.toLowerCase();
+		if (property === "text-decoration" && value === "underline") {
+			safeDeclarations.push("text-decoration: underline;");
+		} else if (
+			property === "text-underline-style" &&
+			(value === "double" || value === "single-accounting" || value === "double-accounting")
+		) {
+			safeDeclarations.push("text-underline-style:" + value + ";");
+		} else if (property === "font-size" && /^(?:0|[1-9]\d*)(?:\.\d+)?pt$/.test(value)) {
+			safeDeclarations.push("font-size:" + value + ";");
+		} else if (property === "text-effect" && value === "outline") {
+			safeDeclarations.push("text-effect: outline;");
+		} else if (property === "text-shadow" && value === "auto") {
+			safeDeclarations.push("text-shadow: auto;");
+		}
+	}
+	return safeDeclarations.join("");
+}
+
+/**
+ * CellObject.h is an HTML-shaped cache, including for direct worksheet input.
+ * Keep the presentation-only subset emitted by the XLSX rich-text reader and
+ * render every other tag as inert text.
+ */
+function sanitizeCellHtml(html: string): string {
+	const output: string[] = [];
+	const openTags: string[] = [];
+	let offset = 0;
+
+	while (offset < html.length) {
+		const tagStart = html.indexOf("<", offset);
+		if (tagStart === -1) {
+			output.push(html.slice(offset));
+			break;
+		}
+		output.push(html.slice(offset, tagStart));
+		const tagEnd = html.indexOf(">", tagStart + 1);
+		if (tagEnd === -1) {
+			output.push(escapeHtml(html.slice(tagStart)));
+			break;
+		}
+
+		const token = html.slice(tagStart, tagEnd + 1);
+		const simpleOpen = token.match(/^<([bis]|sup|sub)>$/i);
+		const simpleClose = token.match(/^<\/([bis]|sup|sub)>$/i);
+		const spanOpen = token.match(/^<span\s+style\s*=\s*(["'])([\s\S]*)\1\s*>$/i);
+
+		if (/^<br\s*\/?>$/i.test(token)) {
+			output.push("<br/>");
+		} else if (simpleOpen) {
+			const name = simpleOpen[1].toLowerCase();
+			openTags.push(name);
+			output.push("<" + name + ">");
+		} else if (spanOpen) {
+			openTags.push("span");
+			output.push('<span style="' + escapeHtmlAttribute(sanitizeRichTextStyle(spanOpen[2])) + '">');
+		} else if (simpleClose) {
+			const name = simpleClose[1].toLowerCase();
+			if (openTags[openTags.length - 1] === name) {
+				openTags.pop();
+				output.push("</" + name + ">");
+			} else {
+				output.push(escapeHtml(token));
+			}
+		} else if (/^<\/span>$/i.test(token) && openTags[openTags.length - 1] === "span") {
+			openTags.pop();
+			output.push("</span>");
+		} else {
+			output.push(escapeHtml(token));
+		}
+		offset = tagEnd + 1;
+	}
+
+	while (openTags.length) {
+		output.push("</" + openTags.pop() + ">");
+	}
+	return output.join("");
 }
 
 /**
@@ -86,13 +177,14 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 			}
 		}
 
-		// Resolve cell content: prefer cached HTML (cell.h), then formatted text, then empty
+		// Resolve cell content: preserve the safe rich-text subset in cell.h,
+		// then fall back to escaped formatted text.
 		let cellContent = "";
 		if (cell && cell.v != null) {
-			cellContent = cell.h || escapeHtml(cell.w || formatCell(cell) || "");
+			cellContent = cell.h ? sanitizeCellHtml(cell.h) : escapeHtml(cell.w || formatCell(cell) || "");
 		}
 
-		const cellAttrs: Record<string, any> = {};
+		const cellAttrs: Record<string, string> = {};
 		if (rowSpan > 1) {
 			cellAttrs.rowspan = String(rowSpan);
 		}
@@ -107,13 +199,13 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 			// In non-editable mode, attach data attributes for round-tripping
 			cellAttrs["data-t"] = (cell && cell.t) || "z";
 			if (cell.v != null) {
-				cellAttrs["data-v"] = escapeHtml(cell.v instanceof Date ? cell.v.toISOString() : String(cell.v));
+				cellAttrs["data-v"] = cell.v instanceof Date ? cell.v.toISOString() : String(cell.v);
 			}
 			if (cell.z != null) {
 				cellAttrs["data-z"] = String(cell.z);
 			}
 			if (cell.f != null) {
-				cellAttrs["data-f"] = escapeHtml(cell.f);
+				cellAttrs["data-f"] = cell.f;
 			}
 			// Wrap in an anchor tag if the cell has a non-internal hyperlink,
 			// filtering out unsafe URI schemes unless sanitization is disabled.
@@ -122,12 +214,12 @@ function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sh
 				(cell.l.Target || "#").charAt(0) !== "#" &&
 				(options.sanitizeLinks === false || isSanitizedLinkTarget(cell.l.Target || ""))
 			) {
-				cellContent = '<a href="' + escapeHtml(cell.l.Target) + '">' + cellContent + "</a>";
+				cellContent = writeHtmlElement("a", cellContent, { href: cell.l.Target });
 			}
 		}
 		// Each cell gets a unique id: "{tableId}-{cellRef}" (e.g. "sjs-A1")
 		cellAttrs.id = (options.id || "sjs") + "-" + coord;
-		cells.push(writeXmlElement("td", cellContent, cellAttrs));
+		cells.push(writeHtmlElement("td", cellContent, cellAttrs));
 	}
 
 	return "<tr>" + cells.join("") + "</tr>";
@@ -150,25 +242,64 @@ export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
 	const footer = options.footer != null ? options.footer : HTML_END;
 	const out: string[] = [header];
 	const range = clampLargeExportRange(ws, decodeRange(ws["!ref"] || "A1"));
-	out.push("<table" + (options.id ? ' id="' + options.id + '"' : "") + ">");
+	const rows: string[] = [];
 	if (ws["!ref"] && range) {
 		for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
-			out.push(buildHtmlRow(ws, range, rowIdx, options));
+			rows.push(buildHtmlRow(ws, range, rowIdx, options));
 		}
 	}
-	out.push("</table>" + footer);
+	out.push(writeHtmlElement("table", rows.join(""), options.id ? { id: options.id } : null));
+	out.push(footer);
 	return out.join("");
 }
 
-/** Unescape basic HTML entities */
-function unescapeHtml(s: string): string {
-	return s
-		.replace(/&amp;/g, "&")
-		.replace(/&lt;/g, "<")
-		.replace(/&gt;/g, ">")
-		.replace(/&quot;/g, '"')
-		.replace(/&#x27;/g, "'")
-		.replace(/&#39;/g, "'");
+const NUMERIC_REFERENCE_REPLACEMENTS: Readonly<Record<number, number>> = {
+	0x80: 0x20ac,
+	0x82: 0x201a,
+	0x83: 0x0192,
+	0x84: 0x201e,
+	0x85: 0x2026,
+	0x86: 0x2020,
+	0x87: 0x2021,
+	0x88: 0x02c6,
+	0x89: 0x2030,
+	0x8a: 0x0160,
+	0x8b: 0x2039,
+	0x8c: 0x0152,
+	0x8e: 0x017d,
+	0x91: 0x2018,
+	0x92: 0x2019,
+	0x93: 0x201c,
+	0x94: 0x201d,
+	0x95: 0x2022,
+	0x96: 0x2013,
+	0x97: 0x2014,
+	0x98: 0x02dc,
+	0x99: 0x2122,
+	0x9a: 0x0161,
+	0x9b: 0x203a,
+	0x9c: 0x0153,
+	0x9e: 0x017e,
+	0x9f: 0x0178,
+};
+
+function decodeNumericReference(codePoint: number): string {
+	if (codePoint === 0 || codePoint > 0x10ffff || (codePoint >= 0xd800 && codePoint <= 0xdfff)) {
+		return "\ufffd";
+	}
+	return String.fromCodePoint(NUMERIC_REFERENCE_REPLACEMENTS[codePoint] ?? codePoint);
+}
+
+/** Decode semicolon-terminated HTML named and numeric character references exactly once. */
+function decodeHtmlEntities(s: string): string {
+	return s.replace(/&(?:#(\d+)|#[xX]([\dA-Fa-f]+)|([\dA-Za-z]+));/g, (entity, decimal, hex, name) => {
+		if (name) {
+			const normalizedName = String(name);
+			return Object.hasOwn(HTML_ENTITY_VALUES, normalizedName) ? HTML_ENTITY_VALUES[normalizedName] : entity;
+		}
+		const codePoint = parseInt(decimal || hex, decimal ? 10 : 16);
+		return decodeNumericReference(codePoint);
+	});
 }
 
 /** Strip HTML tags from a string, returning only text content */
@@ -178,25 +309,52 @@ function stripTags(s: string): string {
 
 /** Extract an attribute value from a tag string */
 function getAttr(tag: string, name: string): string | null {
-	const re = new RegExp(name + '\\s*=\\s*"([^"]*)"', "i");
+	const re = new RegExp("(?:^|\\s)" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')", "i");
 	const m = tag.match(re);
-	return m ? m[1] : null;
+	return m ? (m[1] ?? m[2]) : null;
 }
 
-/** Coerce a data-v value based on data-t type code */
-function coerceDataValue(type: string, rawValue: string): any {
-	switch (type) {
-		case "n":
-			return Number(rawValue);
-		case "b":
-			return rawValue === "true" || rawValue === "1";
-		case "d":
-			return rawValue;
-		case "e":
-			return rawValue;
-		default:
-			return rawValue;
+/** Construct a typed cell from an explicit data-t/data-v pair. */
+function typedCell(type: string, rawValue: string | null): CellObject | null {
+	if (rawValue == null) {
+		switch (type) {
+			case "n":
+				return { t: "n" };
+			case "b":
+				return { t: "b" };
+			case "d":
+				return { t: "d" };
+			case "e":
+				return { t: "e" };
+			case "s":
+				return { t: "s" };
+			case "z":
+				return { t: "z" };
+		}
+		return null;
 	}
+	const decodedValue = decodeHtmlEntities(rawValue);
+	switch (type) {
+		case "n": {
+			const value = Number(decodedValue);
+			return Number.isFinite(value) ? { t: "n", v: value } : null;
+		}
+		case "b":
+			return { t: "b", v: decodedValue === "true" || decodedValue === "1" };
+		case "d": {
+			const value = new Date(decodedValue);
+			return Number.isNaN(value.getTime()) ? null : { t: "d", v: value };
+		}
+		case "e": {
+			const value = Number(decodedValue);
+			return Number.isFinite(value) ? { t: "e", v: value } : null;
+		}
+		case "s":
+			return { t: "s", v: decodedValue };
+		case "z":
+			return { t: "z" };
+	}
+	return null;
 }
 
 /** Try to coerce a plain text value to number or boolean */
@@ -217,11 +375,18 @@ function coerceTextValue(text: string): string | number | boolean {
 	return text;
 }
 
+function textFromHtml(innerHtml: string): string {
+	return decodeHtmlEntities(stripTags(innerHtml.replace(/<\s*br\s*\/?>/gi, "\n"))).trim();
+}
+
 /**
  * Parse an HTML string containing a `<table>` into a WorkSheet.
  *
  * Handles `rowspan`/`colspan` attributes and uses `data-t`/`data-v`
  * attributes (when present) for round-trip fidelity.
+ * This is a lightweight table parser: it recognizes quoted attributes,
+ * table cells, ordinary `<br>` line breaks, and semicolon-terminated HTML
+ * character references without implementing full browser DOM parsing.
  *
  * @param html - HTML string containing a table
  * @returns A WorkSheet with the parsed table data
@@ -268,15 +433,23 @@ export function htmlToSheet(html: string): WorkSheet {
 			const cs = colspanStr ? parseInt(colspanStr, 10) : 1;
 			const dataT = getAttr(tag, "data-t");
 			const dataV = getAttr(tag, "data-v");
+			const dataF = getAttr(tag, "data-f");
+			const dataZ = getAttr(tag, "data-z");
 
 			// Extract cell value
 			const innerHtml = cellHtml.slice(tagEnd + 1, cellHtml.lastIndexOf("</"));
-			let value: any;
-			if (dataT && dataV != null) {
-				value = coerceDataValue(dataT, unescapeHtml(dataV));
+			const explicitCell = dataT ? typedCell(dataT, dataV) : null;
+			let value: CellObject | string | number | boolean;
+			if (explicitCell) {
+				if (dataF != null) {
+					explicitCell.f = decodeHtmlEntities(dataF);
+				}
+				if (dataZ != null) {
+					explicitCell.z = decodeHtmlEntities(dataZ);
+				}
+				value = explicitCell;
 			} else {
-				const text = unescapeHtml(stripTags(innerHtml)).trim();
-				value = coerceTextValue(text);
+				value = coerceTextValue(textFromHtml(innerHtml));
 			}
 
 			data[r][col] = value;
