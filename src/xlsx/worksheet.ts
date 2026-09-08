@@ -552,29 +552,40 @@ function parseSheetData(
  * @param opts - Options controlling HTML output (cellHTML)
  */
 export function resolveSharedStrings(s: WorkSheet, sst: SST, opts: any): void {
+	const resolveCell = (cell: CellObject | undefined): void => {
+		if (!cell || (cell as any)._sstIdx === undefined) {
+			return;
+		}
+		const idx = (cell as any)._sstIdx;
+		delete (cell as any)._sstIdx;
+		if (sst[idx]) {
+			cell.v = sst[idx].t;
+			if (opts.cellHTML !== false && sst[idx].h) {
+				cell.h = sst[idx].h;
+			}
+			if (sst[idx].r) {
+				cell.r = sst[idx].r;
+			}
+		}
+	};
 	const dense = s["!data"] != null;
 	if (dense) {
 		const data = s["!data"]!;
-		for (let R = 0; R < data.length; ++R) {
-			if (!data[R]) {
+		for (const rowKey of Object.keys(data)) {
+			const R = Number(rowKey);
+			if (!Number.isSafeInteger(R) || R < 0) {
 				continue;
 			}
-			for (let C = 0; C < data[R]!.length; ++C) {
-				const cell = data[R]![C];
-				if (!cell || (cell as any)._sstIdx === undefined) {
+			const row = data[R];
+			if (!row) {
+				continue;
+			}
+			for (const columnKey of Object.keys(row)) {
+				const C = Number(columnKey);
+				if (!Number.isSafeInteger(C) || C < 0) {
 					continue;
 				}
-				const idx = (cell as any)._sstIdx;
-				delete (cell as any)._sstIdx;
-				if (sst[idx]) {
-					cell.v = sst[idx].t;
-					if (opts.cellHTML !== false && sst[idx].h) {
-						cell.h = sst[idx].h;
-					}
-					if (sst[idx].r) {
-						cell.r = sst[idx].r;
-					}
-				}
+				resolveCell(row[C]);
 			}
 		}
 	} else {
@@ -583,21 +594,7 @@ export function resolveSharedStrings(s: WorkSheet, sst: SST, opts: any): void {
 			if (ref.charAt(0) === "!") {
 				continue;
 			}
-			const cell = s[ref] as CellObject;
-			if (!cell || (cell as any)._sstIdx === undefined) {
-				continue;
-			}
-			const idx = (cell as any)._sstIdx;
-			delete (cell as any)._sstIdx;
-			if (sst[idx]) {
-				cell.v = sst[idx].t;
-				if (opts.cellHTML !== false && sst[idx].h) {
-					cell.h = sst[idx].h;
-				}
-				if (sst[idx].r) {
-					cell.r = sst[idx].r;
-				}
-			}
+			resolveCell(s[ref] as CellObject);
 		}
 	}
 }

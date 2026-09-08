@@ -112,6 +112,17 @@ describe("json.ts — sheetToJson edge cases", () => {
 		const rows = sheetToJson(ws, { rawNumbers: false });
 		expect(rows[0].Val).toBe("1,234.50");
 	});
+
+	it("returns no rows for a valid numeric start after the data", () => {
+		const ws = arrayToSheet([["header"]]);
+
+		for (const header of [undefined, 1, "A", ["value"]] as const) {
+			expect(sheetToJson(ws, { header: header as any, range: 1 })).toStrictEqual([]);
+			expect(sheetToJson(ws, { header: header as any, range: 10 })).toStrictEqual([]);
+		}
+		expect(() => sheetToJson(ws, { range: -1 })).toThrow(/row must be a non-negative safe integer/);
+		expect(() => sheetToJson(ws, { range: 1.5 })).toThrow(/row must be a non-negative safe integer/);
+	});
 });
 
 describe("json.ts — addJsonToSheet edge cases", () => {

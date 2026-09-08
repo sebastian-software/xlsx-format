@@ -111,6 +111,32 @@ describe("worksheet.ts: parsing edge cases", () => {
 		resolveSharedStrings(ws, sst, {});
 		expect(ws["!data"][0][0].v).toBe("World");
 	});
+
+	it("resolves far-column shared strings by occupied keys", () => {
+		const sparse: any = { XFD1: { t: "s", _sstIdx: 0 }, "!ref": "XFD1" };
+		resolveSharedStrings(sparse, [{ t: "Sparse" }], {});
+		expect(sparse.XFD1.v).toBe("Sparse");
+
+		let numericReads = 0;
+		const observeNumericReads = (target: any[]) =>
+			new Proxy(target, {
+				get(array, property, receiver) {
+					if (typeof property === "string" && /^\d+$/.test(property)) {
+						numericReads++;
+					}
+					return Reflect.get(array, property, receiver);
+				},
+			});
+		const row: any[] = [];
+		row[16_383] = { t: "s", _sstIdx: 0 } as any;
+		const data: any[] = [];
+		data[1_024] = observeNumericReads(row);
+		const dense: any = { "!data": observeNumericReads(data), "!ref": "XFD1025" };
+
+		resolveSharedStrings(dense, [{ t: "Dense" }], {});
+		expect(numericReads).toBe(2);
+		expect(dense["!data"][1_024][16_383].v).toBe("Dense");
+	});
 });
 
 describe("worksheet: margins and autofilter roundtrip", () => {

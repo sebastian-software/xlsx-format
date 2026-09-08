@@ -227,4 +227,19 @@ describe("export security guards", () => {
 			/column metadata exceeds XLSX column limit/,
 		);
 	});
+
+	it("charges sparse row metadata and validates its physical bound", async () => {
+		const ws = arrayToSheet([[1]]);
+		ws["!rows"] = [{ hidden: true }];
+
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 1 })).rejects.toThrow(
+			/worksheet row metadata count 2 exceeds limit 1/,
+		);
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 2 })).resolves.toBeInstanceOf(Uint8Array);
+
+		ws["!rows"][1_048_576] = { hidden: true };
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 3 })).rejects.toThrow(
+			/row metadata exceeds XLSX row limit/,
+		);
+	});
 });
