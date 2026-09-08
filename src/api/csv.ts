@@ -1,8 +1,17 @@
-import type { WorkSheet, Sheet2CSVOpts, Range } from "../types.js";
+import type { WorkSheet, Sheet2CSVOpts, Range, CSV2SheetOpts } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { encodeCol, safeDecodeRange, getCell } from "../utils/cell.js";
 import { clampLargeExportRange } from "../utils/export-range.js";
 import { formatCellForOutput, getCellDateTimeFormatKind } from "./format.js";
 import { arrayToSheet } from "./aoa.js";
+import {
+	DEFAULT_MAX_EXPORT_CELLS,
+	DEFAULT_MAX_IMPORT_CELLS,
+	WorksheetCellBudget,
+	worksheetOptionLimit,
+	XLSX_MAX_COLUMNS,
+	XLSX_MAX_ROWS,
+} from "../utils/worksheet-budget.js";
 
 /** Regex to match double-quote characters for CSV escaping (doubled inside quoted fields) */
 const qreg = /"/g;
@@ -128,7 +137,8 @@ export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 	if (sheet == null || sheet["!ref"] == null) {
 		return "";
 	}
-	const range = clampLargeExportRange(sheet, safeDecodeRange(sheet["!ref"]));
+	const budget = new WorksheetCellBudget(options.maxWorksheetCells, DEFAULT_MAX_EXPORT_CELLS);
+	const range = clampLargeExportRange(sheet, safeDecodeRange(sheet["!ref"]), budget);
 	if (!range) {
 		return "";
 	}
@@ -185,14 +195,52 @@ export function sheetToTxt(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
  *
  * Handles quoted fields, escaped double-quotes, and newlines within quotes.
  */
-function parseCsv(text: string, sep: string): any[][] {
+function parseCsv(text: string, sep: string, opts: CSV2SheetOpts): any[][] {
 	const rows: any[][] = [];
 	let row: any[] = [];
 	let i = 0;
 	const len = text.length;
 	let afterSeparator = false;
+	let rowActive = false;
+	let rowCount = 0;
+	const maxRows = worksheetOptionLimit(opts.maxWorksheetRows, XLSX_MAX_ROWS, "maxWorksheetRows");
+	const sheetRows = worksheetOptionLimit(opts.sheetRows, 0, "sheetRows");
+	const budget = new WorksheetCellBudget(opts.maxWorksheetCells, DEFAULT_MAX_IMPORT_CELLS);
+
+	const beginRow = (): void => {
+		if (rowActive) {
+			return;
+		}
+		++rowCount;
+		if (rowCount > XLSX_MAX_ROWS) {
+			throw new XlsxError("MALFORMED", `CSV data exceeds XLSX row limit ${XLSX_MAX_ROWS}`);
+		}
+		if (rowCount > maxRows) {
+			throw new XlsxError("LIMIT_EXCEEDED", `worksheet row count ${rowCount} exceeds limit ${maxRows}`);
+		}
+		rowActive = true;
+	};
+	const pushField = (value: string): void => {
+		if (row.length >= XLSX_MAX_COLUMNS) {
+			throw new XlsxError("MALFORMED", `CSV row exceeds XLSX column limit ${XLSX_MAX_COLUMNS}`);
+		}
+		budget.charge("worksheet cell", 1);
+		row.push(value);
+	};
+	const finishRow = (): boolean => {
+		beginRow();
+		if (row.length === 0) {
+			budget.charge("worksheet cell", 1);
+		}
+		rows.push(row);
+		row = [];
+		rowActive = false;
+		afterSeparator = false;
+		return sheetRows > 0 && rows.length >= sheetRows;
+	};
 
 	while (i < len) {
+		beginRow();
 		if (text[i] === '"') {
 			// Quoted field
 			let val = "";
@@ -213,7 +261,7 @@ function parseCsv(text: string, sep: string): any[][] {
 					i++;
 				}
 			}
-			row.push(val);
+			pushField(val);
 			afterSeparator = false;
 			// After closing quote, expect separator, newline, or end
 			if (i < len && text[i] === sep) {
@@ -224,25 +272,25 @@ function parseCsv(text: string, sep: string): any[][] {
 					i++;
 				}
 				i++;
-				rows.push(row);
-				row = [];
-				afterSeparator = false;
+				if (finishRow()) {
+					return rows;
+				}
 			}
 		} else if (text[i] === sep) {
-			row.push("");
+			pushField("");
 			i++;
 			afterSeparator = true;
 		} else if (text[i] === "\r" || text[i] === "\n") {
 			if (afterSeparator) {
-				row.push("");
+				pushField("");
 			}
 			if (text[i] === "\r" && i + 1 < len && text[i + 1] === "\n") {
 				i++;
 			}
 			i++;
-			rows.push(row);
-			row = [];
-			afterSeparator = false;
+			if (finishRow()) {
+				return rows;
+			}
 		} else {
 			// Unquoted field
 			let val = "";
@@ -250,7 +298,7 @@ function parseCsv(text: string, sep: string): any[][] {
 				val += text[i];
 				i++;
 			}
-			row.push(val);
+			pushField(val);
 			afterSeparator = false;
 			if (i < len && text[i] === sep) {
 				i++;
@@ -260,17 +308,17 @@ function parseCsv(text: string, sep: string): any[][] {
 					i++;
 				}
 				i++;
-				rows.push(row);
-				row = [];
-				afterSeparator = false;
+				if (finishRow()) {
+					return rows;
+				}
 			}
 		}
 	}
 	if (afterSeparator) {
-		row.push("");
+		pushField("");
 	}
 	if (row.length > 0) {
-		rows.push(row);
+		finishRow();
 	}
 
 	return rows;
@@ -301,9 +349,9 @@ function coerceValue(val: string): string | number | boolean {
  * @param opts - Optional: { FS: field separator (default ",") }
  * @returns A WorkSheet with the parsed data
  */
-export function csvToSheet(text: string, opts?: { FS?: string }): WorkSheet {
+export function csvToSheet(text: string, opts?: CSV2SheetOpts): WorkSheet {
 	const sep = (opts && opts.FS) || ",";
-	const rows = parseCsv(text, sep);
+	const rows = parseCsv(text, sep, opts || {});
 	// Keep blank records visible in the worksheet by giving them a stub cell.
 	const data: any[][] = rows.map((row) => (row.length === 0 ? [null] : row.map((value) => coerceValue(value))));
 	return arrayToSheet(data, { sheetStubs: true });

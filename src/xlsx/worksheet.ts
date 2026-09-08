@@ -8,17 +8,12 @@ import {
 	type MarginInfo,
 	type SheetView,
 } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { parseXmlTag, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main } from "../xml/namespaces.js";
-import {
-	assertXmlCountWithinLimit,
-	assertXmlPartLimits,
-	DEFAULT_MAX_WORKSHEET_CELLS,
-	DEFAULT_MAX_WORKSHEET_ROWS,
-	xmlOptionLimit,
-} from "../xml/limits.js";
+import { assertXmlCountWithinLimit, assertXmlPartLimits, DEFAULT_MAX_WORKSHEET_ROWS } from "../xml/limits.js";
 import { safeDecodeRange, encodeRange, encodeCell, decodeCell } from "../utils/cell.js";
 import { formatNumber, getDateTimeFormatKind } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
@@ -27,6 +22,15 @@ import { normalizeRichTextXml, parseStringItem, type SST, type XLString } from "
 import type { StylesData } from "./styles.js";
 import { getCellStyleIndex, getStyleFromXf } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
+import { clampLargeExportRange } from "../utils/export-range.js";
+import {
+	DEFAULT_MAX_EXPORT_CELLS,
+	DEFAULT_MAX_IMPORT_CELLS,
+	WorksheetCellBudget,
+	worksheetOptionLimit,
+	XLSX_MAX_COLUMNS,
+	XLSX_MAX_ROWS,
+} from "../utils/worksheet-budget.js";
 import { shiftFormulaStr } from "./formula.js";
 
 /** Regex patterns for extracting various worksheet XML elements */
@@ -84,15 +88,22 @@ function parseWorksheetXml_autofilter(data: string, opts?: any): { ref: string }
 }
 
 /** Parse <col> elements to populate column width and hidden state */
-function parseWorksheetXml_cols(columns: ColInfo[], cols: string[], opts?: any): void {
+function parseWorksheetXml_cols(columns: ColInfo[], cols: string[], budget: WorksheetCellBudget, opts?: any): void {
 	for (let i = 0; i < cols.length; ++i) {
 		const tag = parseXmlTag(cols[i], undefined, undefined, opts);
 		if (!tag.min || !tag.max) {
 			continue;
 		}
 		// min/max are 1-based column indices in the XML
-		const min = parseInt(tag.min, 10) - 1;
-		const max = parseInt(tag.max, 10) - 1;
+		if (!/^[1-9]\d*$/.test(tag.min) || !/^[1-9]\d*$/.test(tag.max)) {
+			throw new XlsxError("MALFORMED", "Invalid worksheet column range: min and max must be positive integers");
+		}
+		const min = Number(tag.min) - 1;
+		const max = Number(tag.max) - 1;
+		if (!Number.isSafeInteger(min) || !Number.isSafeInteger(max) || max < min || max >= XLSX_MAX_COLUMNS) {
+			throw new XlsxError("MALFORMED", "Invalid worksheet column range: range exceeds XLSX worksheet bounds");
+		}
+		budget.charge("worksheet cell", max - min + 1);
 		const width = tag.width ? parseFloat(tag.width) : undefined;
 		const hidden = tag.hidden === "1";
 		for (let j = min; j <= max; ++j) {
@@ -139,15 +150,39 @@ function parseWorksheetXml_views(data: string, opts?: any): SheetView[] | undefi
 }
 
 /** Parse <hyperlink> elements and attach link objects to the corresponding cells */
-function parseWorksheetXml_hlinks(s: WorkSheet, hlinks: string[], rels: Relationships, opts?: any): void {
+function parseWorksheetXml_hlinks(
+	s: WorkSheet,
+	hlinks: string[],
+	rels: Relationships,
+	budget: WorksheetCellBudget,
+	opts?: any,
+): void {
 	for (let i = 0; i < hlinks.length; ++i) {
 		const tag = parseXmlTag(hlinks[i], undefined, undefined, opts);
 		if (!tag.ref) {
 			continue;
 		}
 		// Hyperlinks can span a range of cells
+		if (!/^[A-Z]+[1-9]\d*(?::[A-Z]+[1-9]\d*)?$/.test(tag.ref)) {
+			throw new XlsxError("MALFORMED", "Invalid worksheet hyperlink range");
+		}
 		const rng = safeDecodeRange(tag.ref);
-		for (let R = rng.s.r; R <= rng.e.r; ++R) {
+		if (
+			rng.s.r < 0 ||
+			rng.s.c < 0 ||
+			rng.e.r < rng.s.r ||
+			rng.e.c < rng.s.c ||
+			rng.e.r >= XLSX_MAX_ROWS ||
+			rng.e.c >= XLSX_MAX_COLUMNS
+		) {
+			throw new XlsxError("MALFORMED", "Invalid worksheet hyperlink range: range exceeds XLSX worksheet bounds");
+		}
+		if (opts.sheetRows > 0 && rng.s.r >= opts.sheetRows) {
+			continue;
+		}
+		const endRow = opts.sheetRows > 0 ? Math.min(rng.e.r, opts.sheetRows - 1) : rng.e.r;
+		budget.charge("worksheet cell", (endRow - rng.s.r + 1) * (rng.e.c - rng.s.c + 1));
+		for (let R = rng.s.r; R <= endRow; ++R) {
 			for (let C = rng.s.c; C <= rng.e.c; ++C) {
 				const addr = encodeCell({ r: R, c: C });
 				const dense = s["!data"] != null;
@@ -190,6 +225,30 @@ function parseWorksheetXml_hlinks(s: WorkSheet, hlinks: string[], rels: Relation
 
 /** Regex to match <c> (cell) elements, capturing inner content */
 const cellregex = /<(?:\w+:)?c\b[^>]*?(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g;
+const cellReferenceRegex = /^([A-Z]+)([1-9]\d*)$/;
+
+function parseWorksheetCellColumn(ref: string, expectedRow: number): number {
+	const match = cellReferenceRegex.exec(ref);
+	if (!match) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell reference");
+	}
+	const row = Number(match[2]) - 1;
+	if (!Number.isSafeInteger(row) || row < 0 || row >= XLSX_MAX_ROWS) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell row: value exceeds XLSX worksheet bounds");
+	}
+	if (row !== expectedRow) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell reference: row does not match containing row");
+	}
+	let column = 0;
+	for (const letter of match[1]) {
+		column = 26 * column + (letter.charCodeAt(0) - 64);
+	}
+	column -= 1;
+	if (!Number.isSafeInteger(column) || column < 0 || column >= XLSX_MAX_COLUMNS) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell column: value exceeds XLSX worksheet bounds");
+	}
+	return column;
+}
 
 /**
  * Parse the <sheetData> XML into cell objects within the worksheet.
@@ -203,13 +262,12 @@ function parseSheetData(
 	_themes: any,
 	styles: StylesData | undefined,
 	wb: any,
+	budget: WorksheetCellBudget,
+	maxWorksheetRows: number,
 ): void {
 	const dense = s["!data"] != null;
 	const date1904 = wb?.WBProps?.date1904;
-	const maxWorksheetRows = xmlOptionLimit(opts.maxWorksheetRows, DEFAULT_MAX_WORKSHEET_ROWS, "maxWorksheetRows");
-	const maxWorksheetCells = xmlOptionLimit(opts.maxWorksheetCells, DEFAULT_MAX_WORKSHEET_CELLS, "maxWorksheetCells");
 	let rowCount = 0;
-	let cellCount = 0;
 	const sharedFormulas = new Map<string, { formula: string; origin: string }>();
 	const pendingSharedFormulas: { cell: CellObject; ref: string; si: string }[] = [];
 	const unresolvedSharedFormulaIds = new Set<string>();
@@ -232,8 +290,8 @@ function parseSheetData(
 		const rowTag = parseXmlTag(rowTagMatch[0], undefined, undefined, opts);
 		// Row numbers in XML are 1-based
 		const R = parseInt(rowTag.r, 10) - 1;
-		if (isNaN(R)) {
-			continue;
+		if (!Number.isSafeInteger(R) || R < 0 || R >= XLSX_MAX_ROWS) {
+			throw new XlsxError("MALFORMED", "Invalid worksheet row index: value exceeds XLSX worksheet bounds");
 		}
 
 		const rowIsWithinLimit = !opts.sheetRows || R < opts.sheetRows;
@@ -264,7 +322,7 @@ function parseSheetData(
 				cellregex.lastIndex = 0;
 				let skippedCellMatch;
 				while ((skippedCellMatch = cellregex.exec(rowStr))) {
-					assertXmlCountWithinLimit("worksheet cell", ++cellCount, maxWorksheetCells);
+					budget.charge("worksheet cell", 1);
 					const skippedCellTag = parseXmlTag(
 						skippedCellMatch[0].match(/<(?:\w+:)?c\b[^>]*/)?.[0] + ">" || "",
 						undefined,
@@ -278,6 +336,7 @@ function parseSheetData(
 					if (!skippedRef || !skippedFormulaTagMatch || !skippedFormulaMatch?.[1]) {
 						continue;
 					}
+					parseWorksheetCellColumn(skippedRef, R);
 					const skippedFormulaTag = parseXmlTag(skippedFormulaTagMatch[0], undefined, undefined, opts);
 					if (skippedFormulaTag.t !== "shared" || skippedFormulaTag.si == null) {
 						continue;
@@ -303,7 +362,7 @@ function parseSheetData(
 		cellregex.lastIndex = 0;
 		let cellMatch;
 		while ((cellMatch = cellregex.exec(rowStr))) {
-			assertXmlCountWithinLimit("worksheet cell", ++cellCount, maxWorksheetCells);
+			budget.charge("worksheet cell", 1);
 			const cellTag = parseXmlTag(
 				cellMatch[0].match(/<(?:\w+:)?c\b[^>]*/)?.[0] + ">" || "",
 				undefined,
@@ -315,18 +374,7 @@ function parseSheetData(
 				continue;
 			}
 
-			// Decode column letter(s) from the cell reference (e.g. "AB12" -> column index)
-			let C = 0;
-			for (let ci = 0; ci < ref.length; ++ci) {
-				const cc = ref.charCodeAt(ci);
-				// A-Z: accumulate column index (base-26)
-				if (cc >= 65 && cc <= 90) {
-					C = 26 * C + (cc - 64);
-				} else {
-					break;
-				}
-			}
-			C -= 1; // Convert to 0-based
+			const C = parseWorksheetCellColumn(ref, R);
 
 			// Expand the guessed range to include this cell
 			if (R < refguess.s.r) {
@@ -525,29 +573,40 @@ function parseSheetData(
  * @param opts - Options controlling HTML output (cellHTML)
  */
 export function resolveSharedStrings(s: WorkSheet, sst: SST, opts: any): void {
+	const resolveCell = (cell: CellObject | undefined): void => {
+		if (!cell || (cell as any)._sstIdx === undefined) {
+			return;
+		}
+		const idx = (cell as any)._sstIdx;
+		delete (cell as any)._sstIdx;
+		if (sst[idx]) {
+			cell.v = sst[idx].t;
+			if (opts.cellHTML !== false && sst[idx].h) {
+				cell.h = sst[idx].h;
+			}
+			if (sst[idx].r) {
+				cell.r = sst[idx].r;
+			}
+		}
+	};
 	const dense = s["!data"] != null;
 	if (dense) {
 		const data = s["!data"]!;
-		for (let R = 0; R < data.length; ++R) {
-			if (!data[R]) {
+		for (const rowKey of Object.keys(data)) {
+			const R = Number(rowKey);
+			if (!Number.isSafeInteger(R) || R < 0) {
 				continue;
 			}
-			for (let C = 0; C < data[R]!.length; ++C) {
-				const cell = data[R]![C];
-				if (!cell || (cell as any)._sstIdx === undefined) {
+			const row = data[R];
+			if (!row) {
+				continue;
+			}
+			for (const columnKey of Object.keys(row)) {
+				const C = Number(columnKey);
+				if (!Number.isSafeInteger(C) || C < 0) {
 					continue;
 				}
-				const idx = (cell as any)._sstIdx;
-				delete (cell as any)._sstIdx;
-				if (sst[idx]) {
-					cell.v = sst[idx].t;
-					if (opts.cellHTML !== false && sst[idx].h) {
-						cell.h = sst[idx].h;
-					}
-					if (sst[idx].r) {
-						cell.r = sst[idx].r;
-					}
-				}
+				resolveCell(row[C]);
 			}
 		}
 	} else {
@@ -556,21 +615,7 @@ export function resolveSharedStrings(s: WorkSheet, sst: SST, opts: any): void {
 			if (ref.charAt(0) === "!") {
 				continue;
 			}
-			const cell = s[ref] as CellObject;
-			if (!cell || (cell as any)._sstIdx === undefined) {
-				continue;
-			}
-			const idx = (cell as any)._sstIdx;
-			delete (cell as any)._sstIdx;
-			if (sst[idx]) {
-				cell.v = sst[idx].t;
-				if (opts.cellHTML !== false && sst[idx].h) {
-					cell.h = sst[idx].h;
-				}
-				if (sst[idx].r) {
-					cell.r = sst[idx].r;
-				}
-			}
+			resolveCell(s[ref] as CellObject);
 		}
 	}
 }
@@ -605,12 +650,19 @@ export function parseWorksheetXml(
 	if (!opts) {
 		opts = {};
 	}
+	opts.sheetRows = worksheetOptionLimit(opts.sheetRows, 0, "sheetRows");
+	const maxWorksheetRows = worksheetOptionLimit(
+		opts.maxWorksheetRows,
+		DEFAULT_MAX_WORKSHEET_ROWS,
+		"maxWorksheetRows",
+	);
 	assertXmlPartLimits("worksheet.xml", data, opts);
 	if (!rels) {
 		rels = { "!id": {} };
 	}
 
 	const s: WorkSheet = opts.dense ? { "!data": [] } : {};
+	const budget = new WorksheetCellBudget(opts.maxWorksheetCells, DEFAULT_MAX_IMPORT_CELLS);
 	// Start with an inverted range that will be narrowed as cells are found
 	const refguess: Range = { s: { r: 2000000, c: 2000000 }, e: { r: 0, c: 0 } };
 
@@ -639,7 +691,7 @@ export function parseWorksheetXml(
 	if (opts.cellStyles) {
 		const cols = data1.match(colregex);
 		if (cols) {
-			parseWorksheetXml_cols(columns, cols, opts);
+			parseWorksheetXml_cols(columns, cols, budget, opts);
 		}
 		const views = parseWorksheetXml_views(data1, opts);
 		if (views) {
@@ -649,7 +701,7 @@ export function parseWorksheetXml(
 
 	// SheetData (cells)
 	if (sdMatch) {
-		parseSheetData(sdMatch[1], s, opts, refguess, _themes, styles, wb);
+		parseSheetData(sdMatch[1], s, opts, refguess, _themes, styles, wb, budget, maxWorksheetRows);
 	}
 
 	// AutoFilter
@@ -671,7 +723,7 @@ export function parseWorksheetXml(
 	// Hyperlinks
 	const hlink = data2.match(hlinkregex);
 	if (hlink) {
-		parseWorksheetXml_hlinks(s, hlink, rels, opts);
+		parseWorksheetXml_hlinks(s, hlink, rels, budget, opts);
 	}
 
 	// Page margins
@@ -838,6 +890,7 @@ function addSharedString(
  * @returns Complete worksheet XML string
  */
 export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels: Relationships, _wb: any): string {
+	const budget = new WorksheetCellBudget(opts.maxWorksheetCells, DEFAULT_MAX_EXPORT_CELLS);
 	const lines: string[] = [XML_HEADER];
 	lines.push(
 		writeXmlElement("worksheet", null, {
@@ -847,7 +900,9 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	);
 
 	const ref = ws["!ref"] || "A1";
-	lines.push('<dimension ref="' + ref + '"/>');
+	const range = ws["!ref"] ? clampLargeExportRange(ws, safeDecodeRange(ref), budget) : null;
+	const effectiveRef = range ? encodeRange(range) : "A1";
+	lines.push('<dimension ref="' + effectiveRef + '"/>');
 
 	lines.push(writeWorksheetXml_sheetViews(ws, _idx));
 
@@ -855,11 +910,19 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 
 	// Column definitions
 	if (ws["!cols"]) {
+		const columnIndexes = Object.keys(ws["!cols"])
+			.map(Number)
+			.filter((index) => Number.isSafeInteger(index) && index >= 0 && ws["!cols"]![index])
+			.sort((a, b) => a - b);
+		if (columnIndexes.some((index) => index >= XLSX_MAX_COLUMNS)) {
+			throw new XlsxError(
+				"INVALID_ARGUMENT",
+				`Worksheet column metadata exceeds XLSX column limit ${XLSX_MAX_COLUMNS}`,
+			);
+		}
+		budget.charge("worksheet column metadata", columnIndexes.length);
 		lines.push("<cols>");
-		for (let i = 0; i < ws["!cols"].length; ++i) {
-			if (!ws["!cols"][i]) {
-				continue;
-			}
+		for (const i of columnIndexes) {
 			const col = ws["!cols"][i];
 			const attrs: Record<string, string> = {
 				min: String(i + 1), // 1-based
@@ -882,7 +945,10 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	lines.push("<sheetData>");
 
 	const dense = ws["!data"] != null;
-	const range = safeDecodeRange(ref);
+	const firstRow = range?.s.r ?? 1;
+	const lastRow = range?.e.r ?? 0;
+	const firstColumn = range?.s.c ?? 0;
+	const lastColumn = range?.e.c ?? -1;
 	const appendRow = (rowIdx: number, rowCells: string[]): void => {
 		const rowInfo = ws["!rows"]?.[rowIdx];
 		const hasFiniteHeight = rowInfo != null && Number.isFinite(rowInfo.hpt);
@@ -904,19 +970,24 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 		lines.push(rowCells.join(""));
 		lines.push("</row>");
 	};
-	const extraRows = Object.keys(ws["!rows"] ?? {})
+	const rowMetadataIndexes = Object.keys(ws["!rows"] ?? {})
 		.map(Number)
-		.filter((rowIdx) => Number.isSafeInteger(rowIdx) && rowIdx >= 0 && (rowIdx < range.s.r || rowIdx > range.e.r))
+		.filter((rowIdx) => Number.isSafeInteger(rowIdx) && rowIdx >= 0 && ws["!rows"]?.[rowIdx])
 		.sort((a, b) => a - b);
+	if (rowMetadataIndexes.some((rowIdx) => rowIdx >= XLSX_MAX_ROWS)) {
+		throw new XlsxError("INVALID_ARGUMENT", `Worksheet row metadata exceeds XLSX row limit ${XLSX_MAX_ROWS}`);
+	}
+	budget.charge("worksheet row metadata", rowMetadataIndexes.length);
+	const extraRows = rowMetadataIndexes.filter((rowIdx) => range == null || rowIdx < range.s.r || rowIdx > range.e.r);
 	for (const rowIdx of extraRows) {
-		if (rowIdx < range.s.r) {
+		if (range == null || rowIdx < range.s.r) {
 			appendRow(rowIdx, []);
 		}
 	}
 
-	for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
+	for (let rowIdx = firstRow; rowIdx <= lastRow; ++rowIdx) {
 		const row_cells: string[] = [];
-		for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
+		for (let colIdx = firstColumn; colIdx <= lastColumn; ++colIdx) {
 			let cell: CellObject | undefined;
 			if (dense) {
 				cell = ws["!data"]?.[rowIdx]?.[colIdx];
@@ -1010,7 +1081,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	// A worksheet's data range does not necessarily include rows with only layout metadata.
 	// Iterate the existing sparse metadata keys so a distant row cannot cause a huge scan.
 	for (const rowIdx of extraRows) {
-		if (rowIdx > range.e.r) {
+		if (range && rowIdx > range.e.r) {
 			appendRow(rowIdx, []);
 		}
 	}

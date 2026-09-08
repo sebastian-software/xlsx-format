@@ -155,7 +155,7 @@ export async function read(data: any, opts?: ReadOptions): Promise<ReadResult> {
 	if (options.type === "string" && typeof data === "string") {
 		const trimmed = data.trimStart();
 		if (trimmed.charAt(0) === "<") {
-			return selectReadResult(sheetToWorkBook(htmlToSheet(data)), options);
+			return selectReadResult(sheetToWorkBook(htmlToSheet(data, options)), options);
 		}
 		return selectReadResult(sheetToWorkBook(csvToSheet(data, options)), options);
 	}

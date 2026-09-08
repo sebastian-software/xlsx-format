@@ -1,4 +1,4 @@
-import type { WorkBook, WorkSheet, CellObject, CellStyle, Range } from "../types.js";
+import type { WorkBook, WorkSheet, CellObject, CellStyle, Range, Sheet2FormulaeOpts } from "../types.js";
 import { XlsxError } from "../errors.js";
 import { validateSheetName } from "../xlsx/workbook.js";
 import {
@@ -10,6 +10,8 @@ import {
 	getCell,
 	getOrCreateCell,
 } from "../utils/cell.js";
+import { clampLargeExportRange } from "../utils/export-range.js";
+import { DEFAULT_MAX_EXPORT_CELLS, WorksheetCellBudget } from "../utils/worksheet-budget.js";
 
 /**
  * Create a new blank workbook, optionally containing an initial worksheet.
@@ -409,13 +411,18 @@ export function setArrayFormula(
  * String values are prefixed with a single quote; booleans become TRUE/FALSE.
  *
  * @param ws - The worksheet to extract formulas from
+ * @param opts - Optional worksheet export budget
  * @returns An array of "ref=value" strings representing every non-empty cell
  */
-export function sheetToFormulae(ws: WorkSheet): string[] {
+export function sheetToFormulae(ws: WorkSheet, opts?: Sheet2FormulaeOpts): string[] {
 	if (ws == null || ws["!ref"] == null) {
 		return [];
 	}
-	const r = safeDecodeRange(ws["!ref"]);
+	const budget = new WorksheetCellBudget(opts?.maxWorksheetCells, DEFAULT_MAX_EXPORT_CELLS);
+	const r = clampLargeExportRange(ws, safeDecodeRange(ws["!ref"]), budget);
+	if (!r) {
+		return [];
+	}
 	const cols: string[] = [];
 	const cmds: string[] = [];
 

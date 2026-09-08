@@ -1,12 +1,21 @@
-import type { WorkSheet, Sheet2HTMLOpts, Range, CellObject } from "../types.js";
+import type { WorkSheet, Sheet2HTMLOpts, HTML2SheetOpts, Range, CellObject } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { BErr } from "../types.js";
 import { encodeCol, encodeRow, decodeRange, getCell } from "../utils/cell.js";
-import { clampLargeExportRange } from "../utils/export-range.js";
+import { clampLargeExportRange, rangeCellCount } from "../utils/export-range.js";
 import { escapeHtml } from "../xml/escape.js";
 import { escapeHtmlAttribute, writeHtmlElement } from "../xml/writer.js";
 import { formatCell } from "./format.js";
 import { arrayToSheet } from "./aoa.js";
 import { HTML_ENTITY_VALUES } from "./html-entities.js";
+import {
+	DEFAULT_MAX_EXPORT_CELLS,
+	DEFAULT_MAX_IMPORT_CELLS,
+	WorksheetCellBudget,
+	worksheetOptionLimit,
+	XLSX_MAX_COLUMNS,
+	XLSX_MAX_ROWS,
+} from "../utils/worksheet-budget.js";
 
 /** Default HTML document prefix wrapping the table in a minimal page structure */
 const HTML_BEGIN = '<html><head><meta charset="utf-8"/><title>SheetJS Table Export</title></head><body>';
@@ -133,36 +142,63 @@ function sanitizeCellHtml(html: string): string {
  * Build a single HTML `<tr>` row from a worksheet row, handling merged cells,
  * error coercion, hyperlinks, editable mode, and data attributes.
  */
-function buildHtmlRow(ws: WorkSheet, range: Range, rowIndex: number, options: Sheet2HTMLOpts): string {
+interface HtmlMergeCell {
+	rowSpan: number;
+	colSpan: number;
+}
+
+function buildHtmlMergeIndex(
+	ws: WorkSheet,
+	range: Range,
+	budget: WorksheetCellBudget,
+): Map<number, HtmlMergeCell | null> {
 	const merges = ws["!merges"] || [];
+	budget.charge("worksheet merge metadata", merges.length);
+	const index = new Map<number, HtmlMergeCell | null>();
+	for (let i = 0; i < merges.length; ++i) {
+		const merge = merges[i];
+		rangeCellCount(merge, "worksheet merge");
+		const startRow = Math.max(range.s.r, merge.s.r);
+		const endRow = Math.min(range.e.r, merge.e.r);
+		const startColumn = Math.max(range.s.c, merge.s.c);
+		const endColumn = Math.min(range.e.c, merge.e.c);
+		if (startRow > endRow || startColumn > endColumn) {
+			continue;
+		}
+		for (let row = startRow; row <= endRow; ++row) {
+			for (let column = startColumn; column <= endColumn; ++column) {
+				const key = row * XLSX_MAX_COLUMNS + column;
+				if (index.has(key)) {
+					throw new XlsxError("INVALID_ARGUMENT", "Invalid worksheet merge: ranges must not overlap");
+				}
+				index.set(
+					key,
+					row === merge.s.r && column === merge.s.c
+						? { rowSpan: merge.e.r - merge.s.r + 1, colSpan: merge.e.c - merge.s.c + 1 }
+						: null,
+				);
+			}
+		}
+	}
+	return index;
+}
+
+function buildHtmlRow(
+	ws: WorkSheet,
+	range: Range,
+	rowIndex: number,
+	options: Sheet2HTMLOpts,
+	mergeIndex: Map<number, HtmlMergeCell | null>,
+): string {
 	const cells: string[] = [];
 
 	for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
-		let rowSpan = 0,
-			colSpan = 0;
-
-		// Determine if this cell is part of a merged region
-		for (let j = 0; j < merges.length; ++j) {
-			if (merges[j].s.r > rowIndex || merges[j].s.c > colIdx) {
-				continue;
-			}
-			if (merges[j].e.r < rowIndex || merges[j].e.c < colIdx) {
-				continue;
-			}
-			// Cell is inside the merge but is not the top-left origin cell
-			if (merges[j].s.r < rowIndex || merges[j].s.c < colIdx) {
-				rowSpan = -1;
-				break;
-			}
-			// Cell is the top-left origin of the merge region
-			rowSpan = merges[j].e.r - merges[j].s.r + 1;
-			colSpan = merges[j].e.c - merges[j].s.c + 1;
-			break;
-		}
-		// rowSpan === -1 means this cell is swallowed by a merge; skip it
-		if (rowSpan < 0) {
+		const merge = mergeIndex.get(rowIndex * XLSX_MAX_COLUMNS + colIdx);
+		if (merge === null) {
 			continue;
 		}
+		const rowSpan = merge?.rowSpan ?? 0;
+		const colSpan = merge?.colSpan ?? 0;
 
 		const coord = encodeCol(colIdx) + encodeRow(rowIndex);
 		let cell: any = getCell(ws, rowIndex, colIdx);
@@ -241,11 +277,13 @@ export function sheetToHtml(ws: WorkSheet, opts?: Sheet2HTMLOpts): string {
 	const header = options.header != null ? options.header : HTML_BEGIN;
 	const footer = options.footer != null ? options.footer : HTML_END;
 	const out: string[] = [header];
-	const range = clampLargeExportRange(ws, decodeRange(ws["!ref"] || "A1"));
+	const budget = new WorksheetCellBudget(options.maxWorksheetCells, DEFAULT_MAX_EXPORT_CELLS);
+	const range = clampLargeExportRange(ws, decodeRange(ws["!ref"] || "A1"), budget);
 	const rows: string[] = [];
 	if (ws["!ref"] && range) {
+		const mergeIndex = buildHtmlMergeIndex(ws, range, budget);
 		for (let rowIdx = range.s.r; rowIdx <= range.e.r; ++rowIdx) {
-			rows.push(buildHtmlRow(ws, range, rowIdx, options));
+			rows.push(buildHtmlRow(ws, range, rowIdx, options, mergeIndex));
 		}
 	}
 	out.push(writeHtmlElement("table", rows.join(""), options.id ? { id: options.id } : null));
@@ -312,6 +350,60 @@ function getAttr(tag: string, name: string): string | null {
 	const re = new RegExp("(?:^|\\s)" + name + "\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')", "i");
 	const m = tag.match(re);
 	return m ? (m[1] ?? m[2]) : null;
+}
+
+function parseHtmlSpan(value: string | null, name: string, allowZero = false): number {
+	if (value == null) {
+		return 1;
+	}
+	if (!(allowZero ? /^(?:0|[1-9]\d*)$/ : /^[1-9]\d*$/).test(value)) {
+		throw new XlsxError(
+			"MALFORMED",
+			`Invalid HTML ${name}: expected a ${allowZero ? "non-negative" : "positive"} integer`,
+		);
+	}
+	const span = Number(value);
+	if (!Number.isSafeInteger(span)) {
+		throw new XlsxError("MALFORMED", `Invalid HTML ${name}: expected a safe integer`);
+	}
+	return span;
+}
+
+interface HtmlTableRow {
+	html: string;
+	remainingInGroup: number;
+}
+
+/** Extract retained rows while preserving their truncated row-group boundaries for rowspan="0". */
+function extractHtmlRows(tableBody: string, rowLimit: number): HtmlTableRow[] {
+	const rows: HtmlTableRow[] = [];
+	let groupRows: string[] = [];
+	const appendGroup = (groupRows: string[]): void => {
+		for (let i = 0; i < groupRows.length; ++i) {
+			rows.push({ html: groupRows[i], remainingInGroup: groupRows.length - i });
+		}
+	};
+	const flushGroup = (): void => {
+		appendGroup(groupRows);
+		groupRows = [];
+	};
+	const tokenRegex = /<(thead|tbody|tfoot)\b[^>]*>|<\/(thead|tbody|tfoot)\s*>|<tr\b[^>]*>[\s\S]*?<\/tr>/gi;
+	let match: RegExpExecArray | null;
+	while ((match = tokenRegex.exec(tableBody))) {
+		if (match[1]) {
+			flushGroup();
+		} else if (match[2]) {
+			flushGroup();
+		} else {
+			groupRows.push(match[0]);
+			if (rows.length + groupRows.length >= rowLimit) {
+				flushGroup();
+				return rows;
+			}
+		}
+	}
+	flushGroup();
+	return rows;
 }
 
 /** Construct a typed cell from an explicit data-t/data-v pair. */
@@ -391,7 +483,11 @@ function textFromHtml(innerHtml: string): string {
  * @param html - HTML string containing a table
  * @returns A WorkSheet with the parsed table data
  */
-export function htmlToSheet(html: string): WorkSheet {
+export function htmlToSheet(html: string, opts?: HTML2SheetOpts): WorkSheet {
+	const options = opts || {};
+	const maxRows = worksheetOptionLimit(options.maxWorksheetRows, XLSX_MAX_ROWS, "maxWorksheetRows");
+	const sheetRows = worksheetOptionLimit(options.sheetRows, 0, "sheetRows");
+	const budget = new WorksheetCellBudget(options.maxWorksheetCells, DEFAULT_MAX_IMPORT_CELLS);
 	// Find the first <table>...</table> block
 	const tableMatch = html.match(/<table[^>]*>([\s\S]*?)<\/table>/i);
 	if (!tableMatch) {
@@ -399,13 +495,22 @@ export function htmlToSheet(html: string): WorkSheet {
 	}
 
 	const tableBody = tableMatch[1];
-	const rowMatches = tableBody.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+	const extractionLimit =
+		sheetRows > 0 ? Math.min(sheetRows, XLSX_MAX_ROWS + 1) : Math.min(maxRows, XLSX_MAX_ROWS) + 1;
+	const rowMatches = extractHtmlRows(tableBody, extractionLimit);
+	const retainedRowCount = rowMatches.length;
+	if (retainedRowCount > XLSX_MAX_ROWS) {
+		throw new XlsxError("MALFORMED", `HTML table exceeds XLSX row limit ${XLSX_MAX_ROWS}`);
+	}
+	if (retainedRowCount > maxRows) {
+		throw new XlsxError("LIMIT_EXCEEDED", `worksheet row count ${retainedRowCount} exceeds limit ${maxRows}`);
+	}
 
 	const data: any[][] = [];
 	// Track cells occupied by rowspan from previous rows: occupied[row][col] = true
 	const occupied: Record<number, Record<number, boolean>> = {};
 
-	for (let r = 0; r < rowMatches.length; r++) {
+	for (let r = 0; r < retainedRowCount; r++) {
 		if (!data[r]) {
 			data[r] = [];
 		}
@@ -413,7 +518,7 @@ export function htmlToSheet(html: string): WorkSheet {
 			occupied[r] = {};
 		}
 
-		const rowHtml = rowMatches[r];
+		const rowHtml = rowMatches[r].html;
 		const cellMatches = rowHtml.match(/<t[dh][^>]*>[\s\S]*?<\/t[dh]>/gi) || [];
 
 		let col = 0;
@@ -422,6 +527,9 @@ export function htmlToSheet(html: string): WorkSheet {
 			while (occupied[r][col]) {
 				col++;
 			}
+			if (col >= XLSX_MAX_COLUMNS) {
+				throw new XlsxError("MALFORMED", `HTML row exceeds XLSX column limit ${XLSX_MAX_COLUMNS}`);
+			}
 
 			const cellHtml = cellMatches[ci];
 			const tagEnd = cellHtml.indexOf(">");
@@ -429,8 +537,14 @@ export function htmlToSheet(html: string): WorkSheet {
 
 			const rowspanStr = getAttr(tag, "rowspan");
 			const colspanStr = getAttr(tag, "colspan");
-			const rs = rowspanStr ? parseInt(rowspanStr, 10) : 1;
-			const cs = colspanStr ? parseInt(colspanStr, 10) : 1;
+			const declaredRowSpan = parseHtmlSpan(rowspanStr, "rowspan", true);
+			const rs = declaredRowSpan === 0 ? rowMatches[r].remainingInGroup : declaredRowSpan;
+			const cs = parseHtmlSpan(colspanStr, "colspan");
+			if (r + rs > XLSX_MAX_ROWS || col + cs > XLSX_MAX_COLUMNS) {
+				throw new XlsxError("MALFORMED", "Invalid HTML span: range exceeds XLSX worksheet bounds");
+			}
+			const retainedRowSpan = sheetRows > 0 ? Math.min(rs, sheetRows - r) : rs;
+			budget.charge("worksheet cell", retainedRowSpan * cs);
 			const dataT = getAttr(tag, "data-t");
 			const dataV = getAttr(tag, "data-v");
 			const dataF = getAttr(tag, "data-f");
@@ -455,7 +569,7 @@ export function htmlToSheet(html: string): WorkSheet {
 			data[r][col] = value;
 
 			// Mark cells occupied by rowspan/colspan
-			for (let dr = 0; dr < rs; dr++) {
+			for (let dr = 0; dr < retainedRowSpan; dr++) {
 				for (let dc = 0; dc < cs; dc++) {
 					if (dr === 0 && dc === 0) {
 						continue;

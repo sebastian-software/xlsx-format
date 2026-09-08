@@ -1,13 +1,29 @@
 import type { Range, WorkSheet } from "../types.js";
+import { XlsxError } from "../errors.js";
 import { decodeCell } from "./cell.js";
+import { DEFAULT_MAX_EXPORT_CELLS, WorksheetCellBudget, XLSX_MAX_COLUMNS, XLSX_MAX_ROWS } from "./worksheet-budget.js";
 
 const CELL_REF_RE = /^[A-Z]+[1-9]\d*$/;
-const MAX_EXPORT_CELLS = 1000000;
-
-function rangeCellCount(range: Range): number {
+export function rangeCellCount(range: Range, kind = "worksheet range"): number {
+	for (const [name, value] of [
+		["start row", range.s.r],
+		["start column", range.s.c],
+		["end row", range.e.r],
+		["end column", range.e.c],
+	] as const) {
+		if (!Number.isSafeInteger(value) || value < 0) {
+			throw new XlsxError("INVALID_ARGUMENT", `Invalid ${kind}: ${name} must be a non-negative safe integer`);
+		}
+	}
+	if (range.e.r < range.s.r || range.e.c < range.s.c) {
+		throw new XlsxError("INVALID_ARGUMENT", `Invalid ${kind}: end must not precede start`);
+	}
+	if (range.e.r >= XLSX_MAX_ROWS || range.e.c >= XLSX_MAX_COLUMNS) {
+		throw new XlsxError("INVALID_ARGUMENT", `Invalid ${kind}: range exceeds XLSX worksheet bounds`);
+	}
 	const rows = range.e.r - range.s.r + 1;
 	const cols = range.e.c - range.s.c + 1;
-	return rows > 0 && cols > 0 ? rows * cols : 0;
+	return rows * cols;
 }
 
 function occupiedRangeEnd(sheet: WorkSheet, range: Range): { r: number; c: number } | null {
@@ -57,19 +73,33 @@ function occupiedRangeEnd(sheet: WorkSheet, range: Range): { r: number; c: numbe
 	return maxRow === -1 ? null : { r: maxRow, c: maxCol };
 }
 
-export function clampLargeExportRange(sheet: WorkSheet, range: Range): Range | null {
-	if (rangeCellCount(range) <= MAX_EXPORT_CELLS) {
+export function clampLargeExportRange(
+	sheet: WorkSheet,
+	range: Range,
+	budget = new WorksheetCellBudget(undefined, DEFAULT_MAX_EXPORT_CELLS),
+	clampToOccupied = true,
+): Range | null {
+	let count = rangeCellCount(range, "worksheet export range");
+	if (count <= budget.limit) {
+		budget.charge("worksheet export cell", count);
+		return range;
+	}
+	if (!clampToOccupied) {
+		budget.charge("worksheet export cell", count);
 		return range;
 	}
 	const end = occupiedRangeEnd(sheet, range);
 	if (!end) {
 		return null;
 	}
-	return {
+	const clamped = {
 		s: { r: range.s.r, c: range.s.c },
 		e: {
 			r: Math.max(range.s.r, Math.min(range.e.r, end.r)),
 			c: Math.max(range.s.c, Math.min(range.e.c, end.c)),
 		},
 	};
+	count = rangeCellCount(clamped, "worksheet export range");
+	budget.charge("worksheet export cell", count);
+	return clamped;
 }
