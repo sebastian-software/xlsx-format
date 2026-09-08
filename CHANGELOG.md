@@ -1,5 +1,14 @@
 # Changelog
 
+## [2.4.5](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.4...xlsx-format-v2.4.5) (2026-09-08)
+
+
+### Bug Fixes
+
+* enforce worksheet resource budgets ([#138](https://github.com/sebastian-software/xlsx-format/issues/138)) ([b06e6c9](https://github.com/sebastian-software/xlsx-format/commit/b06e6c9185dbf7a480e047392f7290ab7b091902))
+* make read and write contracts explicit ([#136](https://github.com/sebastian-software/xlsx-format/issues/136)) ([7f8e056](https://github.com/sebastian-software/xlsx-format/commit/7f8e056e191db2c23225deb795667889a05d5d88))
+* preserve cell comments in XLSX roundtrips ([#141](https://github.com/sebastian-software/xlsx-format/issues/141)) ([ef9b6ca](https://github.com/sebastian-software/xlsx-format/commit/ef9b6ca5e2c7d0e2b29e7eed3e227f1fe877d836))
+
 ## [2.4.4](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.3...xlsx-format-v2.4.4) (2026-09-08)
 
 
