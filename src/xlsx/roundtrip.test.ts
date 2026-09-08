@@ -482,6 +482,14 @@ describe("XLSX roundtrip: workbook properties", () => {
 });
 
 describe("XLSX read formatting", () => {
+	it("does not retain redundant XF metadata for a default-style cell", async () => {
+		const bytes = await write(createWorkbook(arrayToSheet([[42]]), "S"));
+		const result = await read(bytes);
+
+		expect(result.Sheets.S.A1).toMatchObject({ t: "n", v: 42, w: "42" });
+		expect(result.Sheets.S.A1.XF).toBeUndefined();
+	});
+
 	it("applies implicit style index zero and explicit positive style indexes", async () => {
 		const source = await write(createWorkbook(arrayToSheet([[45292, 12.5]]), "S"));
 		const styles = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>

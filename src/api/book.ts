@@ -69,7 +69,14 @@ export function appendSheet(wb: WorkBook, ws: WorkSheet, name?: string, roll?: b
 	}
 
 	wb.SheetNames.push(name);
-	wb.Sheets[name] = ws;
+	// Define the property explicitly so names such as "__proto__" remain own,
+	// enumerable sheet entries on ordinary caller-provided maps.
+	Object.defineProperty(wb.Sheets, name, {
+		value: ws,
+		enumerable: true,
+		configurable: true,
+		writable: true,
+	});
 	return name;
 }
 
@@ -153,6 +160,7 @@ export function setSheetVisibility(wb: WorkBook, sh: number | string, vis: 0 | 1
  */
 export function setCellNumberFormat(cell: CellObject, fmt: string | number): CellObject {
 	cell.z = fmt;
+	delete cell.w;
 	return cell;
 }
 
