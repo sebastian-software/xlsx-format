@@ -49,15 +49,15 @@
 		"prepare": "husky"
 	},
 	"devDependencies": {
-		"@types/node": "^26.1.0",
+		"@types/node": "^26.5.0",
 		"@vitest/coverage-v8": "^5.0.0",
 		"eslint": "^10.10.0",
 		"eslint-config-setup": "0.5.2",
 		"husky": "^9.1.7",
-		"lint-staged": "^17.0.8",
+		"lint-staged": "^17.5.0",
 		"oxfmt": "0.67.0",
 		"tsdown": "^0.23.0",
-		"tsx": "^4.23.0",
+		"tsx": "^4.23.13",
 		"typescript": "^6.0.3",
 		"vitest": "^5.0.0"
 	},
