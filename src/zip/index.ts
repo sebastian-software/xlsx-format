@@ -409,6 +409,7 @@ export async function zipWrite(archive: ZipArchive, compress?: boolean): Promise
 
 /**
  * Read a file from a ZIP archive as a UTF-8 string.
+ * XML parsers consume this decoded text directly; do not decode it again.
  *
  * Falls back to trying with/without a leading slash if the exact path is not found.
  *

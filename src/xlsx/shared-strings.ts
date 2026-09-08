@@ -3,7 +3,6 @@ import { parseXmlTag, XML_TAG_REGEX, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml, escapeHtml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main } from "../xml/namespaces.js";
-import { utf8read } from "../utils/buffer.js";
 import type { XmlLimitOptions } from "../xml/limits.js";
 import {
 	assertXmlCountWithinLimit,
@@ -311,20 +310,20 @@ function parseStringItem(x: string, opts?: SstParseOptions): XLString {
 
 	if (x.match(/^\s*<(?:\w+:)?t[^>]*>/)) {
 		// Plain text: extract content between <t> and </t>
-		result.t = unescapeXml(utf8read(x.slice(x.indexOf(">") + 1).split(/<\/(?:\w+:)?t>/)[0] || ""), true);
-		result.r = utf8read(x);
+		result.t = unescapeXml(x.slice(x.indexOf(">") + 1).split(/<\/(?:\w+:)?t>/)[0] || "", true);
+		result.r = x;
 		if (html) {
 			result.h = escapeHtml(result.t);
 		}
 	} else if (x.match(sirregex)) {
 		// Rich text: concatenate text from all runs
-		result.r = utf8read(x);
+		result.r = x;
 		// Strip phonetic run (<rPh>) elements before extracting text
 		const stripped = str_remove_xml_ns_g_local(x, "rPh");
 		sitregex.lastIndex = 0;
 		const matches = stripped.match(sitregex) || [];
 		// Join all <t> content and strip tags to get plain text
-		result.t = unescapeXml(utf8read(matches.join("").replace(XML_TAG_REGEX, "")), true);
+		result.t = unescapeXml(matches.join("").replace(XML_TAG_REGEX, ""), true);
 		if (html) {
 			result.h = richTextToHtml(parseRichTextRuns(result.r, opts));
 		}

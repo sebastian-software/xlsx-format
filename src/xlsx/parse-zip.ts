@@ -23,7 +23,6 @@ import { parseVml } from "./vml.js";
 import { parseMetadataXml } from "./metadata.js";
 import { parseCalcChainXml } from "./calc-chain.js";
 import { resetFormatTable } from "../ssf/table.js";
-import { utf8read } from "../utils/buffer.js";
 import { RELS as RELTYPE } from "../xml/namespaces.js";
 import { assertXmlPartLimits } from "../xml/limits.js";
 
@@ -194,7 +193,7 @@ function safe_parse_sheet(
 			const dfile = resolve_path((_ws as any)["!legdrawel"].Target, path);
 			const draw = getZipString(zip, dfile, true, opts);
 			if (draw) {
-				parseVml(utf8read(draw), _ws, comments);
+				parseVml(draw, _ws, comments);
 			}
 		}
 	} catch (e) {
