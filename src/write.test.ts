@@ -35,6 +35,18 @@ describe("write.ts — output types", () => {
 		expect(typeof b64).toBe("string");
 	});
 
+	it("should reject password-protected writes before validation", async () => {
+		await expect(write({} as any, { password: "secret" })).rejects.toMatchObject({
+			name: "XlsxError",
+			code: "UNSUPPORTED",
+			message: "Password-protected workbooks are not supported",
+		});
+	});
+
+	it("should preserve empty password behavior", async () => {
+		await expect(write(simpleWb(), { bookType: "csv", type: "string", password: "" })).resolves.toContain("A");
+	});
+
 	it("should write empty workbook CSV", async () => {
 		const emptyWb = { SheetNames: ["S1"], Sheets: { S1: {} } } as any;
 		const csv = await write(emptyWb, { bookType: "csv", type: "string" });
