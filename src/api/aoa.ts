@@ -54,6 +54,10 @@ export function addArrayToSheet(worksheet: WorkSheet | null, data: any[][], opts
 		}
 	} else {
 		range.s.c = range.e.c = range.s.r = range.e.r = 0;
+		// On an empty sheet, append starts at the first row rather than row -1.
+		if (originRow === -1) {
+			originRow = 0;
+		}
 	}
 
 	let seen = false;
