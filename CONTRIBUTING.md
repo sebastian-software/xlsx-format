@@ -49,7 +49,7 @@ If an older checkout has an unmarked directory:
 3. After the backup is verified and the directory contains no content that must be kept, move the reviewed directory aside and run the canonical docs build:
 
     ```bash
-    mv docs/app/routes/api-reference "$backup_dir/api-reference-reviewed"
+    mv docs/app/routes/api-reference "${backup_dir:?Run step 1 in this shell first}/api-reference-reviewed"
     pnpm --filter docs build
     ```
 
