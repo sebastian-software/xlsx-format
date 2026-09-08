@@ -13,6 +13,20 @@ export default defineConfig({
 				level: "error",
 			},
 
+			// Favicon set (favicon.ico, icon.svg, apple-touch-icon.png) from the brand mark.
+			icons: {
+				source: "app/brand-mark.svg",
+			},
+
+			markdown: {
+				// Code panels are always dark (like the hero editor), so both
+				// color schemes highlight with the same dark theme.
+				theme: {
+					light: "vesper",
+					dark: "vesper",
+				},
+			},
+
 			typedoc: {
 				entryPoints: ["../src/index.ts"],
 				markdown: {
