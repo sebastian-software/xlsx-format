@@ -5,6 +5,7 @@ import {
 	createWorkbook,
 	appendSheet,
 	arrayToSheet,
+	sheetToArray,
 	sheetToJson,
 	createSheet,
 	setCellStyle,
@@ -201,17 +202,29 @@ describe("Formulas", () => {
 		// Verify the API sets D flag on the source cell
 		expect(ws.A1.D).toBe(true);
 		expect(ws.A1.f).toBe("SORT(B1:B10)");
-		// The writer does not emit the dynamic array attribute, so D is lost on roundtrip
 		const wb2 = await roundtrip(createWorkbook(ws, "S"));
 		expect(wb2.Sheets.S.A1.f).toBe("SORT(B1:B10)");
+		expect(wb2.Sheets.S.A1.D).toBe(true);
 	});
 
 	it("formula without pre-computed value", async () => {
 		const ws = createSheet();
-		ws.A1 = { t: "n", f: "1+1" }; // no .v
+		ws.A1 = { t: "n", f: "TODAY()" }; // no .v
 		ws["!ref"] = "A1";
-		const wb2 = await roundtrip(createWorkbook(ws, "S"));
-		expect(wb2.Sheets.S.A1.f).toBe("1+1");
+		setCellStyle(ws.A1, { numFmt: "yyyy-mm-dd" });
+		const wb2 = await roundtrip(createWorkbook(ws, "S"), { cellStyles: true }, { cellStyles: true });
+		const result = wb2.Sheets.S;
+		expect(result.A1).toMatchObject({ t: "n", f: "TODAY()" });
+		expect(result.A1.v).toBeUndefined();
+		expect(result.A1.s?.numFmt).toBe("yyyy-mm-dd");
+		expect(sheetToArray(result)).toStrictEqual([[]]);
+		expect(sheetToArray(result, { raw: false })).toStrictEqual([[]]);
+		expect(sheetToArray(result, { dateOutput: "iso" })).toStrictEqual([[]]);
+		expect(sheetToArray(result, { defval: "BLANK" })).toStrictEqual([["BLANK"]]);
+		expect(sheetToJson(result, { header: ["value"], blankrows: true })).toStrictEqual([{}]);
+		expect(sheetToJson(result, { header: ["value"], raw: false, blankrows: true })).toStrictEqual([{}]);
+		expect(sheetToJson(result, { header: ["value"], dateOutput: "iso", blankrows: true })).toStrictEqual([{}]);
+		expect(sheetToJson(result, { header: ["value"], defval: "BLANK" })).toStrictEqual([{ value: "BLANK" }]);
 	});
 });
 
