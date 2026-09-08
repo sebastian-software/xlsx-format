@@ -12,7 +12,7 @@ import { buildStyleRegistry, writeStylesXml } from "./styles.js";
 import { write_theme_xml } from "./theme.js";
 import { writeWorkbookXml } from "./workbook.js";
 import { writeWorksheetXml } from "./worksheet.js";
-import { writeCommentsXml, writeTcmntXml, writePeopleXml } from "./comments.js";
+import { collectCellComments, writeCommentsXml, writeTcmntXml, writePeopleXml } from "./comments.js";
 import { writeVml } from "./vml.js";
 import { writeMetadataXml } from "./metadata.js";
 import { resetFormatTable, formatTable, loadFormatTable } from "../ssf/table.js";
@@ -103,51 +103,51 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 	for (let rId = 1; rId <= wb.SheetNames.length; ++rId) {
 		const wsrels: Relationships = { "!id": {} };
 		const ws = wb.Sheets[wb.SheetNames[rId - 1]];
+		let comments: [string, any[]][] = [];
+		let needtc = false;
+
+		if (ws) {
+			comments = collectCellComments(ws);
+			// Preserve the historical internal staging property as a fallback.
+			if (comments.length === 0 && Array.isArray((ws as any)["!comments"])) {
+				comments = (ws as any)["!comments"].map(([ref, list]: [string, any[]]) => {
+					const copied = list.map((comment) => ({ ...comment }));
+					if ((list as any).hidden != null) {
+						(copied as any).hidden = (list as any).hidden;
+					}
+					return [ref, copied];
+				});
+			}
+			needtc = comments.some(([, list]) => list.some((comment) => comment.T === true));
+			if (needtc) {
+				addRelationship(wsrels, -1, "../threadedComments/threadedComment" + rId + ".xml", RELTYPE.TCMNT);
+			}
+			if (comments.length > 0) {
+				addRelationship(wsrels, -1, "../comments" + rId + ".xml", RELTYPE.CMNT);
+				addRelationship(wsrels, -1, "../drawings/vmlDrawing" + rId + ".vml", RELTYPE.VML);
+			}
+		}
 
 		filePath = "xl/worksheets/sheet" + rId + ".xml";
 		zipAddString(zip, filePath, writeWorksheetXml(ws || ({} as any), opts, rId - 1, wsrels, wb));
 		ct.sheets.push(filePath);
 		addRelationship(opts.wbrels, -1, "worksheets/sheet" + rId + ".xml", RELTYPE.SHEET);
 
-		if (ws) {
-			const comments = (ws as any)["!comments"];
-			let need_vml = false;
-
-			if (comments && comments.length > 0) {
-				// Check if any comments are threaded (modern Excel style)
-				let needtc = false;
-				comments.forEach((carr: any) => {
-					carr[1].forEach((c: any) => {
-						if (c.T === true) {
-							needtc = true;
-						}
-					});
-				});
-
-				// Write threaded comments if needed
-				if (needtc) {
-					const cf = "xl/threadedComments/threadedComment" + rId + ".xml";
-					zipAddString(zip, cf, writeTcmntXml(comments, people, opts));
-					ct.threadedcomments.push(cf);
-					addRelationship(wsrels, -1, "../threadedComments/threadedComment" + rId + ".xml", RELTYPE.TCMNT);
-				}
-
-				// Write legacy comments XML (always needed when comments exist)
-				const cf2 = "xl/comments" + rId + ".xml";
-				zipAddString(zip, cf2, writeCommentsXml(comments));
-				ct.comments.push(cf2);
-				addRelationship(wsrels, -1, "../comments" + rId + ".xml", RELTYPE.CMNT);
-				need_vml = true;
+		if (comments.length > 0) {
+			// Write threaded comments if needed
+			if (needtc) {
+				const cf = "xl/threadedComments/threadedComment" + rId + ".xml";
+				zipAddString(zip, cf, writeTcmntXml(comments, people, opts));
+				ct.threadedcomments.push(cf);
 			}
 
-			// Write VML drawing for comment anchor shapes
-			if ((ws as any)["!legacy"] && need_vml) {
-				zipAddString(zip, "xl/drawings/vmlDrawing" + rId + ".vml", writeVml(rId, (ws as any)["!comments"]));
-			}
+			// Write legacy comments XML (always needed when comments exist)
+			const cf2 = "xl/comments" + rId + ".xml";
+			zipAddString(zip, cf2, writeCommentsXml(comments));
+			ct.comments.push(cf2);
 
-			// Clean up transient worksheet properties
-			delete (ws as any)["!comments"];
-			delete (ws as any)["!legacy"];
+			// Write VML drawing for comment anchor shapes and visibility.
+			zipAddString(zip, "xl/drawings/vmlDrawing" + rId + ".vml", writeVml(rId, comments));
 		}
 
 		// Write per-sheet relationships if any exist

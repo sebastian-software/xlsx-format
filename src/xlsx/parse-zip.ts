@@ -184,6 +184,7 @@ function parse_sheet(
 					if (cmntData) {
 						const parsedComments = parseCommentsXml(cmntData, opts);
 						if (parsedComments && parsedComments.length > 0) {
+							comments.push(...parsedComments);
 							insertCommentsIntoSheet(_ws, parsedComments, false);
 						}
 					}
@@ -203,8 +204,9 @@ function parse_sheet(
 		}
 
 		// Parse legacy VML drawings (comment anchor shapes)
-		if ((_ws as any)["!legdrawel"] && relationships) {
-			const dfile = resolve_path((_ws as any)["!legdrawel"].Target, path);
+		const legacyDrawing = relationships?.["!id"]?.[(_ws as any)["!legrel"]];
+		if (legacyDrawing) {
+			const dfile = resolve_path(legacyDrawing.Target, path);
 			const draw = getZipString(zip, dfile, true, opts);
 			if (draw) {
 				parseVml(draw, _ws, comments);

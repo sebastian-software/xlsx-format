@@ -2,9 +2,60 @@ import { parseXmlTag, XML_TAG_REGEX, XML_HEADER, stripNamespace } from "../xml/p
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlTag, writeXmlElement } from "../xml/writer.js";
 import { XMLNS_main, XMLNS } from "../xml/namespaces.js";
-import { decodeCell, encodeRange, safeDecodeRange } from "../utils/cell.js";
+import { decodeCell, encodeCell, encodeRange, safeDecodeRange } from "../utils/cell.js";
 import { matchXmlTagFirst } from "../utils/helpers.js";
 import type { WorkSheet } from "../types.js";
+
+/**
+ * Collect cell comments for serialization without mutating the worksheet.
+ *
+ * Iterating the materialized cells avoids expanding a large worksheet range merely
+ * to discover comments.  The copied comment arrays also isolate the public `cell.c`
+ * objects from the IDs assigned while writing threaded comments.
+ */
+export function collectCellComments(sheet: WorkSheet): [string, any[]][] {
+	const out: [string, any[]][] = [];
+	const add = (ref: string, cell: any): void => {
+		if (!Array.isArray(cell?.c) || cell.c.length === 0) {
+			return;
+		}
+		const comments = cell.c.map((comment: any) => ({ ...comment }));
+		if (cell.c.hidden != null) {
+			comments.hidden = cell.c.hidden;
+		}
+		out.push([ref, comments]);
+	};
+
+	if ((sheet as any)["!data"] != null) {
+		const rows = (sheet as any)["!data"] as any[];
+		for (const rowKey of Object.keys(rows)) {
+			const rowIndex = Number(rowKey);
+			const row = rows[rowIndex];
+			if (!Number.isSafeInteger(rowIndex) || rowIndex < 0 || rowIndex > 1_048_575 || !Array.isArray(row)) {
+				continue;
+			}
+			for (const columnKey of Object.keys(row)) {
+				const columnIndex = Number(columnKey);
+				if (!Number.isSafeInteger(columnIndex) || columnIndex < 0 || columnIndex > 16_383) {
+					continue;
+				}
+				add(encodeCell({ r: rowIndex, c: columnIndex }), row[columnIndex]);
+			}
+		}
+	} else {
+		for (const ref of Object.keys(sheet)) {
+			if (!/^[A-Z]{1,3}[1-9]\d*$/.test(ref)) {
+				continue;
+			}
+			const address = decodeCell(ref);
+			if (address.r <= 1_048_575 && address.c <= 16_383 && encodeCell(address) === ref) {
+				add(ref, (sheet as any)[ref]);
+			}
+		}
+	}
+
+	return out;
+}
 
 /** A parsed comment entry with cell reference, author, and text content */
 export interface RawComment {
@@ -145,7 +196,7 @@ export function parseCommentsXml(data: string, opts?: any): RawComment[] {
 			}
 			const a = x.match(/<(?:\w+:)?author\b[^<>]*>(.*)/);
 			if (a) {
-				authors.push(a[1]);
+				authors.push(unescapeXml(a[1]));
 			}
 		});
 	}
@@ -241,7 +292,7 @@ export function writeCommentsXml(data: [string, any[]][]): string {
 			if (c.T) {
 				++tcnt;
 			}
-			ts.push(c.t == null ? "" : escapeXml(c.t));
+			ts.push(c.t == null ? "" : String(c.t));
 		});
 		if (tcnt === 0) {
 			// Non-threaded: each comment gets its own <comment> element
@@ -325,7 +376,7 @@ export function parseTcmntXml(data: string, _opts?: any): RawComment[] {
 				break;
 			case "</text>":
 				// Normalize line endings
-				comment.t = data.slice(tidx, idx).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+				comment.t = unescapeXml(data.slice(tidx, idx)).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 				break;
 		}
 		return x;
@@ -374,7 +425,13 @@ export function writeTcmntXml(comments: [string, any[]][], people: string[], opt
 				// Person GUID uses a different prefix than comment GUID
 				tcopts.personId = "{54EE7950-7262-4200-6969-" + ("000000000000" + people.indexOf(c.a)).slice(-12) + "}";
 			}
-			o.push(writeXmlElement("threadedComment", writeXmlTag("text", c.t || ""), tcopts));
+			o.push(
+				writeXmlElement(
+					"threadedComment",
+					writeXmlTag("text", escapeXml(c.t == null ? "" : String(c.t))),
+					tcopts,
+				),
+			);
 		});
 	});
 	o.push("</ThreadedComments>");
@@ -412,7 +469,7 @@ export function parsePeopleXml(data: string): { name: string; id: string }[] {
 		}
 		switch (tag) {
 			case "<person":
-				out.push({ name: y.displayname, id: y.id });
+				out.push({ name: unescapeXml(y.displayname), id: y.id });
 				break;
 		}
 		return x;
@@ -437,10 +494,10 @@ export function writePeopleXml(people: string[]): string {
 	people.forEach((person, idx) => {
 		o.push(
 			writeXmlElement("person", null, {
-				displayName: person,
+				displayName: escapeXml(person),
 				// Deterministic GUID based on index
 				id: "{54EE7950-7262-4200-6969-" + ("000000000000" + idx).slice(-12) + "}",
-				userId: person,
+				userId: escapeXml(person),
 				providerId: "None",
 			}),
 		);
