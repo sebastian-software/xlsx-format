@@ -331,10 +331,9 @@ function parseStringItem(x: string, opts?: SstParseOptions): XLString {
 	return result;
 }
 
-/** Regex to match opening <si> or <sstItem> tags */
-const sstr1 = /<(?:\w+:)?(?:si|sstItem)>/g;
-/** Regex to match closing </si> or </sstItem> tags */
-const sstr2 = /<\/(?:\w+:)?(?:si|sstItem)>/;
+/** Regex to extract complete <si> or <sstItem> elements, including self-closing entries. */
+const sstr =
+	/<(?:\w+:)?(?:si|sstItem)\b[^>]*\/>|<(?:\w+:)?(?:si|sstItem)\b[^>]*>([\s\S]*?)<\/(?:\w+:)?(?:si|sstItem)\s*>/g;
 
 /**
  * Parse the Shared String Table (SST) XML into an array of string entries.
@@ -355,8 +354,9 @@ export function parseSstXml(data: string, opts?: SstParseOptions): SST {
 
 	const sst = str_match_xml_ns_local(data, "sst");
 	if (sst) {
-		// Split the SST content by </si> boundaries to get individual string items
-		const stringItems = sst[1].replace(sstr1, "").split(sstr2);
+		// Preserve one array slot per SST element so later cell indexes do not shift.
+		sstr.lastIndex = 0;
+		const stringItems = Array.from(sst[1].matchAll(sstr), (match) => match[1] ?? "");
 		const maxSharedStringItems = xmlOptionLimit(
 			opts?.maxSharedStringItems,
 			DEFAULT_MAX_SHARED_STRING_ITEMS,

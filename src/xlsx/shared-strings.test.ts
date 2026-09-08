@@ -346,8 +346,7 @@ describe("xlsx/shared-strings", () => {
 			<si><t>World</t></si>
 		</sst>`;
 		const sst = parseSstXml(xml);
-		// The split produces a trailing empty entry — verify the meaningful ones
-		expect(sst.length).toBeGreaterThanOrEqual(2);
+		expect(sst).toHaveLength(2);
 		expect(sst[0].t).toBe("Hello");
 		expect(sst[1].t).toBe("World");
 	});
@@ -362,6 +361,18 @@ describe("xlsx/shared-strings", () => {
 		expect(sst[0].r).toBeDefined();
 	});
 
+	it("preserves empty, self-closing, and namespaced string item indexes", () => {
+		const xml = `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+			<si></si>
+			<si/>
+			<x:si xmlns:x="urn:test"><x:t>third</x:t></x:si>
+		</sst>`;
+
+		expect(parseSstXml(xml).map((item) => item.t)).toStrictEqual(["", "", "third"]);
+		expect(parseSstXml(xml, { maxSharedStringItems: 3 })).toHaveLength(3);
+		expect(() => parseSstXml(xml, { maxSharedStringItems: 2 })).toThrow(/shared string item count 3/);
+	});
+
 	it("parseSstXml should handle empty input", () => {
 		expect(parseSstXml("")).toHaveLength(0);
 	});
@@ -372,6 +383,7 @@ describe("xlsx/shared-strings", () => {
 			<si><t>World</t></si>
 		</sst>`;
 		expect(() => parseSstXml(xml, { maxXmlPartBytes: 8 })).toThrow(/sharedStrings\.xml size/);
+		expect(parseSstXml(xml, { maxSharedStringItems: 2 })).toHaveLength(2);
 		expect(() => parseSstXml(xml, { maxSharedStringItems: 1 })).toThrow(
 			/shared string item count .* exceeds limit 1/,
 		);
