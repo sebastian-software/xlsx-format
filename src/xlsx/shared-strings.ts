@@ -297,11 +297,41 @@ const sitregex = /<(?:\w+:)?t\b[^<>]*>([^<]*)<\/(?:\w+:)?t>/g;
 /** Regex to detect if a string item contains rich-text runs (<r>) */
 const sirregex = /<(?:\w+:)?r\b[^<>]*>/;
 
+const richTextMainElements = new Set([
+	"r",
+	"rPr",
+	"t",
+	"rPh",
+	"phoneticPr",
+	"condense",
+	"extend",
+	"shadow",
+	"rFont",
+	"sz",
+	"strike",
+	"u",
+	"b",
+	"i",
+	"color",
+	"family",
+	"vertAlign",
+	"scheme",
+	"extLst",
+	"ext",
+]);
+
+/** Remove prefixes from known SpreadsheetML rich-text elements before moving a fragment to a new XML part. */
+export function normalizeRichTextXml(x: string): string {
+	return x.replace(/<(\/?)\w+:([\w.-]+)(?=[\s/>])/g, (tag, closing: string, localName: string) =>
+		richTextMainElements.has(localName) ? "<" + closing + localName : tag,
+	);
+}
+
 /**
  * Parse a single string item (<si>) from the shared string table.
  * Handles both plain text (<t>) and rich text (<r>) formats.
  */
-function parseStringItem(x: string, opts?: SstParseOptions): XLString {
+export function parseStringItem(x: string, opts?: SstParseOptions): XLString {
 	const html = opts ? opts.cellHTML !== false : true;
 	const result: any = {};
 	if (!x) {
@@ -325,7 +355,7 @@ function parseStringItem(x: string, opts?: SstParseOptions): XLString {
 		// Join all <t> content and strip tags to get plain text
 		result.t = unescapeXml(matches.join("").replace(XML_TAG_REGEX, ""), true);
 		if (html) {
-			result.h = richTextToHtml(parseRichTextRuns(result.r, opts));
+			result.h = richTextToHtml(parseRichTextRuns(stripped, opts));
 		}
 	}
 	return result;
@@ -407,7 +437,7 @@ export function writeSstXml(sst: SST, opts: { bookSST?: boolean }): string {
 		let sitag = "<si>";
 		if (entry.r) {
 			// Preserve original rich-text XML
-			sitag += entry.r;
+			sitag += normalizeRichTextXml(entry.r);
 		} else {
 			sitag += "<t";
 			if (!entry.t) {

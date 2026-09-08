@@ -23,7 +23,7 @@ import { safeDecodeRange, encodeRange, encodeCell, decodeCell } from "../utils/c
 import { formatNumber, getDateTimeFormatKind } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
-import type { SST } from "./shared-strings.js";
+import { normalizeRichTextXml, parseStringItem, type SST, type XLString } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
 import { getCellStyleIndex, getStyleFromXf } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
@@ -354,7 +354,7 @@ function parseSheetData(
 			const vMatch = cellValue.match(/<(?:\w+:)?v>([\s\S]*?)<\/(?:\w+:)?v>/);
 			const fTagMatch = cellValue.match(/<(?:\w+:)?f\b[^>]*>/);
 			const fMatch = cellValue.match(/<(?:\w+:)?f\b[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/);
-			const isMatch = cellValue.match(/<(?:\w+:)?is>([\s\S]*?)<\/(?:\w+:)?is>/);
+			const isMatch = cellValue.match(/<(?:\w+:)?is\b[^>]*>([\s\S]*?)<\/(?:\w+:)?is\s*>/);
 			const preserveFormula = fTagMatch != null && opts.cellFormula !== false;
 
 			const v = vMatch ? vMatch[1] : null;
@@ -375,8 +375,14 @@ function parseSheetData(
 					break;
 				case "inlineStr":
 					if (isMatch) {
-						const tMatch = isMatch[1].match(/<(?:\w+:)?t[^>]*>([\s\S]*?)<\/(?:\w+:)?t>/);
-						cell = { t: "s", v: tMatch ? unescapeXml(tMatch[1]) : "" };
+						const inlineString = parseStringItem(isMatch[1], opts);
+						cell = { t: "s", v: inlineString.t };
+						if (inlineString.r !== undefined) {
+							cell.r = inlineString.r;
+						}
+						if (inlineString.h !== undefined) {
+							cell.h = inlineString.h;
+						}
 					} else {
 						cell = { t: "s", v: "" };
 					}
@@ -779,6 +785,45 @@ function writeWorksheetXml_sheetViews(ws: WorkSheet, idx: number): string {
 	return '<sheetViews><sheetView workbookViewId="0"' + attrs + ">" + pane + selection + "</sheetView></sheetViews>";
 }
 
+/** Return reusable rich-text XML only when it still represents the cell's current value. */
+function getCellRichText(cell: CellObject): string | undefined {
+	const text = String(cell.v);
+	if (typeof cell.r !== "string" || cell.r.length === 0) {
+		return undefined;
+	}
+	try {
+		if (parseStringItem(cell.r, { cellHTML: false }).t === text) {
+			return normalizeRichTextXml(cell.r);
+		}
+	} catch {}
+	return undefined;
+}
+
+/** Add a string cell to the workbook-wide shared string table and return its index. */
+function addSharedString(
+	cell: CellObject,
+	richText: string | undefined,
+	opts: { Strings: SST; revStrings: Map<string, number> },
+): number {
+	const text = String(cell.v);
+	const key = richText === undefined ? "t\0" + text : "r\0" + richText;
+	const existing = opts.revStrings.get(key);
+	opts.Strings.Count = (opts.Strings.Count || 0) + 1;
+	if (existing !== undefined) {
+		return existing;
+	}
+
+	const entry: XLString = { t: text };
+	if (richText !== undefined) {
+		entry.r = richText;
+	}
+	const index = opts.Strings.length;
+	opts.Strings.push(entry);
+	opts.Strings.Unique = (opts.Strings.Unique || 0) + 1;
+	opts.revStrings.set(key, index);
+	return index;
+}
+
 /**
  * Write a worksheet as XML.
  *
@@ -888,6 +933,8 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 			const addr = encodeCell({ r: rowIdx, c: colIdx });
 			let cellValueStr = "";
 			let cellTypeAttr = "";
+			let cellValueTag = "v";
+			const richText = cell.t === "s" ? getCellRichText(cell) : undefined;
 
 			switch (cell.t) {
 				case "b":
@@ -913,8 +960,17 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 					}
 					break;
 				case "s":
-					cellValueStr = escapeXml(String(cell.v));
-					cellTypeAttr = "str"; // Inline string (not shared)
+					if (!cell.f && opts.bookSST) {
+						cellValueStr = String(addSharedString(cell, richText, opts));
+						cellTypeAttr = "s";
+					} else if (!cell.f && richText !== undefined) {
+						cellValueStr = richText;
+						cellTypeAttr = "inlineStr";
+						cellValueTag = "is";
+					} else {
+						cellValueStr = escapeXml(String(cell.v));
+						cellTypeAttr = "str"; // Formula result or plain inline value
+					}
 					break;
 			}
 
@@ -943,7 +999,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 				cellXml += ">" + escapeXml(cell.f) + "</f>";
 			}
 			if (cellValueStr !== "") {
-				cellXml += "<v>" + cellValueStr + "</v>";
+				cellXml += "<" + cellValueTag + ">" + cellValueStr + "</" + cellValueTag + ">";
 			}
 			cellXml += "</c>";
 			row_cells.push(cellXml);
