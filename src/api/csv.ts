@@ -7,6 +7,24 @@ import { arrayToSheet } from "./aoa.js";
 /** Regex to match double-quote characters for CSV escaping (doubled inside quoted fields) */
 const qreg = /"/g;
 
+function containsSeparatorCharacter(text: string, separator: string): boolean {
+	return separator.length > 0 && text.includes(separator.charAt(0));
+}
+
+function quoteCsvField(text: string, fieldSeparator: string, recordSeparator: string, forceQuotes?: boolean): string {
+	if (
+		forceQuotes ||
+		text.includes('"') ||
+		text.includes("\r") ||
+		text.includes("\n") ||
+		containsSeparatorCharacter(text, fieldSeparator) ||
+		containsSeparatorCharacter(text, recordSeparator)
+	) {
+		return '"' + text.replace(qreg, '""') + '"';
+	}
+	return text;
+}
+
 function escapeFormulaText(txt: string, options: any): string {
 	if (options.escapeFormulae === false || txt.length === 0) {
 		return txt;
@@ -38,9 +56,8 @@ function buildCsvRow(
 	range: Range,
 	rowIndex: number,
 	cols: string[],
-	fieldSepCode: number,
-	recordSepCode: number,
 	fieldSeparator: string,
+	recordSeparator: string,
 	rowCount: number,
 	options: any,
 ): string | null {
@@ -67,21 +84,7 @@ function buildCsvRow(
 					? val.v
 					: formatCellForOutput(val, null, options));
 			txt = escapeFormulaText(txt, options);
-			// Check each character: if the text contains the field separator,
-			// record separator, LF (10), CR (13), or double-quote (34), wrap in quotes
-			for (let i = 0, charCode = 0; i !== txt.length; ++i) {
-				if (
-					(charCode = txt.charCodeAt(i)) === fieldSepCode ||
-					charCode === recordSepCode ||
-					charCode === 10 || // LF
-					charCode === 13 || // CR
-					charCode === 34 || // double-quote
-					options.forceQuotes
-				) {
-					txt = '"' + txt.replace(qreg, '""') + '"';
-					break;
-				}
-			}
+			txt = quoteCsvField(txt, fieldSeparator, recordSeparator, options.forceQuotes);
 			// Quote bare "ID" in the first cell to avoid misdetection as a SYLK file
 			if (txt === "ID" && rowCount === 0 && row.length === 0) {
 				txt = '"ID"';
@@ -91,9 +94,7 @@ function buildCsvRow(
 			isempty = false;
 			txt = "=" + val.f;
 			txt = escapeFormulaText(txt, options);
-			if (txt.indexOf(",") >= 0) {
-				txt = '"' + txt.replace(qreg, '""') + '"';
-			}
+			txt = quoteCsvField(txt, fieldSeparator, recordSeparator, options.forceQuotes);
 		} else {
 			txt = "";
 		}
@@ -132,9 +133,7 @@ export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 		return "";
 	}
 	const fieldSeparator = options.FS !== undefined ? options.FS : ",";
-	const fieldSepCode = fieldSeparator.charCodeAt(0);
 	const recordSeparator = options.RS !== undefined ? options.RS : "\n";
-	const recordSepCode = recordSeparator.charCodeAt(0);
 
 	// Build column-letter lookup, skipping hidden columns when skipHidden is set
 	const cols: string[] = [];
@@ -152,17 +151,7 @@ export function sheetToCsv(sheet: WorkSheet, opts?: Sheet2CSVOpts): string {
 		if ((rowinfo[rowIdx] || {}).hidden) {
 			continue;
 		}
-		const row = buildCsvRow(
-			sheet,
-			range,
-			rowIdx,
-			cols,
-			fieldSepCode,
-			recordSepCode,
-			fieldSeparator,
-			rowCount,
-			options,
-		);
+		const row = buildCsvRow(sheet, range, rowIdx, cols, fieldSeparator, recordSeparator, rowCount, options);
 		if (row == null) {
 			continue;
 		}
@@ -201,17 +190,9 @@ function parseCsv(text: string, sep: string): any[][] {
 	let row: any[] = [];
 	let i = 0;
 	const len = text.length;
+	let afterSeparator = false;
 
-	while (i <= len) {
-		if (i === len) {
-			// End of input — push final row if it has content or there are already rows
-			if (row.length > 0 || rows.length > 0) {
-				row.push("");
-				rows.push(row);
-			}
-			break;
-		}
-
+	while (i < len) {
 		if (text[i] === '"') {
 			// Quoted field
 			let val = "";
@@ -233,9 +214,11 @@ function parseCsv(text: string, sep: string): any[][] {
 				}
 			}
 			row.push(val);
+			afterSeparator = false;
 			// After closing quote, expect separator, newline, or end
 			if (i < len && text[i] === sep) {
 				i++;
+				afterSeparator = true;
 			} else if (i < len && (text[i] === "\r" || text[i] === "\n")) {
 				if (text[i] === "\r" && i + 1 < len && text[i + 1] === "\n") {
 					i++;
@@ -243,17 +226,23 @@ function parseCsv(text: string, sep: string): any[][] {
 				i++;
 				rows.push(row);
 				row = [];
+				afterSeparator = false;
 			}
 		} else if (text[i] === sep) {
 			row.push("");
 			i++;
+			afterSeparator = true;
 		} else if (text[i] === "\r" || text[i] === "\n") {
+			if (afterSeparator) {
+				row.push("");
+			}
 			if (text[i] === "\r" && i + 1 < len && text[i + 1] === "\n") {
 				i++;
 			}
 			i++;
 			rows.push(row);
 			row = [];
+			afterSeparator = false;
 		} else {
 			// Unquoted field
 			let val = "";
@@ -262,8 +251,10 @@ function parseCsv(text: string, sep: string): any[][] {
 				i++;
 			}
 			row.push(val);
+			afterSeparator = false;
 			if (i < len && text[i] === sep) {
 				i++;
+				afterSeparator = true;
 			} else if (i < len && (text[i] === "\r" || text[i] === "\n")) {
 				if (text[i] === "\r" && i + 1 < len && text[i + 1] === "\n") {
 					i++;
@@ -271,8 +262,15 @@ function parseCsv(text: string, sep: string): any[][] {
 				i++;
 				rows.push(row);
 				row = [];
+				afterSeparator = false;
 			}
 		}
+	}
+	if (afterSeparator) {
+		row.push("");
+	}
+	if (row.length > 0) {
+		rows.push(row);
 	}
 
 	return rows;
@@ -306,6 +304,7 @@ function coerceValue(val: string): string | number | boolean {
 export function csvToSheet(text: string, opts?: { FS?: string }): WorkSheet {
 	const sep = (opts && opts.FS) || ",";
 	const rows = parseCsv(text, sep);
-	const data: any[][] = rows.map((row) => row.map((value) => coerceValue(value)));
-	return arrayToSheet(data);
+	// Keep blank records visible in the worksheet by giving them a stub cell.
+	const data: any[][] = rows.map((row) => (row.length === 0 ? [null] : row.map((value) => coerceValue(value))));
+	return arrayToSheet(data, { sheetStubs: true });
 }
