@@ -14,7 +14,7 @@ import { safeDecodeRange, encodeRange, encodeCell } from "../utils/cell.js";
 import { formatNumber, getDateTimeFormatKind } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { dateToSerialNumber, serialNumberToDate } from "../utils/date.js";
-import { parseStringItem, type SST, type XLString } from "./shared-strings.js";
+import { normalizeRichTextXml, parseStringItem, type SST, type XLString } from "./shared-strings.js";
 import type { StylesData } from "./styles.js";
 import { getCellStyleIndex, getStyleFromXf } from "./styles.js";
 import type { Relationships } from "../opc/relationships.js";
@@ -680,10 +680,27 @@ function writeWorksheetXml_sheetViews(ws: WorkSheet, idx: number): string {
 	return '<sheetViews><sheetView workbookViewId="0"' + attrs + ">" + pane + selection + "</sheetView></sheetViews>";
 }
 
-/** Add a string cell to the workbook-wide shared string table and return its index. */
-function addSharedString(cell: CellObject, opts: { Strings: SST; revStrings: Map<string, number> }): number {
+/** Return reusable rich-text XML only when it still represents the cell's current value. */
+function getCellRichText(cell: CellObject): string | undefined {
 	const text = String(cell.v);
-	const richText = typeof cell.r === "string" && cell.r.length > 0 ? cell.r : undefined;
+	if (typeof cell.r !== "string" || cell.r.length === 0) {
+		return undefined;
+	}
+	try {
+		if (parseStringItem(cell.r, { cellHTML: false }).t === text) {
+			return normalizeRichTextXml(cell.r);
+		}
+	} catch {}
+	return undefined;
+}
+
+/** Add a string cell to the workbook-wide shared string table and return its index. */
+function addSharedString(
+	cell: CellObject,
+	richText: string | undefined,
+	opts: { Strings: SST; revStrings: Map<string, number> },
+): number {
+	const text = String(cell.v);
 	const key = richText === undefined ? "t\0" + text : "r\0" + richText;
 	const existing = opts.revStrings.get(key);
 	opts.Strings.Count = (opts.Strings.Count || 0) + 1;
@@ -782,6 +799,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 			let cellValueStr = "";
 			let cellTypeAttr = "";
 			let cellValueTag = "v";
+			const richText = cell.t === "s" ? getCellRichText(cell) : undefined;
 
 			switch (cell.t) {
 				case "b":
@@ -806,10 +824,10 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 					break;
 				case "s":
 					if (!cell.f && opts.bookSST) {
-						cellValueStr = String(addSharedString(cell, opts));
+						cellValueStr = String(addSharedString(cell, richText, opts));
 						cellTypeAttr = "s";
-					} else if (!cell.f && typeof cell.r === "string" && cell.r.length > 0) {
-						cellValueStr = cell.r;
+					} else if (!cell.f && richText !== undefined) {
+						cellValueStr = richText;
 						cellTypeAttr = "inlineStr";
 						cellValueTag = "is";
 					} else {
