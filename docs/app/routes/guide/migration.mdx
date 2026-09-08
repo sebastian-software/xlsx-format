@@ -160,8 +160,8 @@ This is intentionally not an ExcelJS compatibility layer. It is a smaller style-
 
 ## What's Different Under the Hood
 
-- **Streaming ZIP** -- reads and writes are non-blocking
+- **Promise API** -- ZIP compression and decompression use Web Streams, while XML parsing and worksheet traversal operate synchronously on complete in-memory values
 - **Tree-shaking** -- named exports let your bundler drop unused code
 - **No legacy formats** -- xlsx-format focuses on XLSX, macro-free XLSM containers, CSV, TSV, and HTML
-- **Zero dependencies** -- nothing to audit, nothing that can break
+- **No runtime dependencies** -- the published package installs no third-party runtime packages
 - **Platform-agnostic** -- no `node:fs` imports; the library works in Node.js, browsers, and edge runtimes without polyfills
