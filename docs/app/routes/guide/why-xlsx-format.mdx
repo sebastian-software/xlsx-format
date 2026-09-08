@@ -10,21 +10,23 @@ xlsx-format does one thing well: read and write modern Excel files. The result i
 
 ## Comparison
 
-|                     | **xlsx-format 2.4.2**          | **SheetJS 0.18.12**      | **ExcelJS 4.4.0**                |
-| ------------------- | ------------------------------ | ------------------------ | -------------------------------- |
-| **Written in**      | TypeScript (strict)            | JavaScript with typings  | JavaScript with TypeScript types |
-| **Async**           | Promise-based API              | Synchronous public API   | Promise-based selected APIs      |
-| **Module format**   | ESM + CJS                      | ESM + CJS                | CJS + browser build              |
-| **Tree-shakeable**  | Yes                            | Limited                  | Limited                          |
-| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)    | Yes (`exceljs.browser.js`)       |
-| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | Many spreadsheet formats | XLSX / CSV                       |
-| **Styled reports**  | Yes                            | Yes                      | Yes                              |
-| **API style**       | Named exports                  | Namespace object         | Class-based                      |
-| **License**         | Apache 2.0                     | Apache 2.0               | MIT                              |
+|                     | **xlsx-format 2.4.2**           | **SheetJS 0.18.12**      | **ExcelJS 4.4.0**                |
+| ------------------- | ------------------------------- | ------------------------ | -------------------------------- |
+| **Written in**      | TypeScript (strict)             | JavaScript with typings  | JavaScript with TypeScript types |
+| **Async**           | Promise-based API               | Synchronous public API   | Promise-based selected APIs      |
+| **Module format**   | ESM + CJS                       | ESM + CJS                | CJS + browser build              |
+| **Tree-shakeable**  | Yes                             | Limited                  | Limited                          |
+| **Browser support** | Yes (`read` / `write`)          | Yes (separate bundle)    | Yes (`exceljs.browser.js`)       |
+| **Formats**         | XLSX / XLSM¹ / CSV / TSV / HTML | Many spreadsheet formats | XLSX / CSV                       |
+| **Styled reports**  | Yes                             | Yes                      | Yes                              |
+| **API style**       | Named exports                   | Namespace object         | Class-based                      |
+| **License**         | Apache 2.0                      | Apache 2.0               | MIT                              |
 
 The version labels identify the snapshots used for this orientation table. The [SheetJS package metadata](https://github.com/SheetJS/sheetjs/blob/master/package.json) advertises ESM/CJS entry points and browser bundles. ExcelJS documents its browser build and workbook API in its [browser documentation](https://github.com/exceljs/exceljs#browser).
 
 ## Feature Support
+
+¹ XLSM support covers workbook cell data and macro-free output containers. VBA projects are not read, preserved, or written. Do not use an XLSM read/write round trip when macros must survive unchanged.
 
 What xlsx-format can read from and write to XLSX files at a glance.
 
@@ -119,6 +121,6 @@ What xlsx-format can read from and write to XLSX files at a glance.
 
 ### Not Yet Supported
 
-Conditional formatting, data validation, charts, images, pivot tables, sparklines, VBA macros, digital signatures, sheet/workbook protection, outline grouping.
+Conditional formatting, data validation, charts, images, pivot tables, sparklines, VBA macros, custom theme XML, calculation-chain exposure, raw ZIP entry exposure, digital signatures, sheet/workbook protection, outline grouping.
 
 </div>

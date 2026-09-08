@@ -89,7 +89,35 @@ For CSV or HTML files, read as a UTF-8 string:
 
 ```typescript
 const wb = await read(await readFile("data.csv", "utf-8"), { type: "string" });
+const tsv = await read(await readFile("data.tsv", "utf-8"), { type: "string", FS: "\t" });
 ```
+
+## Read and Write Result Types
+
+Metadata-only reads now expose their actual runtime shapes. `bookSheets: true` returns `SheetNames`, `bookProps: true` returns `Props` and `Custprops`, and combining both options returns both sets of metadata. These results do not include `Sheets`. Code that stores the flags in a broadly typed `ReadOptions` object receives a safe union and must narrow the result before accessing worksheet data.
+
+`write()` also reports the output selected by `bookType` and `type`:
+
+| Request                                                   | Result       |
+| --------------------------------------------------------- | ------------ |
+| XLSX or XLSM, default / `array` / `buffer` / `string`     | `Uint8Array` |
+| Any format with `type: "base64"`                          | `string`     |
+| CSV, TSV, or HTML with default / `type: "string"`         | `string`     |
+| CSV, TSV, or HTML with `type: "array"` / `type: "buffer"` | `Uint8Array` |
+
+In Node.js, `type: "buffer"` returns a `Buffer`, which is a `Uint8Array` subtype. In browsers it falls back to a plain `Uint8Array`, so portable code should use the declared `Uint8Array` API. The XLSX `type: "string"` compatibility input continues to return ZIP bytes; use `base64` when a string representation of an XLSX file is required.
+
+## Compatibility Options and Macros
+
+Some SheetJS-compatible option names are retained so shared configuration objects do not fail type checking, but affirmative requests now fail explicitly instead of being ignored:
+
+- `read()` rejects `bookFiles`, `bookVBA`, `bookDeps`, and `xlfn` when set to `true`.
+- `write()` rejects `bookVBA: true` and non-empty `themeXLSX` values.
+- `nodim: true` is supported. It ignores the stored worksheet dimension and recalculates an A1-anchored range from parsed cells.
+
+False, empty, and omitted compatibility values keep their existing behavior. Unsupported requests throw `XlsxError` with code `UNSUPPORTED`.
+
+xlsx-format can read cell data from XLSM containers and can write a macro-enabled container with `bookType: "xlsm"`, but it does not read, preserve, or write VBA projects. Writing a workbook with a non-empty `vbaraw` payload throws `UNSUPPORTED` to prevent silent macro loss. Do not use a read/write round trip when macros must survive unchanged.
 
 ## Cell Objects Stay the Same
 
@@ -132,8 +160,8 @@ This is intentionally not an ExcelJS compatibility layer. It is a smaller style-
 
 ## What's Different Under the Hood
 
-- **Streaming ZIP** -- reads and writes are non-blocking
+- **Promise API** -- ZIP compression and decompression use Web Streams, while XML parsing and worksheet traversal operate synchronously on complete in-memory values
 - **Tree-shaking** -- named exports let your bundler drop unused code
-- **No legacy formats** -- xlsx-format focuses on XLSX, XLSM, CSV, TSV, and HTML
-- **Zero dependencies** -- nothing to audit, nothing that can break
+- **No legacy formats** -- xlsx-format focuses on XLSX, macro-free XLSM containers, CSV, TSV, and HTML
+- **No runtime dependencies** -- the published package installs no third-party runtime packages
 - **Platform-agnostic** -- no `node:fs` imports; the library works in Node.js, browsers, and edge runtimes without polyfills

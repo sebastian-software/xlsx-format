@@ -1,4 +1,11 @@
-import type { WorkBook, ReadOptions } from "./types.js";
+import type {
+	BookPropsResult,
+	BookSheetsAndPropsResult,
+	BookSheetsResult,
+	ReadOptions,
+	ReadResult,
+	WorkBook,
+} from "./types.js";
 import { XlsxError } from "./errors.js";
 import { zipRead } from "./zip/index.js";
 import { parseZip } from "./xlsx/parse-zip.js";
@@ -67,6 +74,56 @@ function sheetToWorkBook(ws: any, name?: string): WorkBook {
 	};
 }
 
+type BookSheetsReadOptions = Omit<ReadOptions, "bookSheets" | "bookProps"> & {
+	bookSheets: true;
+	bookProps?: false;
+};
+
+type BookPropsReadOptions = Omit<ReadOptions, "bookSheets" | "bookProps"> & {
+	bookSheets?: false;
+	bookProps: true;
+};
+
+type BookSheetsAndPropsReadOptions = Omit<ReadOptions, "bookSheets" | "bookProps"> & {
+	bookSheets: true;
+	bookProps: true;
+};
+
+type FullReadOptions = Omit<ReadOptions, "bookSheets" | "bookProps"> & {
+	bookSheets?: false;
+	bookProps?: false;
+};
+
+function rejectUnsupportedReadOptions(options: ReadOptions): void {
+	for (const [name, requested] of [
+		["bookFiles", options.bookFiles],
+		["bookVBA", options.bookVBA],
+		["bookDeps", options.bookDeps],
+		["xlfn", options.xlfn],
+	] as const) {
+		if (requested) {
+			throw new XlsxError("UNSUPPORTED", `Read option "${name}" is not supported`);
+		}
+	}
+}
+
+function selectReadResult(workbook: WorkBook, options: ReadOptions): ReadResult {
+	if (options.bookSheets && options.bookProps) {
+		return {
+			SheetNames: workbook.SheetNames,
+			Props: workbook.Props ?? {},
+			Custprops: workbook.Custprops ?? {},
+		};
+	}
+	if (options.bookSheets) {
+		return { SheetNames: workbook.SheetNames };
+	}
+	if (options.bookProps) {
+		return { Props: workbook.Props ?? {}, Custprops: workbook.Custprops ?? {} };
+	}
+	return workbook;
+}
+
 /**
  * Read a spreadsheet from an in-memory data source.
  *
@@ -75,14 +132,20 @@ function sheetToWorkBook(ws: any, name?: string): WorkBook {
  *
  * @param data - File contents as Uint8Array, ArrayBuffer, Buffer, base64 string, binary string, or plain text string
  * @param opts - Read options controlling parsing behavior
- * @returns Promise resolving to a parsed WorkBook object
- * @throws XlsxError if the input is a PDF, PNG, or other unsupported format
+ * @returns A full workbook, or the metadata-only shape selected by bookSheets and bookProps
+ * @throws XlsxError if the format or an affirmative compatibility option is unsupported
  */
-export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
-	const options: any = opts ? { ...opts } : {};
+export function read(data: any, opts?: FullReadOptions): Promise<WorkBook>;
+export function read(data: any, opts: BookSheetsAndPropsReadOptions): Promise<BookSheetsAndPropsResult>;
+export function read(data: any, opts: BookSheetsReadOptions): Promise<BookSheetsResult>;
+export function read(data: any, opts: BookPropsReadOptions): Promise<BookPropsResult>;
+export function read(data: any, opts?: ReadOptions): Promise<ReadResult>;
+export async function read(data: any, opts?: ReadOptions): Promise<ReadResult> {
+	const options: ReadOptions = opts ? { ...opts } : {};
 	if (options.password) {
 		throw new XlsxError("UNSUPPORTED", "Password-protected workbooks are not supported");
 	}
+	rejectUnsupportedReadOptions(options);
 	resetFormatTable();
 	if (!options.type) {
 		options.type = detect_type(data);
@@ -92,9 +155,9 @@ export async function read(data: any, opts?: ReadOptions): Promise<WorkBook> {
 	if (options.type === "string" && typeof data === "string") {
 		const trimmed = data.trimStart();
 		if (trimmed.charAt(0) === "<") {
-			return sheetToWorkBook(htmlToSheet(data));
+			return selectReadResult(sheetToWorkBook(htmlToSheet(data)), options);
 		}
-		return sheetToWorkBook(csvToSheet(data));
+		return selectReadResult(sheetToWorkBook(csvToSheet(data, options)), options);
 	}
 
 	const u8 = to_uint8array(data, options);
