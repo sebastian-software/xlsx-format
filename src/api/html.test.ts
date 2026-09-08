@@ -113,12 +113,16 @@ describe("html.ts — sheetToHtml", () => {
 			A1: {
 				t: "s",
 				v: "Bold Sized literal",
-				h: '<b>Bold</b> <span style="font-size:12pt;position:fixed">Sized</span> <mark data-marker="x">literal</mark>',
+				h: '<b>Bold</b> <span style="font-size:12pt;position:fixed">Sized</span> <span style="text-decoration:underline;text-underline-style:single-accounting;text-effect:outline;text-shadow:auto">Decorated</span> <span style="text-underline-style:double-accounting">Double</span> <mark data-marker="x">literal</mark>',
 			},
 		};
 
 		const html = sheetToHtml(ws);
 		expect(html).toContain('<b>Bold</b> <span style="font-size:12pt;">Sized</span>');
+		expect(html).toContain(
+			'<span style="text-decoration: underline;text-underline-style:single-accounting;text-effect: outline;text-shadow: auto;">Decorated</span>',
+		);
+		expect(html).toContain('<span style="text-underline-style:double-accounting;">Double</span>');
 		expect(html).toContain("&lt;mark data-marker=&quot;x&quot;&gt;literal&lt;/mark&gt;");
 		expect(html).not.toContain("position:fixed");
 		expect(html).not.toContain("<mark");
@@ -234,12 +238,19 @@ describe("html.ts — htmlToSheet", () => {
 		expect(ws.B1.v).toBe("line 1\nline 2 &amp;");
 	});
 
+	it("leaves out-of-range numeric entities encoded", () => {
+		const ws: any = htmlToSheet('<table><tr><td data-t="s" data-v="&#1114112;">ignored</td></tr></table>');
+		expect(ws.A1.v).toBe("&#1114112;");
+	});
+
 	it("supports single-quoted typed attributes and falls back for invalid metadata", () => {
 		const html = `<table><tr>
 			<td data-t='b' data-v='1'>ignored</td>
 			<td data-t="d" data-v="not-a-date">42</td>
 			<td data-t="unknown" data-v="99">TRUE</td>
-			<td data-t="z"></td>
+			<td data-t="z" data-v="ignored"></td>
+			<td data-t="n" data-v="not-a-number">7</td>
+			<td data-t="e" data-v="not-an-error">text</td>
 		</tr></table>`;
 		const ws: any = htmlToSheet(html);
 
@@ -247,5 +258,23 @@ describe("html.ts — htmlToSheet", () => {
 		expect(ws.B1).toMatchObject({ t: "n", v: 42 });
 		expect(ws.C1).toMatchObject({ t: "b", v: true });
 		expect(ws.D1).toMatchObject({ t: "z" });
+		expect(ws.E1).toMatchObject({ t: "n", v: 7 });
+		expect(ws.F1).toMatchObject({ t: "s", v: "text" });
+	});
+
+	it("preserves supported formula-only cell types without cached values", () => {
+		const html = `<table><tr>
+			<td data-t="b" data-f="BOOL()"></td>
+			<td data-t="d" data-f="TODAY()"></td>
+			<td data-t="e" data-f="ERR()"></td>
+			<td data-t="s" data-f="TEXT()"></td>
+		</tr></table>`;
+		const ws: any = htmlToSheet(html);
+
+		expect(ws.A1).toMatchObject({ t: "b", f: "BOOL()" });
+		expect(ws.B1).toMatchObject({ t: "d", f: "TODAY()" });
+		expect(ws.C1).toMatchObject({ t: "e", f: "ERR()" });
+		expect(ws.D1).toMatchObject({ t: "s", f: "TEXT()" });
+		expect([ws.A1, ws.B1, ws.C1, ws.D1].every((cell) => !("v" in cell))).toBe(true);
 	});
 });

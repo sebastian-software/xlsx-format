@@ -38,8 +38,6 @@ function isSanitizedLinkTarget(target: string): boolean {
 	return !UNSAFE_LINK_TARGET_RE.test(normalized);
 }
 
-const RICH_TEXT_TAGS = new Set(["b", "i", "s", "sup", "sub"]);
-
 function sanitizeRichTextStyle(styleText: string): string {
 	const safeDeclarations: string[] = [];
 	for (const declaration of styleText.split(";")) {
@@ -100,7 +98,7 @@ function sanitizeCellHtml(html: string): string {
 
 		if (/^<br\s*\/?>$/i.test(token)) {
 			output.push("<br/>");
-		} else if (simpleOpen && RICH_TEXT_TAGS.has(simpleOpen[1].toLowerCase())) {
+		} else if (simpleOpen) {
 			const name = simpleOpen[1].toLowerCase();
 			openTags.push(name);
 			output.push("<" + name + ">");
