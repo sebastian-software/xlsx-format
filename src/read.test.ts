@@ -48,6 +48,14 @@ describe("read.ts — input type handling", () => {
 		await expect(read(junk)).rejects.toThrow("Unsupported");
 	});
 
+	it("should reject password-protected reads before parsing", async () => {
+		await expect(read(new Uint8Array([0x00]), { password: "secret" })).rejects.toMatchObject({
+			name: "XlsxError",
+			code: "UNSUPPORTED",
+			message: "Password-protected workbooks are not supported",
+		});
+	});
+
 	it("should read from plain number array", async () => {
 		const ws = arrayToSheet([["Data"]]);
 		const wb = createWorkbook(ws, "Sheet1");

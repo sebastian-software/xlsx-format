@@ -1,4 +1,5 @@
 import type { WorkBook, WriteOptions } from "./types.js";
+import { XlsxError } from "./errors.js";
 import { zipWrite } from "./zip/index.js";
 import { writeZipXlsx } from "./xlsx/write-zip.js";
 import { validateWorkbook } from "./xlsx/workbook.js";
@@ -46,11 +47,14 @@ function firstSheet(wb: WorkBook) {
  * @returns Promise resolving to the serialized data in the requested format
  */
 export async function write(wb: WorkBook, opts?: WriteOptions): Promise<any> {
+	const options: any = { ...opts };
+	if (options.password) {
+		throw new XlsxError("UNSUPPORTED", "Password-protected workbooks are not supported");
+	}
 	resetFormatTable();
 	if (!opts || !(opts as any).unsafe) {
 		validateWorkbook(wb);
 	}
-	const options: any = { ...opts };
 	// cellStyles implies cellNF (number format) and sheetStubs (empty cell placeholders)
 	if (options.cellStyles) {
 		options.cellNF = true;

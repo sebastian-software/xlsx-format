@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addArrayToSheet, arrayToSheet, sheetToArray } from "./aoa.js";
+import { createSheet } from "./book.js";
 
 describe("sheetToArray", () => {
 	it("returns worksheet values as an array of arrays", () => {
@@ -111,6 +112,27 @@ describe("aoa.ts — addArrayToSheet edge cases", () => {
 		let ws = arrayToSheet([["Row1"]]);
 		ws = addArrayToSheet(ws, [["Row2"]], { origin: -1 });
 		expect((ws as any).A2.v).toBe("Row2");
+	});
+
+	it("should treat origin -1 as row zero on an empty sparse sheet", () => {
+		const ws = addArrayToSheet(createSheet(), [["First"]], { origin: -1 });
+		expect(ws["!ref"]).toBe("A1");
+		expect((ws as any).A1.v).toBe("First");
+		expect((ws as any).A0).toBeUndefined();
+	});
+
+	it("should treat origin -1 as row zero on an empty dense sheet", () => {
+		const ws = addArrayToSheet(createSheet({ dense: true }), [["First"]], { origin: -1 });
+		expect(ws["!ref"]).toBe("A1");
+		expect(ws["!data"]?.[0]?.[0]?.v).toBe("First");
+		expect(ws["!data"]?.[-1]).toBeUndefined();
+	});
+
+	it("should append after the last row in a populated dense sheet", () => {
+		const ws = arrayToSheet([["First"]], { dense: true });
+		addArrayToSheet(ws, [["Second"]], { origin: -1 });
+		expect(ws["!ref"]).toBe("A1:A2");
+		expect(ws["!data"]?.[1]?.[0]?.v).toBe("Second");
 	});
 
 	it("should handle null values with nullError", () => {
