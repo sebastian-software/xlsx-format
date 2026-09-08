@@ -467,8 +467,8 @@ export function htmlToSheet(html: string, opts?: HTML2SheetOpts): WorkSheet {
 	if (retainedRowCount > XLSX_MAX_ROWS) {
 		throw new XlsxError("MALFORMED", `HTML table exceeds XLSX row limit ${XLSX_MAX_ROWS}`);
 	}
-	if (retainedRowCount > maxRows) {
-		throw new XlsxError("LIMIT_EXCEEDED", `worksheet row count ${retainedRowCount} exceeds limit ${maxRows}`);
+	if (rowMatches.length > maxRows) {
+		throw new XlsxError("LIMIT_EXCEEDED", `worksheet row count ${rowMatches.length} exceeds limit ${maxRows}`);
 	}
 
 	const data: any[][] = [];

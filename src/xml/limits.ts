@@ -16,7 +16,7 @@ export interface XmlLimitOptions {
 	maxSharedStringItems?: number;
 	/** Maximum number of worksheet row elements to scan. */
 	maxWorksheetRows?: number;
-	/** Maximum number of worksheet cell elements to scan. */
+	/** Maximum cumulative explicit and derived worksheet cell work. */
 	maxWorksheetCells?: number;
 }
 

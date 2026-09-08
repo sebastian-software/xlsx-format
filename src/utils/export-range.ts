@@ -90,6 +90,7 @@ export function clampLargeExportRange(
 	}
 	if (!clampToOccupied) {
 		budget.charge("worksheet export cell", count);
+		return range;
 	}
 	const end = occupiedRangeEnd(sheet, range);
 	if (!end) {

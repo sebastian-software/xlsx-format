@@ -411,6 +411,7 @@ export function setArrayFormula(
  * String values are prefixed with a single quote; booleans become TRUE/FALSE.
  *
  * @param ws - The worksheet to extract formulas from
+ * @param opts - Optional worksheet export budget
  * @returns An array of "ref=value" strings representing every non-empty cell
  */
 export function sheetToFormulae(ws: WorkSheet, opts?: Sheet2FormulaeOpts): string[] {
