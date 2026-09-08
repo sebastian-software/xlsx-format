@@ -43,6 +43,10 @@ const previewRows = sheetToJson(firstSheet);
 
 The default ZIP and XML limits are intentionally high enough for ordinary workbooks. Lower them when a service receives arbitrary uploads and does not need to parse very large sheets.
 
+`maxWorksheetRows` limits row elements or text records scanned; it does not reject a valid cell solely because its row number is high. `sheetRows` is the separate position-based preview limit. `maxWorksheetCells` is a cumulative per-sheet work budget: it counts explicit cells and work generated from column definitions, hyperlink ranges, and HTML spans. XLSX and text imports default to 10,000,000 cell work units.
+
+Worksheet exporters, including CSV, JSON, HTML, formula lists, and XLSX writing, clamp oversized declared ranges to occupied cells and then enforce a 1,000,000-position default. XLSX writing also charges row and column metadata entries, and HTML writing charges merged-range metadata entries. Pass `maxWorksheetCells` to an exporter or `write()` when a trusted worksheet intentionally requires a larger range. An occupied cell beyond the configured budget causes `LIMIT_EXCEEDED`; it is never silently discarded.
+
 ## Password-protected workbooks
 
 xlsx-format does not read or write encrypted or password-protected workbooks. Passing a non-empty `password` option to `read()` or `write()` throws an `XlsxError` with code `UNSUPPORTED` before parsing or serialization starts. Omit the option for ordinary unencrypted workbooks.

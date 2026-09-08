@@ -5,6 +5,7 @@ import {
 	createWorkbook,
 	read,
 	sheetToCsv,
+	sheetToFormulae,
 	sheetToHtml,
 	sheetToJson,
 	write,
@@ -127,6 +128,19 @@ describe("export security guards", () => {
 		expect(sheetToHtml(ws)).toContain("Done");
 	});
 
+	it("ignores invalid, empty, and out-of-range dense entries while finding occupied bounds", () => {
+		const data: any = [];
+		data.invalid = [{ t: "s", v: "skip" }];
+		data[0] = undefined;
+		data[1] = [];
+		data[1].invalid = { t: "s", v: "skip" };
+		data[1][20_000] = { t: "s", v: "skip" };
+		data[1][1] = { t: "s", v: "Done" };
+		const ws = { "!data": data, "!ref": "A1:XFD1048576" } as WorkSheet;
+
+		expect(sheetToCsv(ws)).toBe(",\n,Done");
+	});
+
 	it("ignores occupied cells outside a numeric oversized JSON range", () => {
 		const ws = {
 			"!ref": "A1:XFD1048576",
@@ -147,5 +161,96 @@ describe("export security guards", () => {
 		expect(sheetToCsv(ws)).toBe("");
 		expect(sheetToJson(ws)).toStrictEqual([]);
 		expect(sheetToHtml(ws)).not.toContain("<tr>");
+	});
+
+	it("writes the effective occupied range as the worksheet dimension", async () => {
+		const ws = { "!ref": "A1:XFD1048576", B1: { t: "n", v: 7 } } as WorkSheet;
+		const written = await write(createWorkbook(ws, "S"));
+		const zip = await zipRead(written);
+		const worksheetXml = decoder.decode(zip.files["xl/worksheets/sheet1.xml"]);
+		const parsed = await read(written);
+
+		expect(worksheetXml).toContain('<dimension ref="A1:B1"/>');
+		expect(parsed.Sheets.S["!ref"]).toBe("A1:B1");
+	});
+
+	it("rejects an occupied far edge under every default export budget", async () => {
+		const ws = {
+			"!ref": "A1:A1048576",
+			A1048576: { t: "n", v: 7, f: "SUM(A1:A2)" },
+		} as WorkSheet;
+
+		for (const operation of [
+			() => sheetToCsv(ws),
+			() => sheetToJson(ws, { header: 1 }),
+			() => sheetToHtml(ws),
+			() => sheetToFormulae(ws),
+		]) {
+			expect(operation).toThrow(/worksheet export cell count 1048576 exceeds limit 1000000/);
+		}
+		await expect(write(createWorkbook(ws, "S"))).rejects.toThrow(
+			/worksheet export cell count 1048576 exceeds limit 1000000/,
+		);
+	});
+
+	it("preserves an occupied edge when the caller raises the export budget", async () => {
+		const ws = { "!ref": "A1:B1", B1: { t: "n", v: 7, f: "1+6" } } as WorkSheet;
+
+		expect(() => sheetToCsv(ws, { maxWorksheetCells: 1 })).toThrow(/exceeds limit 1/);
+		expect(sheetToCsv(ws, { maxWorksheetCells: 2 })).toBe(",7");
+		expect(sheetToJson<unknown[]>(ws, { header: 1, maxWorksheetCells: 2 })[0][1]).toBe(7);
+		expect(sheetToHtml(ws, { maxWorksheetCells: 2 })).toContain('id="sjs-B1"');
+		expect(sheetToFormulae(ws, { maxWorksheetCells: 2 })).toContain("B1=1+6");
+
+		const written = await write(createWorkbook(ws, "S"), { maxWorksheetCells: 2 });
+		const parsed = await read(written);
+		expect(parsed.Sheets.S.B1?.v).toBe(7);
+	});
+
+	it("enforces explicit JSON ranges and validates range coordinates", () => {
+		const ws = arrayToSheet([[1]]);
+
+		expect(() => sheetToJson(ws, { header: 1, range: "A1:B1", maxWorksheetCells: 1 })).toThrow(/exceeds limit 1/);
+		expect(() =>
+			sheetToJson(ws, {
+				header: 1,
+				range: { s: { r: 0, c: 0 }, e: { r: 0, c: Number.POSITIVE_INFINITY } },
+			}),
+		).toThrow(/end column must be a non-negative safe integer/);
+		expect(() => sheetToJson(ws, { header: 1, range: { s: { r: 1, c: 0 }, e: { r: 0, c: 0 } } })).toThrow(
+			/end must not precede start/,
+		);
+		expect(() => sheetToJson(ws, { header: 1, range: "A1:XFE1" })).toThrow(/exceeds XLSX worksheet bounds/);
+	});
+
+	it("charges sparse column metadata without scanning array length", async () => {
+		const ws = arrayToSheet([[1]]);
+		ws["!cols"] = [];
+		ws["!cols"][0] = { width: 10 };
+
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 1 })).rejects.toThrow(
+			/worksheet column metadata count 2 exceeds limit 1/,
+		);
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 2 })).resolves.toBeInstanceOf(Uint8Array);
+
+		ws["!cols"][1_000_000] = { width: 10 };
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 3 })).rejects.toThrow(
+			/column metadata exceeds XLSX column limit/,
+		);
+	});
+
+	it("charges sparse row metadata and validates its physical bound", async () => {
+		const ws = arrayToSheet([[1]]);
+		ws["!rows"] = [{ hidden: true }];
+
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 1 })).rejects.toThrow(
+			/worksheet row metadata count 2 exceeds limit 1/,
+		);
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 2 })).resolves.toBeInstanceOf(Uint8Array);
+
+		ws["!rows"][1_048_576] = { hidden: true };
+		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 3 })).rejects.toThrow(
+			/row metadata exceeds XLSX row limit/,
+		);
 	});
 });

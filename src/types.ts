@@ -77,8 +77,18 @@ export interface CommonOptions {
 	password?: string;
 }
 
+/** Cumulative worksheet work limit shared by import and export APIs. */
+export interface WorksheetCellBudgetOptions {
+	/**
+	 * Maximum cumulative cell work per sheet. This counts explicit cells plus
+	 * generated column, hyperlink, span, and export positions. XLSX reads default
+	 * to 10,000,000; exports default to 1,000,000.
+	 */
+	maxWorksheetCells?: number;
+}
+
 /** Options for reading/parsing workbook files */
-export interface ReadOptions extends CommonOptions {
+export interface ReadOptions extends CommonOptions, WorksheetCellBudgetOptions {
 	/** Input data type: "base64" for base64 string, "buffer" for Node Buffer, "array" for Uint8Array, "string" for plain text (CSV/HTML) */
 	type?: "base64" | "buffer" | "array" | "string";
 	/** If true, parse and store cell formulas */
@@ -91,7 +101,7 @@ export interface ReadOptions extends CommonOptions {
 	cellText?: boolean;
 	/** Override date format string (replaces default "m/d/yy" for format 14) */
 	dateNF?: string;
-	/** Maximum number of rows to read per sheet (0 = all rows) */
+	/** Maximum row position to retain per sheet (0 = all rows) */
 	sheetRows?: number;
 	/** Reserved compatibility option. A true value is unsupported and throws XlsxError ("UNSUPPORTED"). */
 	bookDeps?: boolean;
@@ -131,10 +141,8 @@ export interface ReadOptions extends CommonOptions {
 	maxXmlAttributesPerTag?: number;
 	/** Maximum number of shared string entries to parse */
 	maxSharedStringItems?: number;
-	/** Maximum number of worksheet row elements to scan */
+	/** Maximum number of worksheet row elements or text records to scan */
 	maxWorksheetRows?: number;
-	/** Maximum number of worksheet cell elements to scan */
-	maxWorksheetCells?: number;
 }
 
 /** Options for writing/serializing workbook files */
@@ -536,7 +544,7 @@ export type ReadResult = WorkBook | BookSheetsResult | BookPropsResult | BookShe
 export type WriteResult = string | Uint8Array;
 
 /** Options for converting a worksheet to CSV */
-export interface Sheet2CSVOpts {
+export interface Sheet2CSVOpts extends WorksheetCellBudgetOptions {
 	/** Field separator (default: ",") */
 	FS?: string;
 	/** Record separator / row delimiter (default: "\n") */
@@ -564,7 +572,7 @@ export interface Sheet2CSVOpts {
 }
 
 /** Options for converting a worksheet to an HTML table string */
-export interface Sheet2HTMLOpts {
+export interface Sheet2HTMLOpts extends WorksheetCellBudgetOptions {
 	/** HTML id attribute for the table element */
 	id?: string;
 	/** If true, add contenteditable attribute to cells */
@@ -578,7 +586,7 @@ export interface Sheet2HTMLOpts {
 }
 
 /** Options for converting a worksheet to an array of JSON objects */
-export interface Sheet2JSONOpts {
+export interface Sheet2JSONOpts extends WorksheetCellBudgetOptions {
 	/** "A" for column-letter keys, number for 1-indexed row keys, string[] for custom headers */
 	header?: "A" | number | string[];
 	/** Restrict output to a specific range (Range object, A1 string, or row number) */
@@ -602,6 +610,27 @@ export interface Sheet2JSONOpts {
 	/** If true, use 1904 date system for date serial numbers */
 	date1904?: boolean;
 }
+
+/** Options for parsing CSV text into a worksheet. */
+export interface CSV2SheetOpts extends WorksheetCellBudgetOptions {
+	/** Field separator (default: ",") */
+	FS?: string;
+	/** Maximum row position to retain (0 = all rows) */
+	sheetRows?: number;
+	/** Maximum number of CSV records to scan */
+	maxWorksheetRows?: number;
+}
+
+/** Options for parsing an HTML table into a worksheet. */
+export interface HTML2SheetOpts extends WorksheetCellBudgetOptions {
+	/** Maximum row position to retain (0 = all rows) */
+	sheetRows?: number;
+	/** Maximum number of HTML table rows to scan */
+	maxWorksheetRows?: number;
+}
+
+/** Options for extracting formulas from a worksheet. */
+export type Sheet2FormulaeOpts = WorksheetCellBudgetOptions;
 
 /** Options for creating a worksheet from a 2D array (Array of Arrays) */
 export interface AOA2SheetOpts extends CommonOptions {

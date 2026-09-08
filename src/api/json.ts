@@ -3,6 +3,7 @@ import { XlsxError } from "../errors.js";
 import { decodeCell, encodeCol, encodeRow, encodeRange, safeDecodeRange, getCell } from "../utils/cell.js";
 import { dateToSerialNumber, serialNumberToDate, utcToLocal, localToUtc } from "../utils/date.js";
 import { clampLargeExportRange } from "../utils/export-range.js";
+import { DEFAULT_MAX_EXPORT_CELLS, WorksheetCellBudget, XLSX_MAX_ROWS } from "../utils/worksheet-budget.js";
 import { isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { formatCell, formatCellForOutput, getCellDateTimeFormatKind } from "./format.js";
@@ -170,6 +171,7 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		header = 0;
 	}
 
+	const budget = new WorksheetCellBudget(options.maxWorksheetCells, DEFAULT_MAX_EXPORT_CELLS);
 	let decodedRange: Range;
 	switch (typeof range) {
 		case "string":
@@ -177,19 +179,31 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 			break;
 		case "number":
 			// Numeric range means "start from this row"
+			if (!Number.isSafeInteger(range) || range < 0 || range >= XLSX_MAX_ROWS) {
+				throw new XlsxError(
+					"INVALID_ARGUMENT",
+					"Invalid worksheet JSON range: row must be a non-negative safe integer",
+				);
+			}
 			decodedRange = safeDecodeRange(sheet["!ref"]);
+			if (range > decodedRange.e.r) {
+				return [];
+			}
 			decodedRange.s.r = range;
 			break;
 		default:
 			decodedRange = range;
 	}
-	if (options.range == null || typeof options.range === "number") {
-		const clampedRange = clampLargeExportRange(sheet, decodedRange);
-		if (!clampedRange) {
-			return [];
-		}
-		decodedRange = clampedRange;
+	const clampedRange = clampLargeExportRange(
+		sheet,
+		decodedRange,
+		budget,
+		options.range == null || typeof options.range === "number",
+	);
+	if (!clampedRange) {
+		return [];
 	}
+	decodedRange = clampedRange;
 	// When headers are explicitly provided, data starts at the first row (no offset)
 	if (header > 0) {
 		offset = 0;

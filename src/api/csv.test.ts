@@ -226,6 +226,15 @@ describe("csv.ts: advanced CSV features", () => {
 		expect(rows[0][3]).toBe(false);
 	});
 
+	it("enforces CSV row and cumulative cell limits while honoring sheetRows", () => {
+		expect(sheetToJson(csvToSheet("A,B\n1,2", { sheetRows: 1, maxWorksheetRows: 1 }), { header: 1 })).toStrictEqual(
+			[["A", "B"]],
+		);
+		expect(() => csvToSheet("A,B\n1,2", { maxWorksheetRows: 1 })).toThrow(/worksheet row count 2 exceeds limit 1/);
+		expect(() => csvToSheet("A,B", { maxWorksheetCells: 1 })).toThrow(/worksheet cell count 2 exceeds limit 1/);
+		expect(() => csvToSheet("A", { sheetRows: Number.POSITIVE_INFINITY })).toThrow(/sheetRows/);
+	});
+
 	it("null sheet returns empty string", () => {
 		expect(sheetToCsv(null as any)).toBe("");
 		expect(sheetToCsv({} as any)).toBe("");

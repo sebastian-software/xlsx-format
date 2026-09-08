@@ -54,6 +54,24 @@ describe("read.ts — input type handling", () => {
 		expect(result.SheetNames).toHaveLength(1);
 	});
 
+	it("should forward worksheet limits for plain HTML text", async () => {
+		const html = "<table><tr><td>first</td></tr><tr><td>second</td></tr></table>";
+		const result = await read(html, {
+			type: "string",
+			sheetRows: 1,
+			maxWorksheetRows: 1,
+			maxWorksheetCells: 1,
+		});
+		const sheet = result.Sheets.Sheet1;
+
+		expect(sheet["!ref"]).toBe("A1");
+		expect(sheet.A1?.v).toBe("first");
+		expect(sheet.A2).toBeUndefined();
+		await expect(
+			read("<table><tr><td>A</td><td>B</td></tr></table>", { type: "string", maxWorksheetCells: 1 }),
+		).rejects.toThrow(/worksheet cell count 2 exceeds limit 1/);
+	});
+
 	it("should reject PDF input", async () => {
 		const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46]);
 		await expect(read(pdf)).rejects.toThrow("PDF");
