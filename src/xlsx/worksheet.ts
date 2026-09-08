@@ -336,7 +336,9 @@ function parseSheetData(
 				const xf = styles.CellXf[cellStyle];
 				if (xf) {
 					const numberFormat = styles.NumberFmt[xf.numFmtId] || formatTable[xf.numFmtId];
-					cell.XF = { numFmtId: xf.numFmtId, numFmt: numberFormat };
+					if (cellStyle > 0 || xf.numFmtId !== 0) {
+						cell.XF = { numFmtId: xf.numFmtId, numFmt: numberFormat };
+					}
 					if (opts.cellStyles) {
 						const style = getStyleFromXf(styles, cellStyle);
 						if (style) {
