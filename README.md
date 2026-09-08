@@ -57,6 +57,8 @@ The version labels identify the snapshots used for this orientation table. The [
 
 For a detailed feature matrix (cell data, formulas, styles, comments, hyperlinks, and more), see [Why xlsx-format?](https://sebastian-software.github.io/xlsx-format/guide/why-xlsx-format) in the docs.
 
+XLSM support covers workbook cell data and macro-free output containers. VBA projects are not read, preserved, or written, so do not use an XLSM read/write round trip when macros must survive unchanged.
+
 ## Runs everywhere
 
 xlsx-format is fully platform-agnostic -- it never imports `node:fs` or any other Node.js built-in. This means it works out of the box in browsers, edge runtimes (Cloudflare Workers, Deno Deploy), and Node.js without bundler polyfills.

@@ -8,7 +8,7 @@ export default defineConfig({
 		coverage: {
 			provider: "v8",
 			include: ["src/**"],
-			exclude: ["src/__fixtures__/**"],
+			exclude: ["src/__fixtures__/**", "src/type-contracts/**"],
 			thresholds: {
 				lines: 85,
 				statements: 85,

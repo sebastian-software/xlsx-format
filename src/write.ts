@@ -1,4 +1,4 @@
-import type { WorkBook, WriteOptions } from "./types.js";
+import type { WorkBook, WriteOptions, WriteResult } from "./types.js";
 import { XlsxError } from "./errors.js";
 import { zipWrite } from "./zip/index.js";
 import { writeZipXlsx } from "./xlsx/write-zip.js";
@@ -14,7 +14,7 @@ function textToUint8Array(text: string): Uint8Array {
 }
 
 /** Convert text output to the requested output type */
-function textOutput(text: string, type?: string): any {
+function textOutput(text: string, type?: string): WriteResult {
 	switch (type) {
 		case "string":
 			return text;
@@ -32,6 +32,42 @@ function textOutput(text: string, type?: string): any {
 	}
 }
 
+type Base64WriteOptions = Omit<WriteOptions, "type"> & { type: "base64" };
+type BinaryWriteOptions = Omit<WriteOptions, "type"> & { type: "array" | "buffer" };
+type TextWriteOptions = Omit<WriteOptions, "bookType" | "type"> & {
+	bookType: "csv" | "tsv" | "html";
+	type?: "string";
+};
+type SpreadsheetWriteOptions = Omit<WriteOptions, "bookType" | "type"> & {
+	bookType?: "xlsx" | "xlsm";
+	type?: "string";
+};
+
+function hasVbaPayload(value: unknown): boolean {
+	if (value == null) {
+		return false;
+	}
+	if (typeof value === "string" || Array.isArray(value)) {
+		return value.length > 0;
+	}
+	if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
+		return value.byteLength > 0;
+	}
+	return true;
+}
+
+function rejectUnsupportedWriteOptions(wb: WorkBook, options: WriteOptions): void {
+	if (options.bookVBA) {
+		throw new XlsxError("UNSUPPORTED", 'Write option "bookVBA" is not supported');
+	}
+	if (options.themeXLSX) {
+		throw new XlsxError("UNSUPPORTED", 'Write option "themeXLSX" is not supported');
+	}
+	if (hasVbaPayload(wb?.vbaraw)) {
+		throw new XlsxError("UNSUPPORTED", "Workbooks containing VBA data cannot be written");
+	}
+}
+
 /** Get the first worksheet from a workbook */
 function firstSheet(wb: WorkBook) {
 	return wb.Sheets[wb.SheetNames[0]];
@@ -44,13 +80,18 @@ function firstSheet(wb: WorkBook) {
  *
  * @param wb - WorkBook object to serialize
  * @param opts - Write options controlling output format and behavior
- * @returns Promise resolving to the serialized data in the requested format
+ * @returns A string for base64 or text output; otherwise a portable Uint8Array
+ * @throws XlsxError if a requested compatibility option or non-empty VBA payload is unsupported
  */
-export async function write(wb: WorkBook, opts?: WriteOptions): Promise<any> {
+export function write(wb: WorkBook, opts?: BinaryWriteOptions | SpreadsheetWriteOptions): Promise<Uint8Array>;
+export function write(wb: WorkBook, opts: Base64WriteOptions | TextWriteOptions): Promise<string>;
+export function write(wb: WorkBook, opts?: WriteOptions): Promise<WriteResult>;
+export async function write(wb: WorkBook, opts?: WriteOptions): Promise<WriteResult> {
 	const options: any = { ...opts };
 	if (options.password) {
 		throw new XlsxError("UNSUPPORTED", "Password-protected workbooks are not supported");
 	}
+	rejectUnsupportedWriteOptions(wb, options);
 	resetFormatTable();
 	if (!opts || !(opts as any).unsafe) {
 		validateWorkbook(wb);
