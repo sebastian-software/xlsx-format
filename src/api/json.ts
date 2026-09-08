@@ -3,6 +3,7 @@ import { XlsxError } from "../errors.js";
 import { decodeCell, encodeCol, encodeRow, encodeRange, safeDecodeRange, getCell } from "../utils/cell.js";
 import { dateToSerialNumber, serialNumberToDate, utcToLocal, localToUtc } from "../utils/date.js";
 import { clampLargeExportRange } from "../utils/export-range.js";
+import { DEFAULT_MAX_EXPORT_CELLS, WorksheetCellBudget } from "../utils/worksheet-budget.js";
 import { isDateFormat } from "../ssf/format.js";
 import { formatTable } from "../ssf/table.js";
 import { formatCell, formatCellForOutput, getCellDateTimeFormatKind } from "./format.js";
@@ -174,13 +175,17 @@ export function sheetToJson<T = any>(sheet: WorkSheet, opts?: Sheet2JSONOpts): T
 		default:
 			decodedRange = range;
 	}
-	if (options.range == null || typeof options.range === "number") {
-		const clampedRange = clampLargeExportRange(sheet, decodedRange);
-		if (!clampedRange) {
-			return [];
-		}
-		decodedRange = clampedRange;
+	const budget = new WorksheetCellBudget(options.maxWorksheetCells, DEFAULT_MAX_EXPORT_CELLS);
+	const clampedRange = clampLargeExportRange(
+		sheet,
+		decodedRange,
+		budget,
+		options.range == null || typeof options.range === "number",
+	);
+	if (!clampedRange) {
+		return [];
 	}
+	decodedRange = clampedRange;
 	// When headers are explicitly provided, data starts at the first row (no offset)
 	if (header > 0) {
 		offset = 0;

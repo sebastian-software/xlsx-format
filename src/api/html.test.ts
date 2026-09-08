@@ -200,6 +200,41 @@ describe("html.ts — htmlToSheet", () => {
 		expect(rows[2][2]).toBe("G");
 	});
 
+	it("enforces cumulative span work and sheet row truncation", () => {
+		const html = '<table><tr><td rowspan="2" colspan="2">A</td></tr><tr><td>B</td></tr></table>';
+
+		expect(() => htmlToSheet(html, { maxWorksheetCells: 3 })).toThrow(/worksheet cell count 4 exceeds limit 3/);
+		expect(htmlToSheet(html, { maxWorksheetCells: 2, sheetRows: 1 })["!ref"]).toBe("A1:B1");
+		expect(() => htmlToSheet(html, { maxWorksheetRows: 0 })).toThrow(/worksheet row count 2 exceeds limit 0/);
+	});
+
+	it("rejects invalid and out-of-bounds span dimensions", () => {
+		for (const attribute of [
+			'colspan="0"',
+			'colspan="-1"',
+			'colspan="1.5"',
+			'colspan="9007199254740992"',
+			'colspan="16385"',
+			'rowspan="1048577"',
+		]) {
+			expect(() => htmlToSheet(`<table><tr><td ${attribute}>A</td></tr></table>`)).toThrow(/Invalid HTML/);
+		}
+	});
+
+	it('limits rowspan="0" to the remaining rows in its row group', () => {
+		const html = `<table>
+			<tbody><tr><td rowspan="0">A</td></tr><tr><td>B</td></tr></tbody>
+			<tbody><tr><td>C</td></tr></tbody>
+		</table>`;
+
+		const ws = htmlToSheet(html, { maxWorksheetCells: 4 });
+		expect(ws.A1?.v).toBe("A");
+		expect(ws.B2?.v).toBe("B");
+		expect(ws.A3?.v).toBe("C");
+		expect(() => htmlToSheet(html, { maxWorksheetCells: 3 })).toThrow(/worksheet cell count 4 exceeds limit 3/);
+		expect(htmlToSheet(html, { sheetRows: 1, maxWorksheetCells: 1 }).A1?.v).toBe("A");
+	});
+
 	it("should unescape HTML entities", () => {
 		const html = `<table><tr><td>&lt;b&gt;bold&lt;/b&gt;</td></tr></table>`;
 		const ws = htmlToSheet(html);

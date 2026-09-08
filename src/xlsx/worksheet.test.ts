@@ -234,6 +234,63 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 		);
 	});
 
+	it.each([false, true])("charges hyperlink expansion cumulatively in dense=%s mode", (dense) => {
+		const xml = `<?xml version="1.0"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>
+<hyperlinks><hyperlink ref="A1:B1" location="Sheet2!A1"/></hyperlinks>
+</worksheet>`;
+
+		expect(() => parseWorksheetXml(xml, { dense, maxWorksheetCells: 2 })).toThrow(
+			/worksheet cell count 3 exceeds limit 2/,
+		);
+		const ws = parseWorksheetXml(xml, { dense, maxWorksheetCells: 3 });
+		expect(dense ? ws["!data"]?.[0]?.[1]?.l?.Target : ws.B1?.l?.Target).toBe("#Sheet2!A1");
+	});
+
+	it("charges repeated column expansion and rejects invalid column dimensions", () => {
+		const columns = (attrs: string) => `<worksheet><cols>${attrs}</cols><sheetData/></worksheet>`;
+		const repeated = columns('<col min="1" max="2"/><col min="1" max="2"/>');
+
+		expect(() => parseWorksheetXml(repeated, { cellStyles: true, maxWorksheetCells: 3 })).toThrow(
+			/worksheet cell count 4 exceeds limit 3/,
+		);
+		expect(parseWorksheetXml(repeated, { cellStyles: true, maxWorksheetCells: 4 })["!cols"]).toHaveLength(2);
+		for (const attrs of ['<col min="0" max="1"/>', '<col min="1" max="1.5"/>', '<col min="1" max="16385"/>']) {
+			expect(() => parseWorksheetXml(columns(attrs), { cellStyles: true })).toThrow(
+				/Invalid worksheet column range/,
+			);
+		}
+	});
+
+	it("keeps coordinate bounds separate from worksheet cell work", () => {
+		const xml = `<worksheet><sheetData><row r="1048576"><c r="A1048576"><v>7</v></c></row></sheetData></worksheet>`;
+		const ws = parseWorksheetXml(xml, { maxWorksheetCells: 1 });
+
+		expect(ws.A1048576?.v).toBe(7);
+		expect(() =>
+			parseWorksheetXml(
+				'<worksheet><sheetData><row r="1048577"><c r="A1048577"><v>7</v></c></row></sheetData></worksheet>',
+			),
+		).toThrow(/row index.*XLSX worksheet bounds/);
+	});
+
+	it("validates worksheet count options even when sheet data is absent", () => {
+		expect(() => parseWorksheetXml("<worksheet/>", { maxWorksheetRows: Number.POSITIVE_INFINITY })).toThrow(
+			/maxWorksheetRows/,
+		);
+		expect(() => parseWorksheetXml("<worksheet/>", { maxWorksheetCells: 1.5 })).toThrow(/maxWorksheetCells/);
+	});
+
+	it("rejects malformed and oversized hyperlink ranges before expansion", () => {
+		const worksheet = (ref: string) =>
+			`<worksheet><sheetData/><hyperlinks><hyperlink ref="${ref}" location="Sheet2!A1"/></hyperlinks></worksheet>`;
+
+		for (const ref of ["A0", "A1:A0", "A1:XFE1", "A1:A1048577"]) {
+			expect(() => parseWorksheetXml(worksheet(ref))).toThrow(/Invalid worksheet hyperlink range/);
+		}
+	});
+
 	it("parses worksheet with cols (cellStyles)", () => {
 		const xml = `<?xml version="1.0"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
