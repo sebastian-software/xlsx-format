@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { formatCell } from "../index.js";
+import { formatCell, sheetToCsv, sheetToHtml } from "../index.js";
 import { formatCellForOutput, getCellDateTimeFormatKind } from "./format.js";
 
 describe("api/format", () => {
@@ -21,6 +21,20 @@ describe("api/format", () => {
 		const cell: any = { t: "n", v: 0 };
 		const result = formatCell(cell, 42);
 		expect(result).toBeDefined();
+	});
+
+	it("formats integer cells consistently in public CSV and HTML output", () => {
+		const ws: any = {
+			A1: { t: "n", v: 123, z: "0" },
+			A2: { t: "n", v: 0.25, z: "0%" },
+			"!ref": "A1:A2",
+		};
+
+		expect(formatCell(ws.A1)).toBe("123");
+		expect(formatCell(ws.A2)).toBe("25%");
+		expect(sheetToCsv(ws)).toBe("123\n25%");
+		expect(sheetToHtml(ws)).toContain(">123<");
+		expect(sheetToHtml(ws)).toContain(">25%<");
 	});
 
 	it("formatCell should use dateNF option", () => {
