@@ -63,7 +63,7 @@ function rejectUnsupportedWriteOptions(wb: WorkBook, options: WriteOptions): voi
 	if (options.themeXLSX) {
 		throw new XlsxError("UNSUPPORTED", 'Write option "themeXLSX" is not supported');
 	}
-	if (hasVbaPayload(wb.vbaraw)) {
+	if (hasVbaPayload(wb?.vbaraw)) {
 		throw new XlsxError("UNSUPPORTED", "Workbooks containing VBA data cannot be written");
 	}
 }

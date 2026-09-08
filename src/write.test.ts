@@ -82,6 +82,17 @@ describe("write.ts — output types", () => {
 		});
 	});
 
+	it.each([null, undefined, {}])(
+		"should classify an invalid workbook before reading optional VBA metadata",
+		async (wb) => {
+			await expect(write(wb as any)).rejects.toMatchObject({
+				name: "XlsxError",
+				code: "INVALID_ARGUMENT",
+				message: "Invalid Workbook",
+			});
+		},
+	);
+
 	it("should preserve empty compatibility values", async () => {
 		const wb = simpleWb();
 		wb.vbaraw = new Uint8Array();
