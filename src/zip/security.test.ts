@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { zipRead, zipWrite } from "./index.js";
+import { zipHas, zipRead, zipReadString, zipWrite } from "./index.js";
 
 const encoder = new TextEncoder();
 
@@ -52,6 +52,29 @@ function centralDirectoryEntryOffsets(data: Uint8Array): number[] {
 }
 
 describe("zipRead security guards", () => {
+	it("resolves OPC part names consistently across slash and ASCII case variants", () => {
+		const archive = {
+			files: {
+				"XL/Worksheets/Sheet1.XML": bytes("sheet"),
+				"/empty.xml": new Uint8Array(),
+			},
+		};
+
+		expect(zipHas(archive, "xl/worksheets/sheet1.xml")).toBe(true);
+		expect(zipReadString(archive, "/xl/worksheets/sheet1.xml")).toBe("sheet");
+		expect(zipHas(archive, "empty.xml")).toBe(true);
+		expect(zipReadString(archive, "empty.xml")).toBe("");
+		expect(zipHas(archive, "missing.xml")).toBe(false);
+		expect(zipReadString(archive, "/missing.xml")).toBeNull();
+	});
+
+	it("rejects ambiguous ASCII case-insensitive OPC part aliases", () => {
+		const archive = { files: { "xl/A.xml": bytes("one"), "/XL/a.XML": bytes("two") } };
+
+		expect(() => zipHas(archive, "xl/a.xml")).toThrow(/Ambiguous ZIP entry path/);
+		expect(() => zipReadString(archive, "/xl/a.xml")).toThrow(/Ambiguous ZIP entry path/);
+	});
+
 	it("rejects archives without EOCD", async () => {
 		await expect(zipRead(new Uint8Array([0x50, 0x4b]))).rejects.toThrow(/EOCD not found/);
 	});
