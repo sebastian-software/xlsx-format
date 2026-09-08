@@ -51,8 +51,11 @@ import { read } from "xlsx-format";
 // XLSX from a file
 const workbook = await read(await readFile("spreadsheet.xlsx"));
 
-// CSV / TSV / HTML from a file (pass as string)
+// CSV / HTML from a file (pass as string)
 const workbook = await read(await readFile("data.csv", "utf-8"), { type: "string" });
+
+// TSV uses the same text reader with an explicit field separator
+const tabular = await read(await readFile("data.tsv", "utf-8"), { type: "string", FS: "\t" });
 
 // From a Uint8Array or ArrayBuffer
 const workbook = await read(buffer);
@@ -106,6 +109,22 @@ link.href = URL.createObjectURL(blob);
 link.download = "output.xlsx";
 link.click();
 ```
+
+`write()` returns `Uint8Array` for XLSX and XLSM output. This includes `{ type: "string" }`, which is retained as a compatibility input but does not convert a ZIP-based workbook to text. For CSV, TSV, and HTML, the default and `type: "string"` return a string. `type: "base64"` always returns a string, while `type: "array"` always returns a `Uint8Array`.
+
+`type: "buffer"` returns a Node.js `Buffer` when `Buffer` is available. Browsers and other runtimes receive a `Uint8Array`. The portable return type is therefore `Uint8Array`; use `Buffer.isBuffer(data)` when Node-specific behavior matters.
+
+### Reading Metadata Without Worksheets
+
+Use `bookSheets` or `bookProps` when you only need workbook metadata. For XLSX input, these modes skip worksheet data and return a smaller object. Plain-text input is parsed before the same result projection is applied:
+
+```typescript
+const { SheetNames } = await read(buffer, { bookSheets: true });
+const { Props, Custprops } = await read(buffer, { bookProps: true });
+const metadata = await read(buffer, { bookSheets: true, bookProps: true });
+```
+
+The result of a metadata-only read does not contain `Sheets`. Literal options infer the exact result shape. If the options are held in a broadly typed `ReadOptions` object, the return type is a union because the flags can change at runtime; narrow it with `"Sheets" in result` before accessing worksheet data. The same result shapes apply to CSV and HTML text input.
 
 ## Converting Data
 

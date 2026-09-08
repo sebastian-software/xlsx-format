@@ -65,7 +65,7 @@ export interface FullProperties extends Properties {
 export interface CommonOptions {
 	/** If true, throw errors on unexpected situations instead of silently recovering */
 	WTF?: boolean;
-	/** If true, expose VBA macro data in workbook.vbaraw */
+	/** Reserved compatibility option. A true value is unsupported and throws XlsxError ("UNSUPPORTED"). */
 	bookVBA?: boolean;
 	/** If true, store dates as Date objects instead of serial numbers */
 	cellDates?: boolean;
@@ -93,9 +93,9 @@ export interface ReadOptions extends CommonOptions {
 	dateNF?: string;
 	/** Maximum number of rows to read per sheet (0 = all rows) */
 	sheetRows?: number;
-	/** If true, parse inter-sheet dependencies */
+	/** Reserved compatibility option. A true value is unsupported and throws XlsxError ("UNSUPPORTED"). */
 	bookDeps?: boolean;
-	/** If true, expose raw ZIP file entries */
+	/** Reserved compatibility option. A true value is unsupported and throws XlsxError ("UNSUPPORTED"). */
 	bookFiles?: boolean;
 	/** If true, only parse workbook properties (skip sheet data) */
 	bookProps?: boolean;
@@ -103,10 +103,12 @@ export interface ReadOptions extends CommonOptions {
 	bookSheets?: boolean;
 	/** Restrict parsing to specific sheets by index or name */
 	sheets?: number | string | Array<number | string>;
-	/** If true, do not infer sheet dimensions from data */
+	/** If true, ignore the stored worksheet dimension and recalculate the range from parsed cells, anchored at A1 */
 	nodim?: boolean;
-	/** If true, preserve _xlfn. prefixes on formula function names */
+	/** Reserved compatibility option. A true value is unsupported and throws XlsxError ("UNSUPPORTED"). */
 	xlfn?: boolean;
+	/** Field separator for plain-text input with type "string" (default: ","; use "\t" for TSV) */
+	FS?: string;
 	/** If true, use dense (2D array) storage mode instead of sparse (object) mode */
 	dense?: boolean;
 	/** If true, all dates are interpreted as UTC (no timezone adjustment) */
@@ -145,7 +147,7 @@ export interface WriteOptions extends CommonOptions, Sheet2CSVOpts, Sheet2HTMLOp
 	bookSST?: boolean;
 	/** If true, compress (deflate) ZIP entries */
 	compression?: boolean;
-	/** Custom theme XML string to embed */
+	/** Reserved compatibility option. A non-empty value is unsupported and throws XlsxError ("UNSUPPORTED"). */
 	themeXLSX?: string;
 	/** If true, skip error-checking in the output */
 	ignoreEC?: boolean;
@@ -504,11 +506,34 @@ export interface WorkBook {
 	Custprops?: Record<string, any>;
 	/** Workbook-level attributes (names, views, sheet props) */
 	Workbook?: WBProps;
-	/** Raw VBA project binary (when bookVBA option is enabled) */
+	/** Reserved compatibility field. Writing a non-empty VBA payload throws XlsxError ("UNSUPPORTED"). */
 	vbaraw?: any;
 	/** File format type identifier */
 	bookType?: string;
 }
+
+/** Result returned when read() is called with bookSheets enabled. */
+export interface BookSheetsResult {
+	/** Ordered worksheet names. XLSX worksheet data is skipped; plain-text input is parsed before projection. */
+	SheetNames: string[];
+}
+
+/** Result returned when read() is called with bookProps enabled. */
+export interface BookPropsResult {
+	/** File and document properties. */
+	Props: FullProperties;
+	/** Custom document properties. */
+	Custprops: Record<string, unknown>;
+}
+
+/** Result returned when read() requests both sheet names and properties. */
+export interface BookSheetsAndPropsResult extends BookSheetsResult, BookPropsResult {}
+
+/** All runtime result shapes available from read(). Exact option literals narrow this union. */
+export type ReadResult = WorkBook | BookSheetsResult | BookPropsResult | BookSheetsAndPropsResult;
+
+/** Portable output from write(). Node.js Buffer values are represented by their Uint8Array base type. */
+export type WriteResult = string | Uint8Array;
 
 /** Options for converting a worksheet to CSV */
 export interface Sheet2CSVOpts {
