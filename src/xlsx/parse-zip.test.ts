@@ -157,6 +157,19 @@ describe("parse-zip: required parts and configured limits", () => {
 		await expectReadError(data, { sheets: "Missing" }, "NOT_FOUND", /xl\/worksheets\/sheet2\.xml/);
 	});
 
+	it("lists unsupported sheet types without requiring their parts", async () => {
+		const zip = await zipRead(await write(createWorkbook(arrayToSheet([[1]]), "Chart")));
+		const relsPath = "xl/_rels/workbook.xml.rels";
+		zip.files[relsPath] = encoder.encode(
+			decoder.decode(zip.files[relsPath]).replace("/relationships/worksheet", "/relationships/chartsheet"),
+		);
+		Reflect.deleteProperty(zip.files, "xl/worksheets/sheet1.xml");
+
+		const workbook = await read(await zipWrite(zip));
+		expect(workbook.SheetNames).toStrictEqual(["Chart"]);
+		expect(workbook.Sheets.Chart).toBeUndefined();
+	});
+
 	it("rejects a missing declared shared strings part for full reads", async () => {
 		const data = await removeZipPart(await workbookWithSharedStrings(), "xl/sharedStrings.xml");
 
@@ -213,5 +226,24 @@ describe("parse-zip: required parts and configured limits", () => {
 		expect(workbook.Sheets.S.A1?.v).toBe("one");
 		expect(workbook.Sheets.S.B1?.v).toBe("two");
 		await expectReadError(data, { maxSharedStringItems: 2 }, "LIMIT_EXCEEDED", /shared string item count 3/);
+	});
+
+	it("does not suppress configured limits for optional worksheet annotations", async () => {
+		const source = createWorkbook(arrayToSheet([["value"]]), "S");
+		const zip = await zipRead(await write(source));
+		const largestRequiredPart = Math.max(
+			...Object.entries(zip.files)
+				.filter(([path]) => path.endsWith(".xml"))
+				.map(([, bytes]) => bytes.length),
+		);
+		zip.files["xl/worksheets/_rels/sheet1.xml.rels"] = encoder.encode(
+			'<Relationships><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments" Target="../comments1.xml"/></Relationships>',
+		);
+		zip.files["xl/comments1.xml"] = encoder.encode(
+			`<comments><!--${"x".repeat(largestRequiredPart)}--></comments>`,
+		);
+		const data = await zipWrite(zip);
+
+		await expectReadError(data, { maxXmlPartBytes: largestRequiredPart }, "LIMIT_EXCEEDED", /comments1\.xml size/);
 	});
 });

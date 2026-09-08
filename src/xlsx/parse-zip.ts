@@ -155,10 +155,7 @@ function parse_sheet(
 
 	const data = getZipData(zip, path, false, opts)!;
 
-	const _ws: WorkSheet | undefined = parseWorksheetXml(data, opts, idx, relationships, wb, themes, styles);
-	if (!_ws) {
-		return;
-	}
+	const _ws = parseWorksheetXml(data, opts, idx, relationships, wb, themes, styles);
 
 	// Replace SST index placeholders with actual string values
 	resolveSharedStrings(_ws, strs, opts);
