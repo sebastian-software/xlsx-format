@@ -128,6 +128,19 @@ describe("export security guards", () => {
 		expect(sheetToHtml(ws)).toContain("Done");
 	});
 
+	it("ignores invalid, empty, and out-of-range dense entries while finding occupied bounds", () => {
+		const data: any = [];
+		data.invalid = [{ t: "s", v: "skip" }];
+		data[0] = undefined;
+		data[1] = [];
+		data[1].invalid = { t: "s", v: "skip" };
+		data[1][20_000] = { t: "s", v: "skip" };
+		data[1][1] = { t: "s", v: "Done" };
+		const ws = { "!data": data, "!ref": "A1:XFD1048576" } as WorkSheet;
+
+		expect(sheetToCsv(ws)).toBe(",\n,Done");
+	});
+
 	it("ignores occupied cells outside a numeric oversized JSON range", () => {
 		const ws = {
 			"!ref": "A1:XFD1048576",
@@ -179,7 +192,8 @@ describe("export security guards", () => {
 		expect(sheetToFormulae(ws, { maxWorksheetCells: 2 })).toContain("B1=1+6");
 
 		const written = await write(createWorkbook(ws, "S"), { maxWorksheetCells: 2 });
-		expect((await read(written)).Sheets.S.B1?.v).toBe(7);
+		const parsed = await read(written);
+		expect(parsed.Sheets.S.B1?.v).toBe(7);
 	});
 
 	it("enforces explicit JSON ranges and validates range coordinates", () => {
@@ -192,6 +206,10 @@ describe("export security guards", () => {
 				range: { s: { r: 0, c: 0 }, e: { r: 0, c: Number.POSITIVE_INFINITY } },
 			}),
 		).toThrow(/end column must be a non-negative safe integer/);
+		expect(() => sheetToJson(ws, { header: 1, range: { s: { r: 1, c: 0 }, e: { r: 0, c: 0 } } })).toThrow(
+			/end must not precede start/,
+		);
+		expect(() => sheetToJson(ws, { header: 1, range: "A1:XFE1" })).toThrow(/exceeds XLSX worksheet bounds/);
 	});
 
 	it("charges sparse column metadata without scanning array length", async () => {

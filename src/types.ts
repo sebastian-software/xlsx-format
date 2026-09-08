@@ -605,7 +605,7 @@ export interface HTML2SheetOpts extends WorksheetCellBudgetOptions {
 }
 
 /** Options for extracting formulas from a worksheet. */
-export interface Sheet2FormulaeOpts extends WorksheetCellBudgetOptions {}
+export type Sheet2FormulaeOpts = WorksheetCellBudgetOptions;
 
 /** Options for creating a worksheet from a 2D array (Array of Arrays) */
 export interface AOA2SheetOpts extends CommonOptions {

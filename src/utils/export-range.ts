@@ -23,11 +23,7 @@ export function rangeCellCount(range: Range, kind = "worksheet range"): number {
 	}
 	const rows = range.e.r - range.s.r + 1;
 	const cols = range.e.c - range.s.c + 1;
-	const count = rows * cols;
-	if (!Number.isSafeInteger(count)) {
-		throw new XlsxError("INVALID_ARGUMENT", `Invalid ${kind}: cell count is not a safe integer`);
-	}
-	return count;
+	return rows * cols;
 }
 
 function occupiedRangeEnd(sheet: WorkSheet, range: Range): { r: number; c: number } | null {

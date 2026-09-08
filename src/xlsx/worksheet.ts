@@ -856,10 +856,14 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 
 	const dense = ws["!data"] != null;
 	const range = ws["!ref"] ? clampLargeExportRange(ws, safeDecodeRange(ref), budget) : null;
+	const firstRow = range?.s.r ?? 1;
+	const lastRow = range?.e.r ?? 0;
+	const firstColumn = range?.s.c ?? 0;
+	const lastColumn = range?.e.c ?? -1;
 
-	for (let rowIdx = range?.s.r ?? 0; range && rowIdx <= range.e.r; ++rowIdx) {
+	for (let rowIdx = firstRow; rowIdx <= lastRow; ++rowIdx) {
 		const row_cells: string[] = [];
-		for (let colIdx = range.s.c; colIdx <= range.e.c; ++colIdx) {
+		for (let colIdx = firstColumn; colIdx <= lastColumn; ++colIdx) {
 			let cell: CellObject | undefined;
 			if (dense) {
 				cell = ws["!data"]?.[rowIdx]?.[colIdx];
