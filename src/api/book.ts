@@ -395,6 +395,8 @@ export function setArrayFormula(
 			wsr.e.c = rng.e.c;
 		}
 		ws["!ref"] = encodeRange(wsr);
+	} else {
+		ws["!ref"] = encodeRange(rng);
 	}
 	return ws;
 }
