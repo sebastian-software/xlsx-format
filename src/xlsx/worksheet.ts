@@ -12,7 +12,7 @@ import { XlsxError } from "../errors.js";
 import { parseXmlTag, XML_HEADER } from "../xml/parser.js";
 import { unescapeXml, escapeXml } from "../xml/escape.js";
 import { writeXmlElement } from "../xml/writer.js";
-import { XMLNS_main } from "../xml/namespaces.js";
+import { XMLNS_main, RELS as RELTYPE } from "../xml/namespaces.js";
 import { assertXmlCountWithinLimit, assertXmlPartLimits, DEFAULT_MAX_WORKSHEET_ROWS } from "../xml/limits.js";
 import { safeDecodeRange, encodeRange, encodeCell, decodeCell } from "../utils/cell.js";
 import { formatNumber, getDateTimeFormatKind } from "../ssf/format.js";
@@ -1111,6 +1111,11 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 				footer: String(margins.footer ?? 0.3),
 			}),
 		);
+	}
+
+	const legacyDrawing = Object.values(_rels?.["!id"] || {}).find((relationship) => relationship.Type === RELTYPE.VML);
+	if (legacyDrawing) {
+		lines.push(writeXmlElement("legacyDrawing", null, { "r:id": legacyDrawing.Id }));
 	}
 
 	lines.push("</worksheet>");

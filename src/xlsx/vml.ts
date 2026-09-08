@@ -70,8 +70,9 @@ export function parseVml(data: string, sheet: WorkSheet, comments: any[]): void 
 				const dense = (sheet as any)["!data"] != null;
 				let cell: any;
 				if (dense) {
+					const address = ref ? decodeCell(ref) : null;
 					const rows = (sheet as any)["!data"];
-					cell = rows?.[R]?.[C];
+					cell = address ? rows?.[address.r]?.[address.c] : undefined;
 				} else {
 					cell = (sheet as any)[ref];
 				}
