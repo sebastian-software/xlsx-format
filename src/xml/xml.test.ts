@@ -21,6 +21,14 @@ describe("escapeXml", () => {
 		expect(escapeXml("\x1F")).toBe("_x001f_");
 	});
 
+	it("should preserve literal OOXML escape-looking sequences", () => {
+		const input = "_x0041_ _x000A_ _x005F_ _x0041_x0042_ _x0041__x0042_";
+		expect(escapeXml(input)).toBe(
+			"_x005F_x0041_ _x005F_x000A_ _x005F_x005F_ _x005F_x0041_x005F_x0042_ _x005F_x0041__x005F_x0042_",
+		);
+		expect(unescapeXml(escapeXml(input))).toBe(input);
+	});
+
 	it("should pass through normal text unchanged", () => {
 		expect(escapeXml("Hello World 123")).toBe("Hello World 123");
 	});
@@ -38,6 +46,12 @@ describe("unescapeXml", () => {
 	it("should unescape numeric character references", () => {
 		expect(unescapeXml("&#65;")).toBe("A");
 		expect(unescapeXml("&#x41;")).toBe("A");
+		expect(unescapeXml("&#x1F600;")).toBe("😀");
+		expect(unescapeXml("&#128512;")).toBe("😀");
+	});
+
+	it("should preserve invalid XML numeric character references", () => {
+		expect(unescapeXml("&#x0; &#xD800; &#x110000; &#1;")).toBe("&#x0; &#xD800; &#x110000; &#1;");
 	});
 
 	it("should unescape _xHHHH_ OOXML escapes", () => {
