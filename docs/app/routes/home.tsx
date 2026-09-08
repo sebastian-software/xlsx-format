@@ -393,8 +393,13 @@ export default function HomePage() {
 				</div>
 
 				<div className="xf-caps__grid">
-					{capabilityGroups.map((group) => (
-						<article className="xf-cap" key={group.title} data-reveal>
+					{capabilityGroups.map((group, i) => (
+						<article
+							className="xf-cap"
+							key={group.title}
+							data-reveal
+							data-cell={`${"ABC"[i % 3]}${Math.floor(i / 3) + 1}`}
+						>
 							<h3>{group.title}</h3>
 							<ul>
 								{group.items.map((item) => (

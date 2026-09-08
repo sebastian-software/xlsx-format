@@ -14,6 +14,7 @@ import config from "virtual:ardo/config";
 import type { MetaFunction } from "react-router";
 import "ardo/ui/styles.css";
 import "./custom.css";
+import brandMark from "./brand-mark.svg";
 
 export const meta: MetaFunction = () => [{ title: config.title }];
 
@@ -24,7 +25,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function Root() {
 	return (
 		<ArdoRoot config={config}>
-			<ArdoHeader>
+			<ArdoHeader logo={brandMark}>
 				<ArdoNav>
 					<ArdoNavLink to="/guide/getting-started">Guide</ArdoNavLink>
 					<ArdoNavLink to="/api-reference">API</ArdoNavLink>

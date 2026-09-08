@@ -204,14 +204,14 @@ main footer[class] {
 	table-layout: fixed;
 }
 .feature-tables th:nth-child(1) {
-	width: 30%;
+	width: 28%;
 }
 .feature-tables th:nth-child(2),
 .feature-tables th:nth-child(3) {
 	width: 10%;
 }
 .feature-tables th:nth-child(4) {
-	width: 50%;
+	width: auto;
 }
 
 /* ----------------------------------------------------------------
@@ -819,7 +819,9 @@ main footer[class] {
 }
 
 .xf-matrix {
-	--cols: 1.5fr 1.1fr 0.95fr 0.95fr;
+	--cols: 1.3fr 1.1fr 1fr 1.05fr;
+	display: grid;
+	grid-template-columns: var(--cols);
 	border: 1px solid var(--xf-line-strong);
 	border-radius: 10px;
 	background: var(--xf-surface);
@@ -827,10 +829,18 @@ main footer[class] {
 	overflow: hidden;
 	font-size: 0.9rem;
 }
+/* Rows share the matrix's column tracks, so every cell in a column has the
+   same width no matter which row holds the longest value. */
 .xf-matrix__head,
 .xf-matrix__row {
 	display: grid;
-	grid-template-columns: var(--cols);
+	grid-column: 1 / -1;
+	grid-template-columns: subgrid;
+}
+.xf-matrix__head > span,
+.xf-matrix__row > span {
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 .xf-matrix__head {
 	background: var(--xf-night);
@@ -968,24 +978,23 @@ main footer[class] {
 .xf-runtime__cards {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
-	gap: var(--gap);
+	gap: 1px;
 	margin-top: 2.6rem;
+	border: 1px solid var(--xf-line-strong);
+	border-radius: 10px;
+	background: var(--xf-line);
+	box-shadow: var(--xf-shadow-sm);
+	overflow: hidden;
 }
 .xf-rt {
 	position: relative;
 	padding: 1.5rem;
-	border: 1px solid var(--xf-line-strong);
-	border-radius: 10px;
 	background: var(--xf-surface);
-	box-shadow: var(--xf-shadow-sm);
 	overflow: hidden;
-	transition:
-		transform 0.2s var(--xf-ease),
-		box-shadow 0.2s var(--xf-ease);
+	transition: background-color 0.2s var(--xf-ease);
 }
 .xf-rt:hover {
-	transform: translateY(-3px);
-	box-shadow: var(--xf-shadow-md);
+	background: color-mix(in oklch, var(--xf-brand) 4%, var(--xf-surface));
 }
 .xf-rt::before {
 	content: "";
@@ -1031,15 +1040,28 @@ main footer[class] {
 .xf-caps__grid {
 	display: grid;
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: var(--gap);
+	gap: 1px;
 	margin-top: 2.6rem;
-}
-.xf-cap {
-	padding: 1.4rem;
 	border: 1px solid var(--xf-line-strong);
 	border-radius: 10px;
-	background: var(--xf-surface);
+	background: var(--xf-line);
 	box-shadow: var(--xf-shadow-sm);
+	overflow: hidden;
+}
+.xf-cap {
+	position: relative;
+	padding: 1.4rem;
+	background: var(--xf-surface);
+}
+.xf-cap::after {
+	content: attr(data-cell);
+	position: absolute;
+	top: 1.25rem;
+	right: 1.2rem;
+	color: var(--xf-muted);
+	font-family: var(--xf-font-mono);
+	font-size: 0.68rem;
+	letter-spacing: 0.04em;
 }
 .xf-cap h3 {
 	font-family: var(--xf-font-mono);
@@ -1092,6 +1114,10 @@ main footer[class] {
 	background: var(--xf-night);
 	color: var(--xf-night-text);
 	overflow: hidden;
+}
+.dark .xf-cta-band {
+	background: linear-gradient(160deg, oklch(0.2 0.05 168) 0%, oklch(0.13 0.03 176) 100%);
+	border-top: 1px solid var(--xf-night-line);
 }
 .xf-cta-band__grid {
 	position: absolute;
@@ -1297,5 +1323,587 @@ main footer[class] {
 	.xf-matrix__head,
 	.xf-matrix__row {
 		min-width: 32rem;
+	}
+}
+
+/* ================================================================
+   DOC PAGES — the worksheet system carried into guide + API pages
+   ================================================================ */
+
+/* ---- Header ---- */
+
+.ardo-header a[class] > img[class] {
+	width: 1.5rem;
+	height: 1.5rem;
+	border-radius: 5px;
+	box-shadow: 0 1px 2px oklch(0 0 0 / 0.12);
+}
+.ardo-header a[class] > span[class] {
+	font-family: var(--xf-font-display);
+	font-stretch: 110%;
+	font-weight: 750;
+	font-size: 1.05rem;
+	letter-spacing: -0.02em;
+}
+.ardo-header :has(> input[role="combobox"]) {
+	min-height: 2.35rem;
+	border-radius: 6px;
+	border-color: var(--xf-line-strong);
+	background: var(--xf-surface);
+	box-shadow: var(--xf-shadow-sm);
+}
+.ardo-header input[role="combobox"] {
+	font-family: var(--xf-font-body);
+}
+.ardo-header kbd {
+	padding: 1px 5px;
+	border-color: var(--xf-line);
+	background: var(--xf-surface-2);
+	color: var(--xf-muted);
+	font-family: var(--xf-font-mono);
+	font-size: 0.68rem;
+}
+.ardo-nav a[class] {
+	font-size: 0.88rem;
+	font-weight: 600;
+	color: var(--xf-ink-soft);
+	border-radius: 6px;
+}
+.ardo-nav a[class]:hover {
+	color: var(--xf-ink);
+	background: var(--xf-surface-2);
+}
+.ardo-nav a[class].active {
+	color: var(--xf-brand-deep);
+}
+.dark .ardo-nav a[class].active {
+	color: var(--xf-brand);
+}
+
+/* ---- Sidebar rail: section icons as selected cells ---- */
+
+nav[aria-label="Documentation sections"] a[class] {
+	width: 2.4rem;
+	height: 2.4rem;
+	border-radius: 6px;
+	color: var(--xf-muted);
+}
+nav[aria-label="Documentation sections"] a[class]:hover {
+	color: var(--xf-ink);
+	background: var(--xf-surface-2);
+}
+nav[aria-label="Documentation sections"] a[class].active {
+	color: var(--xf-brand-deep);
+	background: color-mix(in oklch, var(--xf-brand) 10%, var(--xf-surface));
+	box-shadow: inset 0 0 0 1.5px var(--xf-brand);
+}
+.dark nav[aria-label="Documentation sections"] a[class].active {
+	color: var(--xf-brand);
+}
+
+/* ---- Sidebar navigation ---- */
+
+nav[aria-label="Main navigation"] {
+	font-family: var(--xf-font-body);
+}
+/* Group titles read like column headers */
+nav[aria-label="Main navigation"] > ul > li > div > span[class],
+nav[aria-label="Main navigation"] > ul > li > div > button[class] {
+	font-family: var(--xf-font-mono);
+	font-size: 0.7rem;
+	font-weight: 600;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+	color: var(--xf-muted);
+}
+/* Page links are worksheet rows: a numbered gutter, then the cell */
+nav[aria-label="Main navigation"] div[data-collapsed] ul[class]:has(> li > a[class]) {
+	padding-left: 0;
+	counter-reset: xf-row;
+}
+nav[aria-label="Main navigation"] div[data-collapsed] li > a[class] {
+	display: grid;
+	grid-template-columns: 1.9rem minmax(0, 1fr);
+	align-items: stretch;
+	gap: 0.65rem;
+	padding: 0;
+	counter-increment: xf-row;
+}
+nav[aria-label="Main navigation"] div[data-collapsed] li > a[class]::before {
+	content: counter(xf-row);
+	display: grid;
+	place-items: center;
+	border-right: 1px solid var(--xf-line);
+	background: var(--xf-surface-2);
+	color: var(--xf-muted);
+	font-family: var(--xf-font-mono);
+	font-size: 0.66rem;
+	font-weight: 500;
+	transition:
+		color 0.14s var(--xf-ease),
+		background-color 0.14s var(--xf-ease);
+}
+nav[aria-label="Main navigation"] div[data-collapsed] li > a[class] > * {
+	padding-block: 0.4rem;
+}
+nav[aria-label="Main navigation"] div[data-collapsed] li > a[class].active::before {
+	background: var(--xf-brand);
+	border-right-color: var(--xf-brand);
+	color: oklch(0.99 0.01 150);
+}
+.dark nav[aria-label="Main navigation"] div[data-collapsed] li > a[class].active::before {
+	color: oklch(0.16 0.03 170);
+}
+nav[aria-label="Main navigation"] a[class] {
+	position: relative;
+	padding-block: 0.4rem;
+	color: var(--xf-ink-soft);
+	font-size: 0.875rem;
+	border-radius: 4px;
+	overflow: hidden;
+	transition:
+		color 0.14s var(--xf-ease),
+		background-color 0.14s var(--xf-ease),
+		box-shadow 0.14s var(--xf-ease);
+}
+nav[aria-label="Main navigation"] a[class]:hover {
+	color: var(--xf-ink);
+	background: var(--xf-surface-2);
+}
+/* The active page is the selected cell: brand ring + fill handle */
+nav[aria-label="Main navigation"] a[class].active {
+	color: var(--xf-brand-deep);
+	font-weight: 600;
+	background: color-mix(in oklch, var(--xf-brand) 9%, transparent);
+	box-shadow: inset 0 0 0 1.5px var(--xf-brand);
+	overflow: visible;
+}
+nav[aria-label="Main navigation"] a[class].active::after {
+	content: "";
+	position: absolute;
+	right: -4px;
+	bottom: -4px;
+	width: 8px;
+	height: 8px;
+	box-sizing: border-box;
+	background: var(--xf-brand);
+	border: 1.5px solid var(--ardo-color-sidebarBg);
+}
+.dark nav[aria-label="Main navigation"] a[class].active {
+	color: var(--xf-brand);
+}
+/* Generated (API) sidebar: pill rows become cells too */
+nav[aria-label="Main navigation"] div[class].active,
+nav[aria-label="Main navigation"] div[class].child-active {
+	border-radius: 4px;
+	border-color: transparent;
+	background: color-mix(in oklch, var(--xf-brand) 9%, transparent);
+	box-shadow: inset 0 0 0 1.5px var(--xf-brand);
+}
+nav[aria-label="Main navigation"] div[class].active a[class],
+nav[aria-label="Main navigation"] div[class].child-active a[class],
+nav[aria-label="Main navigation"] div[class].active button[class],
+nav[aria-label="Main navigation"] div[class].child-active button[class] {
+	color: var(--xf-brand-deep);
+}
+.dark nav[aria-label="Main navigation"] div[class].active a[class],
+.dark nav[aria-label="Main navigation"] div[class].child-active a[class],
+.dark nav[aria-label="Main navigation"] div[class].active button[class],
+.dark nav[aria-label="Main navigation"] div[class].child-active button[class] {
+	color: var(--xf-brand);
+}
+
+/* ---- Article ---- */
+
+main article {
+	position: relative;
+	isolation: isolate;
+	font-family: var(--xf-font-body);
+	font-feature-settings: "ss01", "cv05";
+}
+/* The hero's grid paper, behind every page title */
+main article::before {
+	content: "";
+	position: absolute;
+	z-index: -1;
+	inset: -3rem -3rem auto -3rem;
+	height: 26rem;
+	background-image:
+		linear-gradient(to right, var(--xf-grid-line) 1px, transparent 1px),
+		linear-gradient(to bottom, var(--xf-grid-line) 1px, transparent 1px);
+	background-size: 2.4rem 2.4rem;
+	mask-image: radial-gradient(75% 100% at 18% 0%, black, transparent 78%);
+	pointer-events: none;
+}
+
+/* Breadcrumb as the formula bar: visible on every viewport */
+main article nav[aria-label="Breadcrumb"] {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	margin-bottom: 1.5rem;
+	padding: 0.3rem 0.75rem 0.3rem 0;
+	border: 1px solid var(--xf-line-strong);
+	border-radius: 6px;
+	background: var(--xf-surface);
+	box-shadow: var(--xf-shadow-sm);
+	color: var(--xf-muted);
+	font-family: var(--xf-font-mono);
+	font-size: 0.76rem;
+	font-weight: 500;
+}
+main article nav[aria-label="Breadcrumb"]::before {
+	content: "fx";
+	display: grid;
+	place-items: center;
+	align-self: stretch;
+	margin: -0.3rem 0.25rem -0.3rem 0;
+	padding-inline: 0.65rem;
+	border-right: 1px solid var(--xf-line);
+	background: var(--xf-surface-2);
+	color: var(--xf-muted);
+	font-style: italic;
+}
+main article nav[aria-label="Breadcrumb"] span[class]:last-child {
+	color: var(--xf-ink);
+}
+
+main article header[class] {
+	margin-bottom: 1.6rem;
+	padding-bottom: 0;
+}
+main article header[class] h1 {
+	font-family: var(--xf-font-display);
+	font-stretch: 112%;
+	font-weight: 800;
+	font-size: clamp(2.3rem, 1.5rem + 2.4vw, 3.5rem);
+	line-height: 1;
+	letter-spacing: -0.024em;
+	color: var(--xf-ink);
+}
+main article header[class] p[class] {
+	margin-top: 0.6rem;
+	color: var(--xf-muted);
+	font-size: 1.08rem;
+}
+
+/* Prose headings in the display voice */
+main article div[class] :is(h2, h3, h4) {
+	font-family: var(--xf-font-display);
+	font-stretch: 110%;
+	letter-spacing: -0.012em;
+	color: var(--xf-ink);
+	text-wrap: balance;
+}
+main article div[class] h2 {
+	font-size: 1.55rem;
+	font-weight: 720;
+	line-height: 1.15;
+	margin-top: 3.2rem;
+	padding-top: 1.6rem;
+	border-top: 1px solid var(--xf-line);
+}
+main article div[class] h3 {
+	font-size: 1.2rem;
+	font-weight: 680;
+	line-height: 1.25;
+	margin-top: 2.2rem;
+}
+main article div[class] h4 {
+	font-size: 0.95rem;
+	font-weight: 680;
+}
+main article div[class] p,
+main article div[class] li {
+	color: var(--xf-ink-soft);
+}
+main article div[class] strong {
+	color: var(--xf-ink);
+	font-weight: 650;
+}
+main article div[class] a {
+	color: var(--xf-brand-deep);
+	text-decoration-color: color-mix(in oklch, var(--xf-brand) 40%, transparent);
+}
+main article div[class] a:hover {
+	text-decoration-color: var(--xf-brand);
+}
+.dark main article div[class] a {
+	color: var(--xf-brand);
+}
+
+/* Inline code as a small cell */
+main article div[class] :not(pre) > code {
+	padding: 0.1em 0.4em;
+	border: 1px solid var(--xf-line);
+	border-radius: 4px;
+	background: var(--xf-surface-2);
+	color: var(--xf-ink);
+	font-family: var(--xf-font-mono);
+	font-size: 0.85em;
+	font-weight: 500;
+}
+
+/* Tables in the worksheet look */
+main article div[class] table {
+	border: 1px solid var(--xf-line-strong);
+	border-radius: 8px;
+	background: var(--xf-surface);
+	box-shadow: var(--xf-shadow-sm);
+	font-size: 0.88rem;
+}
+/* ardo renders tables as scrolling blocks, which leaves them narrower than
+   their frame. Wide viewports get a real table that fills the column; small
+   ones keep the horizontal scroll. */
+@media (min-width: 48rem) {
+	main article div[class] table {
+		display: table;
+		width: 100%;
+	}
+}
+main article div[class] th,
+main article div[class] td {
+	padding: 0.6rem 0.9rem;
+	border-bottom: 1px solid var(--xf-line);
+	border-left: 1px solid var(--xf-line);
+	vertical-align: top;
+}
+main article div[class] :is(th, td):first-child {
+	border-left: 0;
+}
+main article div[class] th {
+	background: color-mix(in oklch, var(--xf-brand) 12%, var(--xf-surface));
+	border-bottom-color: var(--xf-line-strong);
+	color: var(--xf-brand-deep);
+	font-family: var(--xf-font-mono);
+	font-size: 0.7rem;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+	white-space: nowrap;
+}
+.dark main article div[class] th {
+	color: var(--xf-brand);
+}
+main article div[class] tr:last-child td {
+	border-bottom: 0;
+}
+/* Row numbers: every table is a worksheet */
+main article div[class] table {
+	counter-reset: xf-trow;
+}
+main article div[class] tr::before {
+	content: "";
+	display: table-cell;
+	width: 2.2rem;
+	min-width: 2.2rem;
+	padding: 0.6rem 0.4rem;
+	border-right: 1px solid var(--xf-line-strong);
+	border-bottom: 1px solid var(--xf-line);
+	background: var(--xf-surface-2);
+	color: var(--xf-muted);
+	font-family: var(--xf-font-mono);
+	font-size: 0.66rem;
+	font-weight: 500;
+	text-align: center;
+	vertical-align: middle;
+}
+main article div[class] thead tr::before {
+	border-bottom-color: var(--xf-line-strong);
+}
+main article div[class] tbody tr {
+	counter-increment: xf-trow;
+}
+main article div[class] tbody tr::before {
+	content: counter(xf-trow);
+}
+main article div[class] tbody tr:last-child::before {
+	border-bottom: 0;
+}
+.feature-tables tr::before {
+	width: 2.6rem;
+}
+main article div[class] td:first-child {
+	color: var(--xf-ink);
+}
+
+main article div[class] blockquote {
+	border-color: color-mix(in oklch, var(--xf-brand) 30%, var(--xf-line));
+	background: var(--xf-brand-tint);
+	box-shadow: none;
+}
+main article div[class] hr {
+	background: var(--xf-line);
+}
+
+/* ---- Code panels: the hero editor, everywhere ---- */
+
+.ardo-shiki[class],
+main article div[class]:has(> div > pre.shiki) {
+	border: 1px solid var(--xf-night-line);
+	border-radius: 10px;
+	background: var(--xf-code-bg);
+	box-shadow: var(--xf-shadow-md);
+}
+/* Editor bar: traffic dots + language, as on the hero editor */
+.ardo-shiki[class] > [data-lang]:first-child::before,
+main article div[class]:has(> div > pre.shiki) > div[class]::before {
+	content: attr(data-lang);
+	display: flex;
+	align-items: center;
+	height: 2.15rem;
+	padding: 0 1rem 0 3.7rem;
+	border-bottom: 1px solid var(--xf-night-line);
+	background-color: color-mix(in oklch, var(--xf-night-2) 60%, var(--xf-code-bg));
+	background-image:
+		radial-gradient(circle at 1.15rem 50%, var(--xf-accent) 0 0.29rem, transparent 0.34rem),
+		radial-gradient(circle at 2.15rem 50%, color-mix(in oklch, var(--xf-night-muted) 40%, transparent) 0 0.29rem, transparent 0.34rem),
+		radial-gradient(circle at 3.15rem 50%, color-mix(in oklch, var(--xf-night-muted) 40%, transparent) 0 0.29rem, transparent 0.34rem);
+	color: var(--xf-night-muted);
+	font-family: var(--xf-font-mono);
+	font-size: 0.7rem;
+	font-weight: 500;
+	letter-spacing: 0.03em;
+}
+main article div[class]:has(> div > pre.shiki) > div[class]::before {
+	content: "ts";
+}
+.ardo-shiki[class] > [data-title] {
+	padding: 0.55rem 1rem;
+	border-bottom: 1px solid var(--xf-night-line);
+	background: color-mix(in oklch, var(--xf-night-2) 60%, var(--xf-code-bg));
+	color: var(--xf-night-muted);
+	font-family: var(--xf-font-mono);
+	font-size: 0.74rem;
+}
+main article pre.shiki[class] {
+	padding: 1rem 1.15rem;
+	color: var(--xf-code-text);
+	font-family: var(--xf-font-mono);
+	font-size: 0.84rem;
+	line-height: 1.72;
+}
+.ardo-shiki[class] .line[data-ln]::before {
+	color: color-mix(in oklch, var(--xf-night-muted) 50%, transparent);
+}
+.ardo-shiki[class] .line.highlighted {
+	background: color-mix(in oklch, var(--xf-brand) 20%, transparent);
+	border-left-color: var(--xf-brand);
+}
+.ardo-shiki[class] button[data-code],
+main article pre.shiki + button[class] {
+	top: 0.35rem;
+	right: 0.5rem;
+	padding: 0.22rem 0.5rem;
+	border: 1px solid var(--xf-night-line);
+	border-radius: 5px;
+	background: color-mix(in oklch, var(--xf-night-2) 80%, transparent);
+	color: var(--xf-night-muted);
+	font-family: var(--xf-font-body);
+	font-size: 0.72rem;
+	font-weight: 600;
+}
+.ardo-shiki[class] button[data-code]:hover,
+.ardo-shiki[class] button[data-code]:focus-visible,
+main article pre.shiki + button[class]:hover,
+main article pre.shiki + button[class]:focus-visible {
+	border-color: var(--xf-brand);
+	color: var(--xf-night-text);
+	opacity: 1;
+}
+/* Any inline style the highlighter leaves on the pre */
+main article pre.shiki[class] {
+	background: transparent !important;
+}
+
+/* ---- Table of contents ---- */
+
+main aside h3[class] {
+	font-family: var(--xf-font-mono);
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.08em;
+	color: var(--xf-muted);
+}
+nav[aria-label="Table of contents"] a[class] {
+	color: var(--xf-muted);
+	font-size: 0.84rem;
+	border-left-width: 2px;
+}
+nav[aria-label="Table of contents"] a[class]:hover {
+	color: var(--xf-ink);
+	border-left-color: var(--xf-line-strong);
+}
+nav[aria-label="Table of contents"] a[class].active {
+	color: var(--xf-brand-deep);
+	border-left-color: var(--xf-brand);
+	font-weight: 600;
+}
+.dark nav[aria-label="Table of contents"] a[class].active {
+	color: var(--xf-brand);
+}
+
+/* ---- Previous / next ---- */
+
+nav[aria-label="Page navigation"] a[class] {
+	gap: 0.3rem;
+	padding: 1.1rem 1.25rem;
+	border: 1px solid var(--xf-line-strong);
+	border-radius: 8px;
+	background: var(--xf-surface);
+	box-shadow: var(--xf-shadow-sm);
+	transition:
+		border-color 0.18s var(--xf-ease),
+		transform 0.18s var(--xf-ease),
+		box-shadow 0.18s var(--xf-ease);
+}
+nav[aria-label="Page navigation"] a[class]:hover {
+	border-color: var(--xf-brand);
+	background: var(--xf-surface);
+	transform: translateY(-2px);
+	box-shadow: var(--xf-shadow-md);
+}
+nav[aria-label="Page navigation"] a[class] > span:first-child {
+	font-family: var(--xf-font-mono);
+	font-size: 0.68rem;
+	font-weight: 600;
+	letter-spacing: 0.07em;
+	color: var(--xf-muted);
+}
+nav[aria-label="Page navigation"] a[class] > span:last-child {
+	font-family: var(--xf-font-display);
+	font-stretch: 110%;
+	font-weight: 700;
+	font-size: 1.02rem;
+	color: var(--xf-brand-deep);
+}
+.dark nav[aria-label="Page navigation"] a[class] > span:last-child {
+	color: var(--xf-brand);
+}
+
+/* ---- Footer ---- */
+
+.ardo-footer a[class] {
+	color: var(--xf-brand-deep);
+}
+.dark .ardo-footer a[class] {
+	color: var(--xf-brand);
+}
+
+/* ---- Doc pages, small screens ---- */
+
+@media (max-width: 40rem) {
+	main article header[class] h1 {
+		font-size: 1.9rem;
+	}
+	main article div[class] h2 {
+		font-size: 1.35rem;
+	}
+	main article pre.shiki[class] {
+		font-size: 0.8rem;
+		padding: 0.85rem 1rem;
+	}
+	nav[aria-label="Page navigation"] a[class] {
+		padding: 0.9rem 1rem;
 	}
 }
