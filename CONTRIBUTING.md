@@ -31,6 +31,32 @@ pnpm run verify      # Run the full local quality gate
 5. Use [Conventional Commits](https://www.conventionalcommits.org/) for your commit messages (e.g. `feat: add X`, `fix: handle Y`). Release Please uses these to generate the changelog.
 6. Open a pull request against `main`.
 
+### Recovering legacy generated API docs
+
+The docs build manages `docs/app/routes/api-reference/`. Ardo marks generated output with `.ardo-generated` and refuses to remove an existing non-empty directory without that marker. This protects handwritten files, so do not bypass the error with an automatic delete.
+
+If an older checkout has an unmarked directory:
+
+1. Check the working tree and make a backup outside the repository. Keep the backup until the docs build succeeds and every file has been reviewed.
+
+    ```bash
+    git status --short
+    backup_dir="$(mktemp -d ../xlsx-format-api-reference-backup.XXXXXX)"
+    cp -a docs/app/routes/api-reference/. "$backup_dir/"
+    ```
+
+2. Inspect the backup and separate any handwritten Markdown from generated API pages. Move handwritten pages to an authored location such as `docs/app/routes/guide/`; do not put them back inside the generated directory.
+3. After the backup is verified and the directory contains no content that must be kept, move the reviewed directory aside and run the canonical docs build:
+
+    ```bash
+    mv docs/app/routes/api-reference "$backup_dir/api-reference-reviewed"
+    pnpm --filter docs build
+    ```
+
+    The generator recreates the directory and its `.ardo-generated` marker.
+
+Never remove an unmarked directory automatically, and never delete it before the backup and content review. A fresh checkout does not need this recovery step; `pnpm install` followed by `pnpm --filter docs build` creates the marked generated output.
+
 ## Commit Message Format
 
 This project uses Conventional Commits to automate changelog generation:

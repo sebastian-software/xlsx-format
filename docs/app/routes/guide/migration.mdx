@@ -4,13 +4,13 @@ title: Migration from SheetJS
 
 # Migration from SheetJS
 
-The xlsx-format API is intentionally close to SheetJS. Most code migrates with three small changes -- and nothing else.
+The xlsx-format API is intentionally close to SheetJS. Most code starts with three syntax changes, followed by a few behavior checks for security, supported formats, and memory use.
 
 ## The Three Changes
 
-### 1. `read()` and `write()` are async
+### 1. `read()` and `write()` return Promises
 
-ZIP operations use streaming internally, so both functions return a `Promise`. Add `await` to every call.
+ZIP compression and decompression use Web Streams, so both functions return a `Promise`. XML parsing, worksheet traversal, and serialization still run synchronously, and `read()` / `write()` accept and return complete in-memory values. Add `await` to every call, and use a worker when a large workbook must not share the main event loop.
 
 ### 2. Named imports replace the namespace
 
@@ -19,6 +19,15 @@ Instead of accessing everything through `XLSX.*`, import each function by name.
 ### 3. Utility names are camelCase
 
 `sheet_to_json` becomes `sheetToJson`, `sheet_to_csv` becomes `sheetToCsv`, and so on.
+
+## Check behavior differences
+
+After the syntax changes, check these material differences before switching a production path:
+
+- **Export safety defaults:** CSV formula-like text is escaped and unsafe HTML hyperlink targets are removed by default. Keep these defaults for untrusted output; see [Security Considerations](/guide/security) for the explicit opt-outs.
+- **Encrypted workbooks:** Password-protected workbooks are unsupported. `read()` and `write()` reject a non-empty `password` option.
+- **Supported formats:** The supported file formats are XLSX, XLSM, CSV, TSV, and HTML. Legacy XLS, XLSB, ODS, and other formats from the broader SheetJS surface are outside this package's scope. See the [feature matrix](/guide/why-xlsx-format#feature-support).
+- **Output and memory:** `read()` parses a complete in-memory input, and `write()` returns a complete in-memory output. Web Streams cover ZIP compression and decompression; they do not make XML parsing or worksheet loops incremental.
 
 ## Side-by-Side
 
