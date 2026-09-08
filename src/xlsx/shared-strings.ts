@@ -235,7 +235,6 @@ function parseRichTextRuns(rs: string, opts?: SstParseOptions): { t: string; v: 
 
 /** Convert an array of parsed rich-text runs into an HTML string */
 function richTextToHtml(rs: { t: string; v: string; s?: any }[]): string {
-	const nlregex = /(\r\n|\n)/g;
 	return rs
 		.map((r) => {
 			if (!r.v) {
@@ -252,8 +251,9 @@ function richTextToHtml(rs: { t: string; v: string; s?: any }[]): string {
 				if (font.uval) {
 					style.push("text-underline-style:" + font.uval + ";");
 				}
-				if (font.sz) {
-					style.push("font-size:" + font.sz + "pt;");
+				const fontSize = Number(font.sz);
+				if (Number.isFinite(fontSize) && fontSize > 0) {
+					style.push("font-size:" + fontSize + "pt;");
 				}
 				if (font.outline) {
 					style.push("text-effect: outline;");
@@ -264,30 +264,30 @@ function richTextToHtml(rs: { t: string; v: string; s?: any }[]): string {
 				intro.push('<span style="' + style.join("") + '">');
 				if (font.b) {
 					intro.push("<b>");
-					outro.push("</b>");
+					outro.unshift("</b>");
 				}
 				if (font.i) {
 					intro.push("<i>");
-					outro.push("</i>");
+					outro.unshift("</i>");
 				}
 				if (font.strike) {
 					intro.push("<s>");
-					outro.push("</s>");
+					outro.unshift("</s>");
 				}
 				// Map OOXML vertical alignment names to HTML elements
-				let align = font.valign || "";
-				if (align === "superscript" || align === "super") {
+				let align = "";
+				if (font.valign === "superscript" || font.valign === "super") {
 					align = "sup";
-				} else if (align === "subscript") {
+				} else if (font.valign === "subscript") {
 					align = "sub";
 				}
-				if (align !== "") {
+				if (align) {
 					intro.push("<" + align + ">");
-					outro.push("</" + align + ">");
+					outro.unshift("</" + align + ">");
 				}
 				outro.push("</span>");
 			}
-			return intro.join("") + r.v.replace(nlregex, "<br/>") + outro.join("");
+			return intro.join("") + escapeHtml(r.v) + outro.join("");
 		})
 		.join("");
 }

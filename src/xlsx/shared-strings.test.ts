@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { sheetToHtml } from "../api/html.js";
 import { writeSstXml, parseSstXml } from "./shared-strings.js";
 import type { SST } from "./shared-strings.js";
 
@@ -72,6 +73,40 @@ describe("parseSstXml: rich text parsing", () => {
 		expect(items[0].t).toContain("Bold");
 		expect(items[0].t).toContain("Normal");
 		expect(items[0].h).toContain("<b>");
+	});
+
+	it("escapes rich text values while preserving generated formatting", () => {
+		const xml = `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">
+<si><r><rPr><b/><sz val="12"/></rPr><t>&lt;em data-marker=&quot;literal&quot;&gt;Text&lt;/em&gt;</t></r></si>
+</sst>`;
+		const sst = parseSstXml(xml, { cellHTML: true });
+		const item = sst.find((entry) => entry.t !== "");
+
+		expect(item?.h).toContain("<b>&lt;em data-marker=&quot;literal&quot;&gt;Text&lt;/em&gt;</b>");
+		expect(item?.h).not.toContain('<em data-marker="literal">');
+	});
+
+	it("drops invalid rich text style and alignment values", () => {
+		const xml = `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">
+<si><r><rPr><sz val="12pt;color:red"/><vertAlign val="mark"/></rPr><t>Styled</t></r></si>
+</sst>`;
+		const sst = parseSstXml(xml, { cellHTML: true });
+		const item = sst.find((entry) => entry.t !== "");
+
+		expect(item?.h).toBe('<span style="">Styled</span>');
+	});
+
+	it("keeps combined rich text markup nested through HTML export", () => {
+		const xml = `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="1" uniqueCount="1">
+<si><r><rPr><b/><i/><strike/><vertAlign val="superscript"/><u val="double"/><sz val="11"/></rPr><t>Nested</t></r></si>
+</sst>`;
+		const item = parseSstXml(xml, { cellHTML: true }).find((entry) => entry.t !== "");
+		const html = sheetToHtml({ "!ref": "A1", A1: { t: "s", v: item?.t || "", h: item?.h } });
+
+		expect(item?.h).toBe(
+			'<span style="text-decoration: underline;text-underline-style:double;font-size:11pt;"><b><i><s><sup>Nested</sup></s></i></b></span>',
+		);
+		expect(html).toContain(item?.h);
 	});
 
 	it("parses rich text with italic formatting", () => {
