@@ -766,13 +766,14 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	const range = safeDecodeRange(ref);
 	const appendRow = (rowIdx: number, rowCells: string[]): void => {
 		const rowInfo = ws["!rows"]?.[rowIdx];
-		const hasMetadata = rowInfo != null && (rowInfo.hpt !== undefined || rowInfo.hidden === true);
+		const hasFiniteHeight = rowInfo != null && Number.isFinite(rowInfo.hpt);
+		const hasMetadata = hasFiniteHeight || rowInfo?.hidden === true;
 		if (rowCells.length === 0 && !hasMetadata) {
 			return;
 		}
 		let rowTag = '<row r="' + (rowIdx + 1) + '"'; // 1-based row number
 		if (rowInfo) {
-			if (rowInfo.hpt !== undefined) {
+			if (hasFiniteHeight) {
 				rowTag += ' ht="' + rowInfo.hpt + '" customHeight="1"';
 			}
 			if (rowInfo.hidden === true) {

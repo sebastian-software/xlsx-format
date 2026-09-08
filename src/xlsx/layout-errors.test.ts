@@ -127,4 +127,40 @@ describe("worksheet layout metadata", () => {
 		expect(xml).toContain('<row r="1" ht="0" customHeight="1"></row>');
 		expect(xml.indexOf('<row r="1"')).toBeLessThan(xml.indexOf('<row r="5"'));
 	});
+
+	it("omits non-finite public row heights while preserving zero and hidden rows", async () => {
+		const ws = arrayToSheet([["data"]]);
+		setRowHeight(ws, 1, Number.NaN);
+		setRowHeight(ws, 2, Number.POSITIVE_INFINITY);
+		setRowHeight(ws, 3, 0);
+		ws["!rows"]![3].hidden = true;
+		const bytes = await write(createWorkbook(ws, "Layout"));
+		const xml = zipReadString(await zipRead(bytes), "xl/worksheets/sheet1.xml")!;
+
+		expect(xml).not.toContain('ht="NaN"');
+		expect(xml).not.toContain('ht="Infinity"');
+		expect(xml).not.toContain('<row r="2"');
+		expect(xml).not.toContain('<row r="3"');
+		expect(xml).toContain('<row r="4" ht="0" customHeight="1" hidden="1"></row>');
+
+		const result = await read(bytes);
+		expect(result.Sheets.Layout["!rows"]?.[3]).toMatchObject({ hpt: 0, hidden: true });
+	});
+
+	it("keeps direct hidden metadata when its height is non-finite", () => {
+		const xml = writeWorksheetXml(
+			{
+				"!ref": "A1",
+				"!rows": [{ hpt: Number.NaN }, { hpt: Number.NEGATIVE_INFINITY, hidden: true }, { hpt: 0 }],
+			},
+			{},
+			0,
+			{} as any,
+			{},
+		);
+
+		expect(xml).not.toContain('<row r="1"');
+		expect(xml).toContain('<row r="2" hidden="1"></row>');
+		expect(xml).toContain('<row r="3" ht="0" customHeight="1"></row>');
+	});
 });
