@@ -118,6 +118,15 @@ export function writeZipXlsx(wb: WorkBook, opts: any): ZipArchive {
 					return [ref, copied];
 				});
 			}
+			// A public helper can append a legacy-shaped comment to an imported thread.
+			// Serialize the copied list as one thread so no comment is discarded.
+			for (const [, list] of comments) {
+				if (list.some((comment) => comment.T === true)) {
+					for (const comment of list) {
+						comment.T = true;
+					}
+				}
+			}
 			needtc = comments.some(([, list]) => list.some((comment) => comment.T === true));
 			if (needtc) {
 				addRelationship(wsrels, -1, "../threadedComments/threadedComment" + rId + ".xml", RELTYPE.TCMNT);

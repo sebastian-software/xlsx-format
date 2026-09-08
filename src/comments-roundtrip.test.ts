@@ -56,16 +56,15 @@ describe("comment XLSX roundtrips", () => {
 		const sheet = arrayToSheet([["Thread"]]);
 		const author = 'A & "B" <C>';
 		addCellComment(sheet.A1, "<root> & Grüß dich\nnext", author);
-		addCellComment(sheet.A1, "reply & <more>", "Rémy");
-		for (const comment of sheet.A1.c!) {
-			comment.T = true;
-		}
+		sheet.A1.c![0].T = true;
 		sheet.A1.c!.hidden = true;
 
 		const imported = await read(await write(createWorkbook(sheet, "Threaded")));
 		const importedComments = imported.Sheets.Threaded.A1.c!;
+		addCellComment(imported.Sheets.Threaded.A1, "reply & <more>", "Rémy");
 		const before = importedComments.map((comment) => ({ ...comment }));
 		const beforeHidden = importedComments.hidden;
+		expect(importedComments.map((comment) => comment.T)).toStrictEqual([true, undefined]);
 
 		const secondBytes = await write(imported);
 		const thirdBytes = await write(imported);
@@ -92,6 +91,24 @@ describe("comment XLSX roundtrips", () => {
 			expect(comments[1]).toMatchObject({ a: "Rémy", t: "reply & <more>", T: true });
 			expect(comments.hidden).toBe(true);
 		}
+	});
+
+	it("serializes a legacy-shaped root and threaded reply as one thread", async () => {
+		const sheet = arrayToSheet([["Mixed"]]);
+		addCellComment(sheet.A1, "legacy root", "One");
+		addCellComment(sheet.A1, "threaded reply", "Two");
+		sheet.A1.c![1].T = true;
+		const original = sheet.A1.c!.map((comment) => ({ ...comment }));
+		const workbook = createWorkbook(sheet, "Mixed");
+
+		for (const bytes of [await write(workbook), await write(workbook)]) {
+			const result = await read(bytes);
+			const comments = result.Sheets.Mixed.A1.c!;
+			expect(comments).toHaveLength(2);
+			expect(comments[0]).toMatchObject({ a: "One", t: "legacy root", T: true });
+			expect(comments[1]).toMatchObject({ a: "Two", t: "threaded reply", T: true });
+		}
+		expect(sheet.A1.c!.map((comment) => ({ ...comment }))).toStrictEqual(original);
 	});
 
 	it("ignores non-cell worksheet properties that happen to contain comments", async () => {
