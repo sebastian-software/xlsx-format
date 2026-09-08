@@ -25,10 +25,13 @@ const proofItems = [
 const comparisonColumns = ["xlsx-format", "SheetJS", "ExcelJS"];
 
 const comparisonRows = [
-	{ label: "Runtime dependencies", values: ["0", "7", "9"], win: 0 },
-	{ label: "Read / write model", values: ["Fully async", "Sync", "Partial async"], win: 0 },
-	{ label: "Module format", values: ["ESM + CJS", "CJS", "CJS"], win: 0 },
-	{ label: "Browser exports", values: ["read() + write()", "Separate bundle", "Not supported"], win: 0 },
+	{
+		label: "Read / write model",
+		values: ["Promise API", "Synchronous public API", "Promise-based selected APIs"],
+		win: 0,
+	},
+	{ label: "Module format", values: ["ESM + CJS", "ESM + CJS", "CJS + browser build"], win: 0 },
+	{ label: "Browser exports", values: ["read() + write()", "Separate bundle", "exceljs.browser.js"], win: 0 },
 	{ label: "Styled reports", values: ["Typed style layer", "Utility model", "Workbook classes"], win: 0 },
 ];
 
@@ -85,7 +88,10 @@ const capabilityGroups = [
 	{ title: "Workbook core", items: ["Multiple sheets", "Defined names", "Properties", "Date systems"] },
 	{ title: "Cell data", items: ["Strings", "Numbers", "Dates", "Booleans", "Errors"] },
 	{ title: "Report styling", items: ["Fonts", "Fills", "Borders", "Alignment", "Number formats"] },
-	{ title: "Sheet structure", items: ["Merged cells", "Column widths", "Row heights", "Frozen panes", "Auto filters"] },
+	{
+		title: "Sheet structure",
+		items: ["Merged cells", "Column widths", "Row heights", "Frozen panes", "Auto filters"],
+	},
 	{ title: "Formulas & notes", items: ["Cell formulas", "Array formulas", "Shared formulas", "Threaded comments"] },
 	{ title: "Export guards", items: ["CSV escaping", "Link sanitizing", "Error codes", "ZIP & XML limits"] },
 ];
@@ -161,7 +167,7 @@ export default function HomePage() {
 					</h1>
 
 					<p className="xf-hero__lead">
-						A modern XLSX reader and writer for TypeScript. Fully async, tree-shakeable, and ready for the
+						A modern XLSX reader and writer for TypeScript. Promise-based, tree-shakeable, and ready for the
 						browser, Node, and the edge. Read, write, convert, and style workbooks without carrying a
 						spreadsheet framework.
 					</p>
@@ -211,15 +217,16 @@ export default function HomePage() {
 											{i + 1}
 										</span>
 										<span className="xf-code__src">
-											{line.length === 0 ? (
-												" "
-											) : (
-												line.map((tok, j) => (
-													<span key={j} className={tok.c ? `tok tok--${tok.c}` : undefined}>
-														{tok.t}
-													</span>
-												))
-											)}
+											{line.length === 0
+												? " "
+												: line.map((tok, j) => (
+														<span
+															key={j}
+															className={tok.c ? `tok tok--${tok.c}` : undefined}
+														>
+															{tok.t}
+														</span>
+													))}
 										</span>
 									</span>
 								))}
@@ -270,10 +277,7 @@ export default function HomePage() {
 										{ri + 3}
 									</span>
 									{row.cells.map((cell, ci) => (
-										<span
-											key={ci}
-											className={row.negative?.includes(ci) ? "is-neg" : undefined}
-										>
+										<span key={ci} className={row.negative?.includes(ci) ? "is-neg" : undefined}>
 											{cell}
 										</span>
 									))}
@@ -301,9 +305,8 @@ export default function HomePage() {
 						Most apps don&rsquo;t need a <em>spreadsheet framework</em>.
 					</h2>
 					<p>
-						The popular libraries ship support for dozens of legacy formats and pull in 7 to 9 runtime
-						dependencies. If the job is XLSX, CSV, and polished report exports, xlsx-format keeps the useful
-						parts and leaves the rest out of your bundle.
+						If the job is XLSX, CSV, and polished report exports, xlsx-format keeps the useful parts in a
+						focused bundle without requiring a spreadsheet framework.
 					</p>
 				</div>
 
@@ -320,11 +323,7 @@ export default function HomePage() {
 						<div className="xf-matrix__row" role="row" key={row.label}>
 							<span role="rowheader">{row.label}</span>
 							{row.values.map((value, i) => (
-								<span
-									key={i}
-									role="cell"
-									className={i === row.win ? "is-win" : "is-rival"}
-								>
+								<span key={i} role="cell" className={i === row.win ? "is-win" : "is-rival"}>
 									{i === row.win ? (
 										<Check size={14} aria-hidden="true" strokeWidth={3} />
 									) : (
@@ -414,7 +413,10 @@ export default function HomePage() {
 					<div>
 						<span className="xf-label xf-label--invert">Install the smaller layer</span>
 						<h2 id="cta-title">Start with async XLSX today.</h2>
-						<p>Keep the workbook framework out of your bundle. Your users download less, your build stays fast.</p>
+						<p>
+							Keep the workbook framework out of your bundle. Your users download less, your build stays
+							fast.
+						</p>
 					</div>
 					<div className="xf-cta-band__action">
 						<div className="xf-install">

@@ -7,9 +7,18 @@ export default defineConfig({
 		ardo({
 			title: "xlsx-format",
 			description:
-				"The XLSX library your bundler will thank you for. Zero dependencies. Fully async. TypeScript-first.",
+				"The XLSX library your bundler will thank you for. Zero dependencies. Promise-based read/write APIs. TypeScript-first.",
 
-			typedoc: true,
+			linkCheck: {
+				level: "error",
+			},
+
+			typedoc: {
+				entryPoints: ["../src/index.ts"],
+				markdown: {
+					breadcrumbs: false,
+				},
+			},
 
 			project: {
 				name: pkg.name,

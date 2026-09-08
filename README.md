@@ -10,7 +10,7 @@
 [![browser](https://img.shields.io/badge/Browser-supported-4285F4?logo=googlechrome&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 
-The XLSX library your bundler will thank you for. Zero dependencies. Fully async. Works in Node.js and the browser.
+The XLSX library your bundler will thank you for. Zero dependencies. Promise-based read and write APIs. Works in Node.js and the browser.
 Use it for simple data conversion, or replace ExcelJS for styled browser report exports without carrying a workbook framework just for formatting.
 
 **[Documentation](https://sebastian-software.github.io/xlsx-format/)** | **[API Reference](https://sebastian-software.github.io/xlsx-format/api-reference)**
@@ -37,25 +37,23 @@ await writeFile("output.xlsx", await write(createWorkbook(sheet, "Q4 Sales")));
 
 ## Why xlsx-format?
 
-Most projects just need XLSX -- but the popular libraries ship with support for dozens of legacy formats, pull in 7-9 runtime dependencies, and lock you into synchronous APIs that block the event loop.
+Most projects just need XLSX. A focused library keeps the bundle and workbook API small while leaving file-system I/O to the host application.
 
 xlsx-format does one thing well: read and write modern Excel files. The result is a library you can actually tree-shake, `await`, and ship to the browser without a separate bundle.
 
-|                     | **xlsx-format**                | **SheetJS (xlsx)**      | **ExcelJS**  |
-| ------------------- | ------------------------------ | ----------------------- | ------------ |
-| **Written in**      | TypeScript (strict)            | JavaScript (with .d.ts) | TypeScript   |
-| **Async**           | Yes (streaming ZIP)            | No                      | Partial      |
-| **Module format**   | ESM + CJS                      | CJS only                | CJS only     |
-| **Tree-shakeable**  | Yes                            | No                      | Partial      |
-| **Runtime deps**    | 0                              | 7                       | 9            |
-| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)   | No           |
-| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | 30+ formats             | XLSX / CSV   |
-| **Styled reports**  | Yes                            | Yes                     | Yes          |
-| **API style**       | Named exports, async           | Namespace object        | Class-based  |
-| **Test coverage**   | 91% ([Codecov][codecov])       | Not measured            | Not measured |
-| **License**         | Apache 2.0                     | Apache 2.0              | MIT          |
+|                     | **xlsx-format 2.4.2**          | **SheetJS 0.18.12**      | **ExcelJS 4.4.0**                |
+| ------------------- | ------------------------------ | ------------------------ | -------------------------------- |
+| **Written in**      | TypeScript (strict)            | JavaScript with typings  | JavaScript with TypeScript types |
+| **Async**           | Promise-based API              | Synchronous public API   | Promise-based selected APIs      |
+| **Module format**   | ESM + CJS                      | ESM + CJS                | CJS + browser build              |
+| **Tree-shakeable**  | Yes                            | Limited                  | Limited                          |
+| **Browser support** | Yes (`read` / `write`)         | Yes (separate bundle)    | Yes (`exceljs.browser.js`)       |
+| **Formats**         | XLSX / XLSM / CSV / TSV / HTML | Many spreadsheet formats | XLSX / CSV                       |
+| **Styled reports**  | Yes                            | Yes                      | Yes                              |
+| **API style**       | Named exports                  | Namespace object         | Class-based                      |
+| **License**         | Apache 2.0                     | Apache 2.0               | MIT                              |
 
-[codecov]: https://codecov.io/gh/sebastian-software/xlsx-format
+The version labels identify the snapshots used for this orientation table. The [SheetJS package metadata](https://github.com/SheetJS/sheetjs/blob/master/package.json) advertises ESM/CJS entry points and browser bundles. ExcelJS documents its browser build and workbook API in its [browser documentation](https://github.com/exceljs/exceljs#browser).
 
 For a detailed feature matrix (cell data, formulas, styles, comments, hyperlinks, and more), see [Why xlsx-format?](https://sebastian-software.github.io/xlsx-format/guide/why-xlsx-format) in the docs.
 
@@ -95,13 +93,13 @@ link.click();
 
 For vulnerability reports and supported versions, see the [Security Policy](SECURITY.md). The [Security Considerations guide](https://sebastian-software.github.io/xlsx-format/guide/security) covers untrusted uploads, export safety, and recommended deployment patterns.
 
-When exporting user-controlled data, opt into the built-in guards for spreadsheet formulas and unsafe HTML links:
+When exporting user-controlled data, the built-in guards for spreadsheet formulas and unsafe HTML links are enabled by default. Keep those defaults for untrusted data; set the options to `false` only when you need exact text or link fidelity and control the output destination:
 
 ```typescript
 import { sheetToCsv, sheetToHtml } from "xlsx-format";
 
-const csv = sheetToCsv(sheet, { escapeFormulae: true });
-const html = sheetToHtml(sheet, { sanitizeLinks: true });
+const csv = sheetToCsv(sheet); // escapeFormulae defaults to true
+const html = sheetToHtml(sheet); // sanitizeLinks defaults to true
 ```
 
 Reads are bounded by configurable limits for ZIP entries, total uncompressed bytes, per-entry bytes, XML text, and worksheet dimensions. Keep the defaults for untrusted uploads; raise `ReadOptions` limits explicitly only for large trusted files.
@@ -161,7 +159,7 @@ See the [Styled Workbooks guide](https://sebastian-software.github.io/xlsx-forma
 
 The API is intentionally close to SheetJS. Three things change:
 
-1. `read()` and `write()` are `async` (ZIP uses streaming)
+1. `read()` and `write()` return Promises. ZIP compression and decompression use Web Streams, while XML parsing, worksheet traversal, and final outputs use synchronous in-memory work. Move large or latency-sensitive jobs to a worker.
 2. Named imports replace the namespace: `import { read } from "xlsx-format"`
 3. Utility names are camelCase: `sheetToJson` instead of `XLSX.utils.sheet_to_json`
 
