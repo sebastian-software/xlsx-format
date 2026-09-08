@@ -163,6 +163,17 @@ describe("export security guards", () => {
 		expect(sheetToHtml(ws)).not.toContain("<tr>");
 	});
 
+	it("writes the effective occupied range as the worksheet dimension", async () => {
+		const ws = { "!ref": "A1:XFD1048576", B1: { t: "n", v: 7 } } as WorkSheet;
+		const written = await write(createWorkbook(ws, "S"));
+		const zip = await zipRead(written);
+		const worksheetXml = decoder.decode(zip.files["xl/worksheets/sheet1.xml"]);
+		const parsed = await read(written);
+
+		expect(worksheetXml).toContain('<dimension ref="A1:B1"/>');
+		expect(parsed.Sheets.S["!ref"]).toBe("A1:B1");
+	});
+
 	it("rejects an occupied far edge under every default export budget", async () => {
 		const ws = {
 			"!ref": "A1:A1048576",
@@ -218,7 +229,7 @@ describe("export security guards", () => {
 		ws["!cols"][0] = { width: 10 };
 
 		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 1 })).rejects.toThrow(
-			/worksheet export cell count 2 exceeds limit 1/,
+			/worksheet column metadata count 2 exceeds limit 1/,
 		);
 		await expect(write(createWorkbook(ws, "S"), { maxWorksheetCells: 2 })).resolves.toBeInstanceOf(Uint8Array);
 

@@ -274,6 +274,17 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 		expect(dense ? ws["!data"]?.[0]?.[1]?.l?.Target : ws.B1?.l?.Target).toBe("#Sheet2!A1");
 	});
 
+	it.each([false, true])("limits hyperlink expansion to retained rows in dense=%s mode", (dense) => {
+		const xml = `<worksheet>
+			<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>
+			<hyperlinks><hyperlink ref="A1:A2" location="Sheet2!A1"/></hyperlinks>
+		</worksheet>`;
+
+		const ws = parseWorksheetXml(xml, { dense, sheetRows: 1, maxWorksheetCells: 2 });
+		expect(dense ? ws["!data"]?.[0]?.[0]?.l?.Target : ws.A1?.l?.Target).toBe("#Sheet2!A1");
+		expect(dense ? ws["!data"]?.[1]?.[0] : ws.A2).toBeUndefined();
+	});
+
 	it("charges repeated column expansion and rejects invalid column dimensions", () => {
 		const columns = (attrs: string) => `<worksheet><cols>${attrs}</cols><sheetData/></worksheet>`;
 		const repeated = columns('<col min="1" max="2"/><col min="1" max="2"/>');
@@ -299,6 +310,14 @@ describe("parseWorksheetXml: direct XML parsing", () => {
 				'<worksheet><sheetData><row r="1048577"><c r="A1048577"><v>7</v></c></row></sheetData></worksheet>',
 			),
 		).toThrow(/row index.*XLSX worksheet bounds/);
+	});
+
+	it.each([false, true])("rejects invalid cell rows in dense=%s mode", (dense) => {
+		const worksheet = (ref: string) =>
+			`<worksheet><sheetData><row r="1"><c r="${ref}"><v>7</v></c></row></sheetData></worksheet>`;
+
+		expect(() => parseWorksheetXml(worksheet("A1048577"), { dense })).toThrow(/cell row.*XLSX worksheet bounds/);
+		expect(() => parseWorksheetXml(worksheet("A2"), { dense })).toThrow(/row does not match containing row/);
 	});
 
 	it("validates worksheet count options even when sheet data is absent", () => {

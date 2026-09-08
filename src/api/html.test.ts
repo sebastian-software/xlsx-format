@@ -13,6 +13,38 @@ describe("html.ts — sheetToHtml", () => {
 		expect(html).toContain('colspan="2"');
 	});
 
+	it("indexes merge metadata once before rendering cells", () => {
+		const merges = [];
+		for (let row = 10; row < 20; ++row) {
+			for (let column = 0; column < 20; column += 2) {
+				merges.push({ s: { r: row, c: column }, e: { r: row, c: column + 1 } });
+			}
+		}
+		merges.push({ s: { r: 0, c: 20 }, e: { r: 1_048_575, c: 20 } });
+		let reads = 0;
+		const trackedMerges = new Proxy(merges, {
+			get(target, key, receiver) {
+				if (typeof key === "string" && key !== "length" && Number.isInteger(Number(key))) {
+					reads++;
+				}
+				return Reflect.get(target, key, receiver);
+			},
+		});
+		const ws: any = {
+			"!ref": "A1:T20",
+			"!merges": trackedMerges,
+			A1: { t: "s", v: "start" },
+			A11: { t: "s", v: "merged" },
+			T20: { t: "s", v: "end" },
+		};
+
+		const html = sheetToHtml(ws, { maxWorksheetCells: 501 });
+		expect(reads).toBe(101);
+		expect(html).toContain('colspan="2"');
+		expect(html).toContain("merged");
+		expect(() => sheetToHtml(ws, { maxWorksheetCells: 500 })).toThrow(/merge metadata count 501 exceeds limit 500/);
+	});
+
 	it("should handle NaN as #NUM! and Infinity as #DIV/0!", () => {
 		const ws: any = {
 			"!ref": "A1:B1",
@@ -205,7 +237,8 @@ describe("html.ts — htmlToSheet", () => {
 
 		expect(() => htmlToSheet(html, { maxWorksheetCells: 3 })).toThrow(/worksheet cell count 4 exceeds limit 3/);
 		expect(htmlToSheet(html, { maxWorksheetCells: 2, sheetRows: 1 })["!ref"]).toBe("A1:B1");
-		expect(() => htmlToSheet(html, { maxWorksheetRows: 0 })).toThrow(/worksheet row count 2 exceeds limit 0/);
+		expect(() => htmlToSheet(html, { maxWorksheetRows: 0 })).toThrow(/worksheet row count 1 exceeds limit 0/);
+		expect(htmlToSheet(html, { sheetRows: 1, maxWorksheetRows: 1, maxWorksheetCells: 2 })["!ref"]).toBe("A1:B1");
 	});
 
 	it("rejects invalid and out-of-bounds span dimensions", () => {
@@ -233,6 +266,7 @@ describe("html.ts — htmlToSheet", () => {
 		expect(ws.A3?.v).toBe("C");
 		expect(() => htmlToSheet(html, { maxWorksheetCells: 3 })).toThrow(/worksheet cell count 4 exceeds limit 3/);
 		expect(htmlToSheet(html, { sheetRows: 1, maxWorksheetCells: 1 }).A1?.v).toBe("A");
+		expect(htmlToSheet(html, { sheetRows: 2, maxWorksheetCells: 3 }).B2?.v).toBe("B");
 	});
 
 	it("should unescape HTML entities", () => {

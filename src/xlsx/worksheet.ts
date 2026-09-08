@@ -177,8 +177,12 @@ function parseWorksheetXml_hlinks(
 		) {
 			throw new XlsxError("MALFORMED", "Invalid worksheet hyperlink range: range exceeds XLSX worksheet bounds");
 		}
-		budget.charge("worksheet cell", (rng.e.r - rng.s.r + 1) * (rng.e.c - rng.s.c + 1));
-		for (let R = rng.s.r; R <= rng.e.r; ++R) {
+		if (opts.sheetRows > 0 && rng.s.r >= opts.sheetRows) {
+			continue;
+		}
+		const endRow = opts.sheetRows > 0 ? Math.min(rng.e.r, opts.sheetRows - 1) : rng.e.r;
+		budget.charge("worksheet cell", (endRow - rng.s.r + 1) * (rng.e.c - rng.s.c + 1));
+		for (let R = rng.s.r; R <= endRow; ++R) {
 			for (let C = rng.s.c; C <= rng.e.c; ++C) {
 				const addr = encodeCell({ r: R, c: C });
 				const dense = s["!data"] != null;
@@ -221,6 +225,30 @@ function parseWorksheetXml_hlinks(
 
 /** Regex to match <c> (cell) elements, capturing inner content */
 const cellregex = /<(?:\w+:)?c\b[^>]*?(?:\/>|>([\s\S]*?)<\/(?:\w+:)?c>)/g;
+const cellReferenceRegex = /^([A-Z]+)([1-9]\d*)$/;
+
+function parseWorksheetCellColumn(ref: string, expectedRow: number): number {
+	const match = cellReferenceRegex.exec(ref);
+	if (!match) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell reference");
+	}
+	const row = Number(match[2]) - 1;
+	if (!Number.isSafeInteger(row) || row < 0 || row >= XLSX_MAX_ROWS) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell row: value exceeds XLSX worksheet bounds");
+	}
+	if (row !== expectedRow) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell reference: row does not match containing row");
+	}
+	let column = 0;
+	for (const letter of match[1]) {
+		column = 26 * column + (letter.charCodeAt(0) - 64);
+	}
+	column -= 1;
+	if (!Number.isSafeInteger(column) || column < 0 || column >= XLSX_MAX_COLUMNS) {
+		throw new XlsxError("MALFORMED", "Invalid worksheet cell column: value exceeds XLSX worksheet bounds");
+	}
+	return column;
+}
 
 /**
  * Parse the <sheetData> XML into cell objects within the worksheet.
@@ -308,6 +336,7 @@ function parseSheetData(
 					if (!skippedRef || !skippedFormulaTagMatch || !skippedFormulaMatch?.[1]) {
 						continue;
 					}
+					parseWorksheetCellColumn(skippedRef, R);
 					const skippedFormulaTag = parseXmlTag(skippedFormulaTagMatch[0], undefined, undefined, opts);
 					if (skippedFormulaTag.t !== "shared" || skippedFormulaTag.si == null) {
 						continue;
@@ -345,21 +374,7 @@ function parseSheetData(
 				continue;
 			}
 
-			// Decode column letter(s) from the cell reference (e.g. "AB12" -> column index)
-			let C = 0;
-			for (let ci = 0; ci < ref.length; ++ci) {
-				const cc = ref.charCodeAt(ci);
-				// A-Z: accumulate column index (base-26)
-				if (cc >= 65 && cc <= 90) {
-					C = 26 * C + (cc - 64);
-				} else {
-					break;
-				}
-			}
-			C -= 1; // Convert to 0-based
-			if (!Number.isSafeInteger(C) || C < 0 || C >= XLSX_MAX_COLUMNS) {
-				throw new XlsxError("MALFORMED", "Invalid worksheet cell column: value exceeds XLSX worksheet bounds");
-			}
+			const C = parseWorksheetCellColumn(ref, R);
 
 			// Expand the guessed range to include this cell
 			if (R < refguess.s.r) {
@@ -885,7 +900,9 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	);
 
 	const ref = ws["!ref"] || "A1";
-	lines.push('<dimension ref="' + ref + '"/>');
+	const range = ws["!ref"] ? clampLargeExportRange(ws, safeDecodeRange(ref), budget) : null;
+	const effectiveRef = range ? encodeRange(range) : "A1";
+	lines.push('<dimension ref="' + effectiveRef + '"/>');
 
 	lines.push(writeWorksheetXml_sheetViews(ws, _idx));
 
@@ -928,7 +945,6 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 	lines.push("<sheetData>");
 
 	const dense = ws["!data"] != null;
-	const range = ws["!ref"] ? clampLargeExportRange(ws, safeDecodeRange(ref), budget) : null;
 	const firstRow = range?.s.r ?? 1;
 	const lastRow = range?.e.r ?? 0;
 	const firstColumn = range?.s.c ?? 0;
