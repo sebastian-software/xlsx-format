@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { arrayToSheet, sheetToJson, sheetToCsv, csvToSheet } from "../index.js";
+import { arrayToSheet, csvToSheet, sheetToArray, sheetToCsv, sheetToJson } from "../index.js";
 import { sheetToTxt } from "./csv.js";
 
 describe("csv.ts: advanced CSV features", () => {
@@ -130,6 +130,44 @@ describe("csv.ts: advanced CSV features", () => {
 		expect(sheetToCsv(ws, { escapeFormulae: false })).toContain('"=IF(A2,B2,C2)"');
 	});
 
+	it("quotes value fields when a multi-character separator can overlap", () => {
+		expect(sheetToCsv(arrayToSheet([["x|", "y"]]), { FS: "||" })).toBe('"x|"||y');
+		expect(sheetToCsv(arrayToSheet([["x|"], ["y"]]), { RS: "||" })).toBe('"x|"||y');
+	});
+
+	it("quotes formula-only fields when a multi-character separator can overlap", () => {
+		const fieldFormula: any = { A1: { t: "z", f: "IF(A1|B1)" }, "!ref": "A1:A1" };
+		const recordFormula: any = {
+			A1: { t: "z", f: "IF(A1|B1)" },
+			A2: { t: "z", f: "ok" },
+			"!ref": "A1:A2",
+		};
+
+		expect(sheetToCsv(fieldFormula, { FS: "||", escapeFormulae: false })).toBe('"=IF(A1|B1)"');
+		expect(sheetToCsv(recordFormula, { RS: "||", escapeFormulae: false })).toBe('"=IF(A1|B1)"||=ok');
+	});
+
+	it("sheetToCsv formula-only cells honor custom separators and formula protection", () => {
+		const ws: any = { A1: { t: "z", f: "IF(A2;B2;C2)" }, "!ref": "A1:A1" };
+		const customRecord: any = { A1: { t: "z", f: "IF(A2||B2)" }, "!ref": "A1:A1" };
+
+		expect(sheetToCsv(ws, { FS: ";" })).toBe('"\'=IF(A2;B2;C2)"');
+		expect(sheetToCsv(ws, { FS: ";", escapeFormulae: false })).toBe('"=IF(A2;B2;C2)"');
+		expect(sheetToCsv(ws, { FS: ";", forceQuotes: true })).toBe('"\'=IF(A2;B2;C2)"');
+		expect(sheetToCsv(customRecord, { RS: "||" })).toBe('"\'=IF(A2||B2)"');
+	});
+
+	it("sheetToTxt formula-only cells quote tabs, quotes, and newlines", () => {
+		const tabFormula: any = { A1: { t: "z", f: "IF(A1\tB1)" }, "!ref": "A1:A1" };
+		const quotedFormula: any = { A1: { t: "z", f: 'IF(A1="x";A2;A3)' }, "!ref": "A1:A1" };
+		const newlineFormula: any = { A1: { t: "z", f: "SUM(A1\nA2)" }, "!ref": "A1:A1" };
+
+		expect(sheetToTxt(tabFormula)).toBe('"\'=IF(A1\tB1)"');
+		expect(sheetToTxt(tabFormula, { escapeFormulae: false })).toBe('"=IF(A1\tB1)"');
+		expect(sheetToTxt(quotedFormula)).toBe('"\'=IF(A1=""x"";A2;A3)"');
+		expect(sheetToTxt(newlineFormula)).toBe('"\'=SUM(A1\nA2)"');
+	});
+
 	it("sheetToTxt produces tab-separated output", () => {
 		const ws = arrayToSheet([
 			["A", "B"],
@@ -151,6 +189,20 @@ describe("csv.ts: advanced CSV features", () => {
 		const ws = csvToSheet("A,B\r\n1,2\r\n3,4");
 		const rows = sheetToJson(ws, { header: 1 });
 		expect(rows.length).toBeGreaterThanOrEqual(3);
+	});
+
+	it("csvToSheet preserves real trailing fields and blank records without EOF phantoms", () => {
+		expect(sheetToArray(csvToSheet(""), { header: 1 })).toStrictEqual([]);
+		expect(sheetToArray(csvToSheet("one"), { header: 1 })).toStrictEqual([["one"]]);
+		expect(sheetToArray(csvToSheet("a,b"), { header: 1 })).toStrictEqual([["a", "b"]]);
+		expect(sheetToArray(csvToSheet("a,b,"), { header: 1 })).toStrictEqual([["a", "b", ""]]);
+		expect(sheetToArray(csvToSheet("a,b\n"), { header: 1 })).toStrictEqual([["a", "b"]]);
+		expect(sheetToArray(csvToSheet("a,b\r\n1,2\r\n"), { header: 1 })).toStrictEqual([
+			["a", "b"],
+			[1, 2],
+		]);
+		expect(sheetToArray(csvToSheet("a,b\n\n"), { header: 1 })).toStrictEqual([["a", "b"], [null]]);
+		expect(sheetToArray(csvToSheet('"a,b"'), { header: 1 })).toStrictEqual([["a,b"]]);
 	});
 
 	it("csvToSheet with quoted fields containing newlines", () => {
