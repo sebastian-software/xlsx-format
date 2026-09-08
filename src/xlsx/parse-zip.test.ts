@@ -123,6 +123,15 @@ describe("parse-zip: dense mode and cellStyles", () => {
 });
 
 describe("parse-zip: required parts and configured limits", () => {
+	it("reads a worksheet part whose OPC path differs in ASCII case", async () => {
+		const zip = await zipRead(await write(createWorkbook(arrayToSheet([["value"]]), "S")));
+		zip.files["XL/WORKSHEETS/SHEET1.XML"] = zip.files["xl/worksheets/sheet1.xml"];
+		Reflect.deleteProperty(zip.files, "xl/worksheets/sheet1.xml");
+
+		const workbook = await read(await zipWrite(zip));
+		expect(workbook.Sheets.S.A1?.v).toBe("value");
+	});
+
 	it("enforces worksheet cell limits without requiring WTF mode", async () => {
 		const data = await write(createWorkbook(arrayToSheet([[1, 2]]), "S"));
 

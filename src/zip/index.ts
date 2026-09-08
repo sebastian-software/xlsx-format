@@ -25,6 +25,34 @@ const DEFAULT_MAX_ZIP_ENTRIES = 10000;
 const DEFAULT_MAX_TOTAL_UNCOMPRESSED_BYTES = 512 * 1024 * 1024;
 const DEFAULT_MAX_ENTRY_UNCOMPRESSED_BYTES = 256 * 1024 * 1024;
 
+function stripLeadingSlash(path: string): string {
+	return path.charAt(0) === "/" ? path.slice(1) : path;
+}
+
+function asciiLower(path: string): string {
+	return path.replace(/[A-Z]/g, (character) => character.toLowerCase());
+}
+
+/** Resolve an OPC part name using exact, leading-slash, then ASCII case-insensitive matching. */
+function resolveZipPath(archive: ZipArchive, path: string): string | null {
+	if (Object.hasOwn(archive.files, path)) {
+		return path;
+	}
+	const alternate = path.startsWith("/") ? path.slice(1) : "/" + path;
+	if (Object.hasOwn(archive.files, alternate)) {
+		return alternate;
+	}
+
+	const foldedPath = asciiLower(stripLeadingSlash(path));
+	const matches = Object.keys(archive.files).filter(
+		(candidate) => asciiLower(stripLeadingSlash(candidate)) === foldedPath,
+	);
+	if (matches.length > 1) {
+		throw new XlsxError("DUPLICATE", `Ambiguous ZIP entry path ${path} matches ${matches.join(", ")}`);
+	}
+	return matches[0] || null;
+}
+
 // -- ZIP format signatures (little-endian magic numbers) --
 /** Local file header signature: "PK\x03\x04" */
 const SIG_LOCAL = 0x04034b50;
@@ -418,16 +446,11 @@ export async function zipWrite(archive: ZipArchive, compress?: boolean): Promise
  * @returns Decoded string, or `null` if the file is not found
  */
 export function zipReadString(archive: ZipArchive, path: string): string | null {
-	let data = archive.files[path];
-	if (!data) {
-		// Try with or without leading slash as fallback
-		const normalized = path.startsWith("/") ? path.slice(1) : "/" + path;
-		data = archive.files[normalized];
-	}
-	if (!data) {
+	const resolvedPath = resolveZipPath(archive, path);
+	if (resolvedPath == null) {
 		return null;
 	}
-	return decoder.decode(data);
+	return decoder.decode(archive.files[resolvedPath]);
 }
 
 /**
@@ -457,19 +480,5 @@ export function zipCreate(): ZipArchive {
  * @returns `true` if the file exists
  */
 export function zipHas(archive: ZipArchive, path: string): boolean {
-	if (archive.files[path]) {
-		return true;
-	}
-	const normalized = path.startsWith("/") ? path.slice(1) : "/" + path;
-	if (archive.files[normalized]) {
-		return true;
-	}
-	// Case-insensitive fallback for interoperability with different ZIP tools
-	const lpath = path.toLowerCase();
-	for (const k of Object.keys(archive.files)) {
-		if (k.toLowerCase() === lpath) {
-			return true;
-		}
-	}
-	return false;
+	return resolveZipPath(archive, path) != null;
 }
