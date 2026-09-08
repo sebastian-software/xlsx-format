@@ -5,6 +5,7 @@ import {
 	createWorkbook,
 	appendSheet,
 	arrayToSheet,
+	sheetToArray,
 	sheetToJson,
 	createSheet,
 	setCellStyle,
@@ -208,13 +209,22 @@ describe("Formulas", () => {
 
 	it("formula without pre-computed value", async () => {
 		const ws = createSheet();
-		ws.A1 = { t: "n", f: "1+1" }; // no .v
+		ws.A1 = { t: "n", f: "TODAY()" }; // no .v
 		ws["!ref"] = "A1";
-		setCellStyle(ws.A1, { numFmt: "0.00" });
+		setCellStyle(ws.A1, { numFmt: "yyyy-mm-dd" });
 		const wb2 = await roundtrip(createWorkbook(ws, "S"), { cellStyles: true }, { cellStyles: true });
-		expect(wb2.Sheets.S.A1).toMatchObject({ t: "n", f: "1+1" });
-		expect(wb2.Sheets.S.A1.v).toBeUndefined();
-		expect(wb2.Sheets.S.A1.s?.numFmt).toBe("0.00");
+		const result = wb2.Sheets.S;
+		expect(result.A1).toMatchObject({ t: "n", f: "TODAY()" });
+		expect(result.A1.v).toBeUndefined();
+		expect(result.A1.s?.numFmt).toBe("yyyy-mm-dd");
+		expect(sheetToArray(result)).toStrictEqual([[]]);
+		expect(sheetToArray(result, { raw: false })).toStrictEqual([[]]);
+		expect(sheetToArray(result, { dateOutput: "iso" })).toStrictEqual([[]]);
+		expect(sheetToArray(result, { defval: "BLANK" })).toStrictEqual([["BLANK"]]);
+		expect(sheetToJson(result, { header: ["value"], blankrows: true })).toStrictEqual([{}]);
+		expect(sheetToJson(result, { header: ["value"], raw: false, blankrows: true })).toStrictEqual([{}]);
+		expect(sheetToJson(result, { header: ["value"], dateOutput: "iso", blankrows: true })).toStrictEqual([{}]);
+		expect(sheetToJson(result, { header: ["value"], defval: "BLANK" })).toStrictEqual([{ value: "BLANK" }]);
 	});
 });
 

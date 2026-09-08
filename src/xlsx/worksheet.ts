@@ -184,6 +184,7 @@ function parseSheetData(
 	let cellCount = 0;
 	const sharedFormulas = new Map<string, { formula: string; origin: string }>();
 	const pendingSharedFormulas: { cell: CellObject; ref: string; si: string }[] = [];
+	const unresolvedSharedFormulaIds = new Set<string>();
 
 	// Split by </row> boundaries to isolate each row's content
 	const rows = sdata.split(/<\/(?:\w+:)?row>/);
@@ -207,8 +208,9 @@ function parseSheetData(
 			continue;
 		}
 
-		// Extract row properties (height, hidden)
-		if (rowTag.ht || rowTag.hidden) {
+		const rowIsWithinLimit = !opts.sheetRows || R < opts.sheetRows;
+		// Extract row properties (height, hidden) only for retained rows.
+		if (rowIsWithinLimit && (rowTag.ht || rowTag.hidden)) {
 			if (!s["!rows"]) {
 				s["!rows"] = [];
 			}
@@ -223,8 +225,46 @@ function parseSheetData(
 			}
 		}
 
-		// Skip rows beyond the sheetRows limit
-		if (opts.sheetRows && R >= opts.sheetRows) {
+		// Skipped rows are not materialized. If a retained cell references a
+		// shared-formula master later in the sheet, scan only until those masters
+		// are found and count every inspected cell against the safety limit.
+		if (!rowIsWithinLimit) {
+			if (opts.cellFormula !== false && unresolvedSharedFormulaIds.size > 0) {
+				cellregex.lastIndex = 0;
+				let skippedCellMatch;
+				while ((skippedCellMatch = cellregex.exec(rowStr))) {
+					assertXmlCountWithinLimit("worksheet cell", ++cellCount, maxWorksheetCells);
+					const skippedCellTag = parseXmlTag(
+						skippedCellMatch[0].match(/<(?:\w+:)?c\b[^>]*/)?.[0] + ">" || "",
+						undefined,
+						undefined,
+						opts,
+					);
+					const skippedRef = skippedCellTag.r;
+					const skippedCellValue = skippedCellMatch[1] || "";
+					const skippedFormulaTagMatch = skippedCellValue.match(/<(?:\w+:)?f\b[^>]*>/);
+					const skippedFormulaMatch = skippedCellValue.match(/<(?:\w+:)?f\b[^>]*>([\s\S]*?)<\/(?:\w+:)?f>/);
+					if (!skippedRef || !skippedFormulaTagMatch || !skippedFormulaMatch?.[1]) {
+						continue;
+					}
+					const skippedFormulaTag = parseXmlTag(skippedFormulaTagMatch[0], undefined, undefined, opts);
+					if (skippedFormulaTag.t !== "shared" || skippedFormulaTag.si == null) {
+						continue;
+					}
+					const si = String(skippedFormulaTag.si);
+					if (!unresolvedSharedFormulaIds.has(si)) {
+						continue;
+					}
+					sharedFormulas.set(si, {
+						formula: unescapeXml(skippedFormulaMatch[1]),
+						origin: skippedRef,
+					});
+					unresolvedSharedFormulaIds.delete(si);
+					if (unresolvedSharedFormulaIds.size === 0) {
+						break;
+					}
+				}
+			}
 			continue;
 		}
 
@@ -367,6 +407,7 @@ function parseSheetData(
 					if (formula) {
 						cell.f = formula;
 						sharedFormulas.set(si, { formula, origin: ref });
+						unresolvedSharedFormulaIds.delete(si);
 					} else {
 						const master = sharedFormulas.get(si);
 						if (master) {
@@ -378,6 +419,7 @@ function parseSheetData(
 							});
 						} else {
 							pendingSharedFormulas.push({ cell, ref, si });
+							unresolvedSharedFormulaIds.add(si);
 						}
 					}
 				} else if (formula !== undefined) {
