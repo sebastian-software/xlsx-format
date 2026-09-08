@@ -1,5 +1,15 @@
-import { ArdoNav, ArdoNavLink, ArdoRootLayout, ArdoRoot } from "ardo/ui";
-import type { ArdoContextItem, SidebarItem } from "ardo";
+import {
+	ArdoGeneratedSidebar,
+	ArdoHeader,
+	ArdoNav,
+	ArdoNavLink,
+	ArdoRoot,
+	ArdoRootLayout,
+	ArdoSidebar,
+	ArdoSidebarGroup,
+	ArdoSidebarLink,
+	ArdoSidebarSection,
+} from "ardo/ui";
 import config from "virtual:ardo/config";
 import type { MetaFunction } from "react-router";
 import "ardo/ui/styles.css";
@@ -11,56 +21,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
 	return <ArdoRootLayout>{children}</ArdoRootLayout>;
 }
 
-const contexts = [
-	{
-		id: "guide",
-		label: "Guide",
-		href: "/guide/getting-started",
-		match: "/guide",
-	},
-	{
-		id: "api-reference",
-		label: "API Reference",
-		href: "/api-reference",
-		match: "/api-reference",
-	},
-] satisfies ArdoContextItem[];
-
-const sidebars = {
-	guide: [
-		{ text: "Getting Started", link: "/guide/getting-started" },
-		{ text: "Styled Workbooks", link: "/guide/styled-workbooks" },
-		{ text: "Why xlsx-format?", link: "/guide/why-xlsx-format" },
-		{ text: "Migration from SheetJS", link: "/guide/migration" },
-		{ text: "Security Considerations", link: "/guide/security" },
-	],
-	"api-reference": [
-		{ text: "Classes", link: "/api-reference/classes" },
-		{ text: "Functions", link: "/api-reference/functions" },
-		{ text: "Interfaces", link: "/api-reference/interfaces" },
-		{ text: "Types", link: "/api-reference/types" },
-		{ text: "Version", link: "/api-reference/variables/version" },
-	],
-} satisfies Record<string, SidebarItem[]>;
-
 export default function Root() {
 	return (
-		<ArdoRoot
-			config={config}
-			sidebar={sidebars}
-			contexts={contexts}
-			headerProps={{
-				nav: (
-					<ArdoNav>
-						<ArdoNavLink to="/guide/getting-started" activeMatch="/guide">
-							Guide
-						</ArdoNavLink>
-						<ArdoNavLink to="/api-reference" activeMatch="/api-reference">
-							API
-						</ArdoNavLink>
-					</ArdoNav>
-				),
-			}}
-		/>
+		<ArdoRoot config={config}>
+			<ArdoHeader>
+				<ArdoNav>
+					<ArdoNavLink to="/guide/getting-started">Guide</ArdoNavLink>
+					<ArdoNavLink to="/api-reference">API</ArdoNavLink>
+				</ArdoNav>
+			</ArdoHeader>
+			<ArdoSidebar>
+				<ArdoSidebarSection id="guide" label="Guide" to="/guide/getting-started">
+					<ArdoSidebarGroup title="Guide" collapsible={false}>
+						<ArdoSidebarLink to="/guide/getting-started">Getting Started</ArdoSidebarLink>
+						<ArdoSidebarLink to="/guide/styled-workbooks">Styled Workbooks</ArdoSidebarLink>
+						<ArdoSidebarLink to="/guide/why-xlsx-format">Why xlsx-format?</ArdoSidebarLink>
+						<ArdoSidebarLink to="/guide/migration">Migration from SheetJS</ArdoSidebarLink>
+						<ArdoSidebarLink to="/guide/security">Security Considerations</ArdoSidebarLink>
+					</ArdoSidebarGroup>
+				</ArdoSidebarSection>
+				<ArdoSidebarSection id="api-reference" label="API Reference" to="/api-reference">
+					<ArdoGeneratedSidebar section="api-reference" />
+				</ArdoSidebarSection>
+			</ArdoSidebar>
+		</ArdoRoot>
 	);
 }
