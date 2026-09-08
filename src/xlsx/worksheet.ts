@@ -1042,7 +1042,7 @@ export function writeWorksheetXml(ws: WorkSheet, opts: any, _idx: number, _rels:
 		);
 	}
 
-	const legacyDrawing = Object.values(_rels["!id"]).find((relationship) => relationship.Type === RELTYPE.VML);
+	const legacyDrawing = Object.values(_rels?.["!id"] || {}).find((relationship) => relationship.Type === RELTYPE.VML);
 	if (legacyDrawing) {
 		lines.push(writeXmlElement("legacyDrawing", null, { "r:id": legacyDrawing.Id }));
 	}
