@@ -215,6 +215,9 @@ function normalizeCellStyle(cell: CellObject, opts?: any): NormalizedCellStyle |
 	if (out.numFmt == null && cell.z != null) {
 		out.numFmt = cell.z;
 	}
+	if (out.numFmt == null && cell.XF?.numFmt != null) {
+		out.numFmt = cell.XF.numFmt;
+	}
 	return Object.keys(out).some((key) => (out as any)[key] !== undefined) ? out : undefined;
 }
 

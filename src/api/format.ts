@@ -19,7 +19,7 @@ function resolveNumberFormat(fmt: unknown, options?: any): string | undefined {
 }
 
 function resolveCellNumberFormat(cell: CellObject, options?: any): string | undefined {
-	return resolveNumberFormat(cell.z ?? cell.XF?.numFmtId, options);
+	return resolveNumberFormat(cell.z ?? cell.XF?.numFmt ?? cell.XF?.numFmtId, options);
 }
 
 /** Return the date/time classification for a cell's number format. */
@@ -64,12 +64,16 @@ function normalizeDateOutput(date: Date, options?: any): Date {
  * Attempt to format a cell value using the cell's number format or XF record.
  * Falls back to a plain string coercion if all formatting attempts fail.
  */
-function safeFormatCell(cell: CellObject, value: any): string {
+function safeFormatCell(cell: CellObject, value: any, options?: any): string {
 	const isDateCell = cell.t === "d" && value instanceof Date;
-	// First try the explicit format string stored on the cell (cell.z)
-	if (cell.z != null) {
+	const numberFormat = resolveCellNumberFormat(cell, options);
+	if (numberFormat != null) {
 		try {
-			cell.w = formatNumber(cell.z, isDateCell ? dateToSerialNumber(value) : value);
+			cell.w = formatNumber(
+				numberFormat,
+				isDateCell ? dateToSerialNumber(value, options?.date1904) : value,
+				options,
+			);
 			return cell.w;
 		} catch {}
 	}
@@ -78,7 +82,8 @@ function safeFormatCell(cell: CellObject, value: any): string {
 	try {
 		cell.w = formatNumber(
 			(cell.XF || {}).numFmtId || (isDateCell ? 14 : 0),
-			isDateCell ? dateToSerialNumber(value) : value,
+			isDateCell ? dateToSerialNumber(value, options?.date1904) : value,
+			options,
 		);
 		return cell.w;
 	} catch {
@@ -115,9 +120,9 @@ export function formatCell(cell: CellObject, value?: any, options?: any): string
 		return BErr[cell.v as number] || String(cell.v);
 	}
 	if (value == null) {
-		return safeFormatCell(cell, cell.v);
+		return safeFormatCell(cell, cell.v, options);
 	}
-	return safeFormatCell(cell, value);
+	return safeFormatCell(cell, value, options);
 }
 
 /**
