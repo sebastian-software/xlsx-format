@@ -15,7 +15,7 @@ import {
 import { arrayToSheet } from "./aoa.js";
 import type { CellObject } from "../types.js";
 
-import { jsonToSheet } from "../index.js";
+import { formatCell, jsonToSheet, read, sheetToCsv, sheetToHtml, write } from "../index.js";
 
 describe("createWorkbook", () => {
 	it("should create an empty workbook", () => {
@@ -35,6 +35,31 @@ describe("createWorkbook", () => {
 		const ws = createSheet();
 		const wb = createWorkbook(ws);
 		expect(wb.SheetNames).toStrictEqual(["Sheet1"]);
+	});
+
+	it("should preserve special sheet names as own enumerable properties", async () => {
+		const ws = arrayToSheet([["value"]]);
+		const wb = createWorkbook();
+
+		appendSheet(wb, ws, "__proto__");
+
+		expect(Object.keys(wb.Sheets)).toContain("__proto__");
+		expect(Object.hasOwn(wb.Sheets, "__proto__")).toBe(true);
+		expect(Object.getOwnPropertyDescriptor(wb.Sheets, "__proto__")?.value).toBe(ws);
+		expect(Object.getPrototypeOf(wb.Sheets)).toBe(Object.prototype);
+		expect(({} as any).polluted).toBeUndefined();
+		expect((await write(wb)) instanceof Uint8Array).toBe(true);
+	});
+
+	it("should append to an ordinary caller-provided Sheets map", () => {
+		const wb = { SheetNames: [], Sheets: {} };
+		const ws = createSheet();
+
+		appendSheet(wb, ws, "__proto__");
+
+		expect(wb.SheetNames).toStrictEqual(["__proto__"]);
+		expect(Object.getOwnPropertyDescriptor(wb.Sheets, "__proto__")?.value).toBe(ws);
+		expect(Object.keys(wb.Sheets)).toStrictEqual(["__proto__"]);
 	});
 });
 
@@ -114,6 +139,30 @@ describe("setCellNumberFormat", () => {
 		const cell: CellObject = { t: "n", v: 42 };
 		setCellNumberFormat(cell, "#,##0.00");
 		expect(cell.z).toBe("#,##0.00");
+	});
+
+	it("should invalidate cached display text for formatting and exports", () => {
+		const cell: CellObject = { t: "n", v: 0.25, w: "0.25" };
+		const ws = arrayToSheet([[cell]]);
+
+		setCellNumberFormat(cell, "0.00%");
+
+		expect(cell.w).toBeUndefined();
+		expect(formatCell(cell)).toBe("25.00%");
+		expect(sheetToCsv(ws)).toContain("25.00%");
+		expect(sheetToHtml(ws)).toContain(">25.00%<");
+	});
+
+	it("should invalidate cached display text on parsed cells", async () => {
+		const source = createWorkbook(arrayToSheet([[0.25]]), "Sheet1");
+		const parsed = await read(await write(source));
+		const cell = parsed.Sheets.Sheet1.A1;
+
+		setCellNumberFormat(cell, "0.00%");
+
+		expect(formatCell(cell)).toBe("25.00%");
+		expect(sheetToCsv(parsed.Sheets.Sheet1)).toContain("25.00%");
+		expect(sheetToHtml(parsed.Sheets.Sheet1)).toContain(">25.00%<");
 	});
 });
 
