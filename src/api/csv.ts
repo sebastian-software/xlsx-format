@@ -7,14 +7,18 @@ import { arrayToSheet } from "./aoa.js";
 /** Regex to match double-quote characters for CSV escaping (doubled inside quoted fields) */
 const qreg = /"/g;
 
+function containsSeparatorCharacter(text: string, separator: string): boolean {
+	return separator.length > 0 && text.includes(separator.charAt(0));
+}
+
 function quoteCsvField(text: string, fieldSeparator: string, recordSeparator: string, forceQuotes?: boolean): string {
 	if (
 		forceQuotes ||
 		text.includes('"') ||
 		text.includes("\r") ||
 		text.includes("\n") ||
-		(fieldSeparator.length > 0 && text.includes(fieldSeparator)) ||
-		(recordSeparator.length > 0 && text.includes(recordSeparator))
+		containsSeparatorCharacter(text, fieldSeparator) ||
+		containsSeparatorCharacter(text, recordSeparator)
 	) {
 		return '"' + text.replace(qreg, '""') + '"';
 	}

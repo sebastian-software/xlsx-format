@@ -130,6 +130,23 @@ describe("csv.ts: advanced CSV features", () => {
 		expect(sheetToCsv(ws, { escapeFormulae: false })).toContain('"=IF(A2,B2,C2)"');
 	});
 
+	it("quotes value fields when a multi-character separator can overlap", () => {
+		expect(sheetToCsv(arrayToSheet([["x|", "y"]]), { FS: "||" })).toBe('"x|"||y');
+		expect(sheetToCsv(arrayToSheet([["x|"], ["y"]]), { RS: "||" })).toBe('"x|"||y');
+	});
+
+	it("quotes formula-only fields when a multi-character separator can overlap", () => {
+		const fieldFormula: any = { A1: { t: "z", f: "IF(A1|B1)" }, "!ref": "A1:A1" };
+		const recordFormula: any = {
+			A1: { t: "z", f: "IF(A1|B1)" },
+			A2: { t: "z", f: "ok" },
+			"!ref": "A1:A2",
+		};
+
+		expect(sheetToCsv(fieldFormula, { FS: "||", escapeFormulae: false })).toBe('"=IF(A1|B1)"');
+		expect(sheetToCsv(recordFormula, { RS: "||", escapeFormulae: false })).toBe('"=IF(A1|B1)"||=ok');
+	});
+
 	it("sheetToCsv formula-only cells honor custom separators and formula protection", () => {
 		const ws: any = { A1: { t: "z", f: "IF(A2;B2;C2)" }, "!ref": "A1:A1" };
 		const customRecord: any = { A1: { t: "z", f: "IF(A2||B2)" }, "!ref": "A1:A1" };
