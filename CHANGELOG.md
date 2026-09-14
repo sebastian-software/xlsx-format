@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.6](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.5...xlsx-format-v2.4.6) (2026-09-14)
+
+
+### Documentation
+
+* compose the README with mdtheme and Sebastian-Theme ([#142](https://github.com/sebastian-software/xlsx-format/issues/142)) ([baf4978](https://github.com/sebastian-software/xlsx-format/commit/baf4978421a441fa8034527c5737a491930d7344))
+
 ## [2.4.5](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.4...xlsx-format-v2.4.5) (2026-09-08)
 
 
