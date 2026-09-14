@@ -1,0 +1,5 @@
+
+
+# Keep the generated README check identical across Git checkout platforms.
+/README.md text eol=lf
+/README.md.src text eol=lf
