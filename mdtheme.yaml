@@ -1,4 +1,4 @@
 themes:
     - git: https://github.com/sebastian-software/sebastian-theme.git
-      ref: 500b7d9171f8237d01bd938663710bb14d30b32c
+      ref: ebc83455a1be4c231dd4c503e23ddbb19cba74bc
       path: markdown
