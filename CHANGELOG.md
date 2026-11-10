@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Bug Fixes
+
+* Preserve local wall-clock dates when importing and exporting worksheets, including across daylight saving changes. `UTC: true` continues to use UTC components; ISO output keeps its existing UTC default.
+
 ## [2.4.5](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.4...xlsx-format-v2.4.5) (2026-09-08)
 
 

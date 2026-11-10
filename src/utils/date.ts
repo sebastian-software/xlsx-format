@@ -43,28 +43,30 @@ export function serialNumberToDate(v: number, date1904?: boolean): Date {
 }
 
 /**
- * Shift a local Date to UTC by adding the timezone offset.
+ * Copy local calendar components into a UTC Date for Excel's timezone-free serials.
  *
- * Useful when a Date was constructed from local-time components but
- * needs to be treated as a UTC timestamp.
- *
- * @param d - Date in local time
- * @returns New Date shifted to represent the same wall-clock time in UTC
+ * @param d - Date whose local wall-clock time should be preserved
+ * @returns New Date with the same components in UTC
  */
 export function localToUtc(d: Date): Date {
-	const off = d.getTimezoneOffset();
-	return new Date(d.getTime() + off * 60 * 1000);
+	const result = new Date(0);
+	result.setUTCFullYear(d.getFullYear(), d.getMonth(), d.getDate());
+	result.setUTCHours(d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds());
+	return result;
 }
 
 /**
- * Shift a UTC Date to local time by subtracting the timezone offset.
+ * Copy UTC calendar components into a local Date.
  *
- * The inverse of {@link localToUtc}.
+ * JavaScript resolves nonexistent or repeated local times using its usual
+ * compatible DST disambiguation, just as the local Date constructor does.
  *
- * @param d - Date in UTC
- * @returns New Date shifted to represent the same wall-clock time in local time
+ * @param d - Date carrying timezone-free worksheet components in UTC
+ * @returns New Date with those components in local time
  */
 export function utcToLocal(d: Date): Date {
-	const off = d.getTimezoneOffset();
-	return new Date(d.getTime() - off * 60 * 1000);
+	const result = new Date(0);
+	result.setFullYear(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+	result.setHours(d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds(), d.getUTCMilliseconds());
+	return result;
 }
