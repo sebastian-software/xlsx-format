@@ -2,7 +2,7 @@ import type { CellObject } from "../types.js";
 import { BErr } from "../types.js";
 import { formatNumber, getDateTimeFormatKind, type DateTimeFormatKind } from "../ssf/format.js";
 import { DEFAULT_FORMAT_MAP, DEFAULT_FORMAT_STRINGS, formatTable } from "../ssf/table.js";
-import { dateToSerialNumber, serialNumberToDate, utcToLocal } from "../utils/date.js";
+import { dateToSerialNumber, serialNumberToDate, localToUtc } from "../utils/date.js";
 
 function resolveNumberFormat(fmt: unknown, options?: any): string | undefined {
 	if (typeof fmt === "string") {
@@ -57,7 +57,7 @@ function inferDateKind(date: Date, options?: any): DateTimeFormatKind {
 }
 
 function normalizeDateOutput(date: Date, options?: any): Date {
-	return options?.UTC === false ? utcToLocal(date) : date;
+	return options?.UTC === false ? localToUtc(date) : date;
 }
 
 /**
