@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.7](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.6...xlsx-format-v2.4.7) (2026-11-10)
+
+
+### Documentation
+
+* migrate the site to Ardo 6.6 ([#147](https://github.com/sebastian-software/xlsx-format/issues/147)) ([23d3c97](https://github.com/sebastian-software/xlsx-format/commit/23d3c970c125d7b171935fa097998710c5f104e9))
+
 ## [2.4.6](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.5...xlsx-format-v2.4.6) (2026-11-10)
 
 
