@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Link } from "react-router";
+import { ArdoLink as Link } from "ardo/runtime";
 import { ArrowRight, ArrowUpRight, Check, Download, Minus } from "lucide-react";
 import config from "virtual:ardo/config";
 

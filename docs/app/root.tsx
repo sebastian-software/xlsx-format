@@ -10,13 +10,8 @@ import {
 	ArdoSidebarLink,
 	ArdoSidebarSection,
 } from "ardo/ui";
-import config from "virtual:ardo/config";
-import type { MetaFunction } from "react-router";
-import "ardo/ui/styles.css";
 import "./custom.css";
 import brandMark from "./brand-mark.svg";
-
-export const meta: MetaFunction = () => [{ title: config.title }];
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return <ArdoRootLayout>{children}</ArdoRootLayout>;
@@ -24,7 +19,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function Root() {
 	return (
-		<ArdoRoot config={config}>
+		<ArdoRoot icon={brandMark}>
 			<ArdoHeader logo={brandMark}>
 				<ArdoNav>
 					<ArdoNavLink to="/guide/getting-started">Guide</ArdoNavLink>

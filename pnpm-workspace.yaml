@@ -38,4 +38,13 @@ minimumReleaseAgeExclude:
     - "@typescript-eslint/utils@8.63.0"
     - "@typescript-eslint/visitor-keys@8.63.0"
     - typescript-eslint@8.63.0
-    - ardo@3.8.1
+    - ardo@3.8.1 || 6.6.0
+    - "@ferrolink/darwin-arm64@0.2.2"
+    - "@ferrolink/darwin-x64@0.2.2"
+    - "@ferrolink/linux-arm64-gnu@0.2.2"
+    - "@ferrolink/linux-arm64-musl@0.2.2"
+    - "@ferrolink/linux-x64-gnu@0.2.2"
+    - "@ferrolink/linux-x64-musl@0.2.2"
+    - "@ferrolink/win32-arm64-msvc@0.2.2"
+    - "@ferrolink/win32-x64-msvc@0.2.2"
+    - ferrolink@0.2.2
