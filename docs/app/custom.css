@@ -1380,11 +1380,10 @@ main footer[class] {
 	color: var(--xf-brand);
 }
 
-/* ---- Sidebar rail: section icons as selected cells ---- */
+/* ---- Sidebar rail: native label sizing with worksheet cell colors ---- */
 
 nav[aria-label="Documentation sections"] a[class] {
-	width: 2.4rem;
-	height: 2.4rem;
+	/* Ardo 6 owns each rotated label's intrinsic size and mobile layout. */
 	border-radius: 6px;
 	color: var(--xf-muted);
 }
