@@ -1,10 +1,16 @@
 # Changelog
 
-## Unreleased
+## [2.4.6](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.5...xlsx-format-v2.4.6) (2026-11-10)
+
 
 ### Bug Fixes
 
-* Preserve local wall-clock dates when importing and exporting worksheets, including across daylight saving changes. `UTC: true` continues to use UTC components; ISO output keeps its existing UTC default.
+* preserve local wall-clock worksheet dates ([#146](https://github.com/sebastian-software/xlsx-format/issues/146)) ([822faa0](https://github.com/sebastian-software/xlsx-format/commit/822faa006b2384e571beb54b64dc5b85dff56331))
+
+
+### Documentation
+
+* compose the README with mdtheme and Sebastian-Theme ([#142](https://github.com/sebastian-software/xlsx-format/issues/142)) ([baf4978](https://github.com/sebastian-software/xlsx-format/commit/baf4978421a441fa8034527c5737a491930d7344))
 
 ## [2.4.5](https://github.com/sebastian-software/xlsx-format/compare/xlsx-format-v2.4.4...xlsx-format-v2.4.5) (2026-09-08)
 
