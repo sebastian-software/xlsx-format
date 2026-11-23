@@ -6,7 +6,7 @@
 [![CI](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml/badge.svg)](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sebastian-software/xlsx-format/graph/badge.svg)](https://codecov.io/gh/sebastian-software/xlsx-format)
 [![license](https://img.shields.io/npm/l/xlsx-format)](LICENSE)
-[![node](https://img.shields.io/node/v/xlsx-format)](https://nodejs.org/)
+[![Node.js test matrix 22, 24, and 26](https://img.shields.io/badge/Node.js-22%20%7C%2024%20%7C%2026-339933?logo=nodedotjs&logoColor=white)](https://github.com/sebastian-software/xlsx-format/actions/workflows/ci.yml)
 [![bun](https://img.shields.io/badge/Bun-tested-f9f1e1?logo=bun)](https://bun.sh/)
 [![browser](https://img.shields.io/badge/Browser-supported-4285F4?logo=googlechrome&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
